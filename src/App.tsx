@@ -43,6 +43,7 @@ export default function App() {
           <TemplateDetail
             onStart={() => setScreen("workout")}
             onBack={() => {}}
+            onSignOut={() => supabase.auth.signOut()}
           />
         )}
         {screen === "workout" && (
