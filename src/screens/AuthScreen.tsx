@@ -58,7 +58,8 @@ export function AuthScreen() {
           autoComplete="email"
           required
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={e => { setEmail(e.target.value); setError(null); }}
+          className="auth-input"
           style={{
             background: "hsl(var(--card))",
             border: "1px solid hsl(var(--border))",
@@ -78,7 +79,8 @@ export function AuthScreen() {
           autoComplete="current-password"
           required
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={e => { setPassword(e.target.value); setError(null); }}
+          className="auth-input"
           style={{
             background: "hsl(var(--card))",
             border: "1px solid hsl(var(--border))",
@@ -98,7 +100,7 @@ export function AuthScreen() {
             style={{
               fontFamily: "'DM Mono', monospace",
               fontSize: 12,
-              color: "#ff4d4d",
+              color: "hsl(var(--destructive))",
               margin: 0,
             }}
           >

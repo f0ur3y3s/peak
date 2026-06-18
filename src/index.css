@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 6%;
+    --foreground: 0 0% 94%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 94%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 94%;
+    --primary: 72 100% 64%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 94%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 72 100% 64%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 4 90% 58%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16%;
+    --input: 0 0% 14%;
+    --ring: 72 100% 64%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ── Nav bar ───────────────────────────────── */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+  display: flex;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.nav-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 0 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ── Timer sheet ───────────────────────────── */
+.timer-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  touch-action: none;
+  will-change: transform;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+.timer-sheet-inner {
+  background: hsl(0 0% 8%);
+  border-top: 1px solid hsl(var(--border));
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.drag-handle {
+  width: 40px;
+  height: 4px;
+  background: hsl(var(--border));
+  border-radius: 99px;
+  margin: 10px auto 0;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+/* ── Set chip ──────────────────────────────── */
+.set-chip {
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: hsl(72 100% 64% / 0.1);
+  color: hsl(72 80% 55%);
+  border: 1px solid hsl(72 100% 64% / 0.2);
+}
+
+/* ── Stepper ───────────────────────────────── */
+.stepper {
+  display: flex;
+  align-items: center;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.stepper-btn {
+  background: none;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 18px;
+  font-family: "DM Mono", monospace;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.stepper-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+.stepper-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: "DM Mono", monospace;
+  font-size: 20px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  text-align: center;
+  padding: 8px 0;
+  width: 64px;
+}
+
+/* ── Misc ──────────────────────────────────── */
+.scroll-area {
+  overflow-y: auto;
+  height: 100vh;
+}
+
+.timer-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  cursor: pointer;
+  gap: 12px;
+}
+
+.history-chevron {
+  color: hsl(var(--muted-foreground));
+  transition: transform 0.2s;
+  font-size: 12px;
+}
+
+.history-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* shadcn Progress accent override */
+[data-slot="progress-indicator"] {
+  background: hsl(var(--primary)) !important;
+}
+
+/* ── Auth Input ────────────────────────────── */
+.auth-input:focus {
+  border-color: hsl(var(--primary));
+  outline: none;
+}
+
+.auth-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
