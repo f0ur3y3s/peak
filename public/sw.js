@@ -3,9 +3,8 @@ const PRECACHE = ["/", "/index.html"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(PRECACHE))
+    caches.open(CACHE).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
@@ -26,9 +25,13 @@ self.addEventListener("fetch", event => {
     caches.open(CACHE).then(async cache => {
       const cached = await cache.match(event.request);
       if (cached) return cached;
-      const response = await fetch(event.request);
-      if (response.ok) cache.put(event.request, response.clone());
-      return response;
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) cache.put(event.request, response.clone());
+        return response;
+      } catch (err) {
+        throw err;
+      }
     })
   );
 });
