@@ -54,6 +54,7 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
   const [editingExisting, setEditingExisting] = useState<{ exerciseId: string; name: string } | null>(null);
   const [addingNew, setAddingNew] = useState<LibraryExercise | null>(null);
   const [pickingExercise, setPickingExercise] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const autoEditApplied = useRef(false);
 
   const reload = () => {
@@ -73,7 +74,9 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
       autoEditApplied.current = true;
     }
     getWorkoutSessions().then((sessions) => {
-      const match = sessions.find((s) => s.templateName === template.name);
+      const match =
+        sessions.find((s) => s.templateId === templateId) ??
+        sessions.find((s) => !s.templateId && s.templateName === template.name);
       setLastPerformed(match ? fmtRelativeDate(match.startedAt) : null);
     });
   }, [template]);
@@ -83,26 +86,40 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
   const totalTargetSets = exercises.reduce((a, e) => a + e.targetSets, 0);
   const avgSeconds = exercises.reduce((a, e) => a + e.restSeconds * e.targetSets, 0);
 
-  const handleRename = (name: string) => {
+  const handleRename = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed || trimmed === template.name) return;
+    setActionError(null);
+    const previous = template;
     const updated = { ...template, name: trimmed };
     setTemplate(updated);
-    saveTemplate(updated);
+    try {
+      await saveTemplate(updated);
+    } catch {
+      setTemplate(previous);
+      setActionError("Couldn't rename template — try again.");
+    }
   };
 
   const handleDeleteExercise = async (exerciseId: string) => {
+    setActionError(null);
     const updated: Template = {
       ...template,
       exercises: template.exercises
         .filter((e) => e.exerciseId !== exerciseId)
         .map((e, i) => ({ ...e, order: i })),
     };
-    await saveTemplate(updated);
-    reload();
+    try {
+      await saveTemplate(updated);
+    } catch {
+      setActionError("Couldn't update template — try again.");
+    } finally {
+      reload();
+    }
   };
 
   const handleSaveConfig = async (exerciseId: string, values: ExerciseConfigValues) => {
+    setActionError(null);
     const exists = template.exercises.some((e) => e.exerciseId === exerciseId);
     const updated: Template = {
       ...template,
@@ -112,16 +129,27 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
           )
         : [...template.exercises, { exerciseId, order: template.exercises.length, ...values }],
     };
-    await saveTemplate(updated);
-    setEditingExisting(null);
-    setAddingNew(null);
-    reload();
+    try {
+      await saveTemplate(updated);
+    } catch {
+      setActionError("Couldn't update template — try again.");
+    } finally {
+      setEditingExisting(null);
+      setAddingNew(null);
+      reload();
+    }
   };
 
   const handleDeleteTemplate = async () => {
     if (!window.confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
-    await deleteTemplate(templateId);
-    onBack();
+    setActionError(null);
+    try {
+      await deleteTemplate(templateId);
+      onBack();
+    } catch {
+      setActionError("Couldn't delete template — try again.");
+      reload();
+    }
   };
 
   const editingExistingConfig: ExerciseConfigValues | undefined = editingExisting
@@ -176,6 +204,15 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
           </div>
         }
       />
+
+      {actionError && (
+        <p
+          className="font-mono text-[11px] px-5 pt-1"
+          style={{ color: "hsl(var(--destructive))", margin: 0 }}
+        >
+          {actionError}
+        </p>
+      )}
 
       {editMode && (
         <div className="px-5 pt-3 flex flex-col gap-2.5">

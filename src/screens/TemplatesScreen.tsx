@@ -28,13 +28,15 @@ export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: Template
   const [lastPerformed, setLastPerformed] = useState<Map<string, number>>(new Map());
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     getTemplates().then(setTemplates);
     getWorkoutSessions().then((sessions) => {
       const map = new Map<string, number>();
       for (const s of sessions) {
-        if (!map.has(s.templateName)) map.set(s.templateName, s.startedAt);
+        const key = s.templateId ?? `name:${s.templateName}`;
+        if (!map.has(key)) map.set(key, s.startedAt);
       }
       setLastPerformed(map);
     });
@@ -43,8 +45,14 @@ export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: Template
   const handleCreate = async () => {
     const name = newName.trim();
     if (!name) return;
+    setCreateError(null);
     const template: Template = { id: crypto.randomUUID(), name, exercises: [] };
-    await saveTemplate(template);
+    try {
+      await saveTemplate(template);
+    } catch {
+      setCreateError("Couldn't create template — try again.");
+      return;
+    }
     onCreateTemplate(template.id);
   };
 
@@ -54,7 +62,7 @@ export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: Template
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
         {templates.map((t) => {
-          const lastTs = lastPerformed.get(t.name);
+          const lastTs = lastPerformed.get(t.id) ?? lastPerformed.get(`name:${t.name}`);
           return (
             <Card
               key={t.id}
@@ -89,6 +97,14 @@ export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: Template
                 onChange={(e) => setNewName(e.target.value)}
                 autoFocus
               />
+              {createError && (
+                <p
+                  className="font-mono text-[11px]"
+                  style={{ color: "hsl(var(--destructive))", margin: 0 }}
+                >
+                  {createError}
+                </p>
+              )}
               <div className="flex gap-2.5">
                 <Button
                   variant="outline"
@@ -96,6 +112,7 @@ export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: Template
                   onClick={() => {
                     setCreating(false);
                     setNewName("");
+                    setCreateError(null);
                   }}
                 >
                   Cancel

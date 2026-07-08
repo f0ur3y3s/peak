@@ -3,6 +3,7 @@ import { SEED_EXERCISES, type Exercise } from "@/lib/data";
 
 export interface WorkoutSession {
   id: string;
+  templateId?: string;
   templateName: string;
   startedAt: number;
   finishedAt: number;
@@ -233,7 +234,13 @@ export async function getLastUsedTemplateId(): Promise<string | null> {
   const sessions = await db.getAllFromIndex("workout_sessions", "startedAt");
   const templates = await db.getAll("templates");
   for (let i = sessions.length - 1; i >= 0; i--) {
-    const match = templates.find((t) => t.name === sessions[i].templateName);
+    const session = sessions[i];
+    if (session.templateId) {
+      const match = templates.find((t) => t.id === session.templateId);
+      if (match) return match.id;
+      continue;
+    }
+    const match = templates.find((t) => t.name === session.templateName);
     if (match) return match.id;
   }
   if (templates.length === 0) return null;

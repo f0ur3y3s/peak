@@ -35,7 +35,7 @@ export function ExercisePicker({
   const [library, setLibrary] = useState<LibraryExercise[]>([]);
   const [filter, setFilter] = useState("");
   const [creatingMuscle, setCreatingMuscle] = useState("");
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const reload = () => getExerciseLibrary().then(setLibrary);
 
@@ -53,24 +53,34 @@ export function ExercisePicker({
   const canCreate = filter.trim().length > 0 && !exactMatch;
 
   const handleCreate = async () => {
+    setActionError(null);
     const newExercise: LibraryExercise = {
       id: crypto.randomUUID(),
       name: filter.trim(),
       muscle: creatingMuscle.trim() || "Other",
     };
-    await saveLibraryExercise(newExercise);
+    try {
+      await saveLibraryExercise(newExercise);
+    } catch {
+      setActionError("Couldn't create exercise — try again.");
+      return;
+    }
     onPick(newExercise);
   };
 
   const handleDelete = async (id: string, name: string) => {
-    setDeleteError(null);
-    const result = await deleteLibraryExercise(id);
-    if (result.ok) {
-      reload();
-    } else {
-      setDeleteError(
-        `"${name}" is used in ${result.usedIn.join(", ")} — remove it from those templates first.`
-      );
+    setActionError(null);
+    try {
+      const result = await deleteLibraryExercise(id);
+      if (result.ok) {
+        reload();
+      } else {
+        setActionError(
+          `"${name}" is used in ${result.usedIn.join(", ")} — remove it from those templates first.`
+        );
+      }
+    } catch {
+      setActionError("Couldn't delete exercise — try again.");
     }
   };
 
@@ -86,12 +96,12 @@ export function ExercisePicker({
           autoFocus
         />
 
-        {deleteError && (
+        {actionError && (
           <p
             className="font-mono text-[11px] mb-2"
             style={{ color: "hsl(var(--destructive))" }}
           >
-            {deleteError}
+            {actionError}
           </p>
         )}
 

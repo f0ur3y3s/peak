@@ -80,6 +80,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutPro
 
       const built: WorkoutSession = {
         id: crypto.randomUUID(),
+        templateId,
         templateName: templateName || "Workout",
         startedAt: startedAt.current,
         finishedAt: Date.now(),
