@@ -1,12 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { TopBar } from "@/components/TopBar";
+import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
+import { ExercisePicker } from "@/components/ExercisePicker";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
-import { getTemplate, getExercises, getWorkoutSessions, type Template } from "@/lib/db";
+import {
+  getTemplate,
+  getExercises,
+  getWorkoutSessions,
+  saveTemplate,
+  deleteTemplate,
+  type Template,
+  type LibraryExercise,
+} from "@/lib/db";
 
 interface TemplateDetailProps {
   templateId: string;
@@ -15,18 +25,53 @@ interface TemplateDetailProps {
   onSignOut: () => void;
 }
 
+const DEFAULT_CONFIG: ExerciseConfigValues = {
+  targetSets: 4,
+  repsMin: 6,
+  repsMax: 8,
+  targetWeight: 20,
+  restSeconds: 90,
+};
+
+const RENAME_INPUT_STYLE: React.CSSProperties = {
+  background: "hsl(var(--card))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: 10,
+  padding: "10px 12px",
+  color: "hsl(var(--foreground))",
+  fontFamily: "'DM Mono', monospace",
+  fontSize: 14,
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
 export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: TemplateDetailProps) {
   const [template, setTemplate] = useState<Template | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [lastPerformed, setLastPerformed] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editingExisting, setEditingExisting] = useState<{ exerciseId: string; name: string } | null>(null);
+  const [addingNew, setAddingNew] = useState<LibraryExercise | null>(null);
+  const [pickingExercise, setPickingExercise] = useState(false);
+  const autoEditApplied = useRef(false);
 
-  useEffect(() => {
+  const reload = () => {
     getTemplate(templateId).then((t) => setTemplate(t ?? null));
     getExercises(templateId).then(setExercises);
+  };
+
+  useEffect(() => {
+    reload();
+    autoEditApplied.current = false;
   }, [templateId]);
 
   useEffect(() => {
     if (!template) return;
+    if (template.exercises.length === 0 && !autoEditApplied.current) {
+      setEditMode(true);
+      autoEditApplied.current = true;
+    }
     getWorkoutSessions().then((sessions) => {
       const match = sessions.find((s) => s.templateName === template.name);
       setLastPerformed(match ? fmtRelativeDate(match.startedAt) : null);
@@ -37,6 +82,51 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
 
   const totalTargetSets = exercises.reduce((a, e) => a + e.targetSets, 0);
   const avgSeconds = exercises.reduce((a, e) => a + e.restSeconds * e.targetSets, 0);
+
+  const handleRename = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === template.name) return;
+    const updated = { ...template, name: trimmed };
+    setTemplate(updated);
+    saveTemplate(updated);
+  };
+
+  const handleDeleteExercise = async (exerciseId: string) => {
+    const updated: Template = {
+      ...template,
+      exercises: template.exercises
+        .filter((e) => e.exerciseId !== exerciseId)
+        .map((e, i) => ({ ...e, order: i })),
+    };
+    await saveTemplate(updated);
+    reload();
+  };
+
+  const handleSaveConfig = async (exerciseId: string, values: ExerciseConfigValues) => {
+    const exists = template.exercises.some((e) => e.exerciseId === exerciseId);
+    const updated: Template = {
+      ...template,
+      exercises: exists
+        ? template.exercises.map((e) =>
+            e.exerciseId === exerciseId ? { ...e, ...values } : e
+          )
+        : [...template.exercises, { exerciseId, order: template.exercises.length, ...values }],
+    };
+    await saveTemplate(updated);
+    setEditingExisting(null);
+    setAddingNew(null);
+    reload();
+  };
+
+  const handleDeleteTemplate = async () => {
+    if (!window.confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
+    await deleteTemplate(templateId);
+    onBack();
+  };
+
+  const editingExistingConfig: ExerciseConfigValues | undefined = editingExisting
+    ? template.exercises.find((e) => e.exerciseId === editingExisting.exerciseId)
+    : undefined;
 
   return (
     <div>
@@ -61,45 +151,79 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
             >
               sign out
             </button>
-            <Button
-              onClick={onStart}
-              disabled={exercises.length === 0}
-              className="font-semibold tracking-tight"
+            <button
+              onClick={() => setEditMode((v) => !v)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: editMode ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+                fontSize: 16,
+                padding: "4px 6px",
+              }}
             >
-              Start
-            </Button>
+              ✎
+            </button>
+            {!editMode && (
+              <Button
+                onClick={onStart}
+                disabled={exercises.length === 0}
+                className="font-semibold tracking-tight"
+              >
+                Start
+              </Button>
+            )}
           </div>
         }
       />
 
-      {exercises.length === 0 ? (
+      {editMode && (
+        <div className="px-5 pt-3 flex flex-col gap-2.5">
+          <input
+            style={RENAME_INPUT_STYLE}
+            defaultValue={template.name}
+            onBlur={(e) => handleRename(e.target.value)}
+          />
+          <Button variant="destructive" className="w-full" onClick={handleDeleteTemplate}>
+            Delete template
+          </Button>
+        </div>
+      )}
+
+      {exercises.length === 0 && !editMode ? (
         <div className="px-5 pt-10 text-center">
           <p className="text-muted-foreground text-sm">No exercises yet — tap + Add exercise</p>
         </div>
       ) : (
         <>
-          <div className="px-5 pt-4">
-            <Card>
-              <CardContent style={{ padding: "16px 20px" }} className="flex gap-7">
-                {(
-                  [
-                    [String(exercises.length), "exercises"],
-                    [String(totalTargetSets), "total sets"],
-                    [`~${Math.round(avgSeconds / 60)}`, "min avg"],
-                  ] as const
-                ).map(([v, l]) => (
-                  <div key={l}>
-                    <p className="font-mono text-2xl font-medium">{v}</p>
-                    <p className="text-[11px] text-muted-foreground mt-px">{l}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
+          {exercises.length > 0 && (
+            <div className="px-5 pt-4">
+              <Card>
+                <CardContent style={{ padding: "16px 20px" }} className="flex gap-7">
+                  {(
+                    [
+                      [String(exercises.length), "exercises"],
+                      [String(totalTargetSets), "total sets"],
+                      [`~${Math.round(avgSeconds / 60)}`, "min avg"],
+                    ] as const
+                  ).map(([v, l]) => (
+                    <div key={l}>
+                      <p className="font-mono text-2xl font-medium">{v}</p>
+                      <p className="text-[11px] text-muted-foreground mt-px">{l}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           <div className="px-5 pt-3.5 pb-24 flex flex-col gap-2.5">
             {exercises.map((ex, i) => (
-              <Card key={ex.id}>
+              <Card
+                key={ex.id}
+                onClick={() => editMode && setEditingExisting({ exerciseId: ex.id, name: ex.name })}
+                style={{ cursor: editMode ? "pointer" : "default" }}
+              >
                 <CardHeader style={{ padding: "14px 16px 10px" }}>
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
@@ -126,13 +250,34 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-mono text-sm">
-                        {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
-                      </p>
-                      <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
-                        @ {ex.targetWeight} kg
-                      </p>
+                    <div className="flex items-start gap-2">
+                      <div className="text-right">
+                        <p className="font-mono text-sm">
+                          {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
+                        </p>
+                        <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                          @ {ex.targetWeight} kg
+                        </p>
+                      </div>
+                      {editMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteExercise(ex.id);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "hsl(var(--destructive))",
+                            fontSize: 16,
+                            lineHeight: 1,
+                            padding: "2px 4px",
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -159,8 +304,48 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
                 </CardContent>
               </Card>
             ))}
+
+            {editMode && (
+              <Button
+                variant="outline"
+                className="text-muted-foreground rounded-xl h-auto py-4"
+                style={{ border: "1px dashed hsl(var(--border))" }}
+                onClick={() => setPickingExercise(true)}
+              >
+                + Add exercise
+              </Button>
+            )}
           </div>
         </>
+      )}
+
+      {editingExisting && editingExistingConfig && (
+        <ExerciseConfigEditor
+          exerciseName={editingExisting.name}
+          initial={editingExistingConfig}
+          onSave={(values) => handleSaveConfig(editingExisting.exerciseId, values)}
+          onCancel={() => setEditingExisting(null)}
+        />
+      )}
+
+      {addingNew && (
+        <ExerciseConfigEditor
+          exerciseName={addingNew.name}
+          initial={DEFAULT_CONFIG}
+          onSave={(values) => handleSaveConfig(addingNew.id, values)}
+          onCancel={() => setAddingNew(null)}
+        />
+      )}
+
+      {pickingExercise && (
+        <ExercisePicker
+          existingExerciseIds={template.exercises.map((e) => e.exerciseId)}
+          onPick={(libraryExercise) => {
+            setPickingExercise(false);
+            setAddingNew(libraryExercise);
+          }}
+          onCancel={() => setPickingExercise(false)}
+        />
       )}
     </div>
   );
