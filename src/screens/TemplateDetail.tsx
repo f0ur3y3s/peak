@@ -14,6 +14,7 @@ import {
   getWorkoutSessions,
   saveTemplate,
   deleteTemplate,
+  getActiveWorkoutDraft,
   type Template,
   type LibraryExercise,
 } from "@/lib/db";
@@ -152,6 +153,16 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
     }
   };
 
+  const handleStartClick = async () => {
+    setActionError(null);
+    const draft = await getActiveWorkoutDraft();
+    if (draft && draft.templateId !== templateId) {
+      setActionError(`Finish or discard your ${draft.templateName} workout first.`);
+      return;
+    }
+    onStart();
+  };
+
   const editingExistingConfig: ExerciseConfigValues | undefined = editingExisting
     ? template.exercises.find((e) => e.exerciseId === editingExisting.exerciseId)
     : undefined;
@@ -194,7 +205,7 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
             </button>
             {!editMode && (
               <Button
-                onClick={onStart}
+                onClick={handleStartClick}
                 disabled={exercises.length === 0}
                 className="font-semibold tracking-tight"
               >
