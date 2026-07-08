@@ -309,6 +309,31 @@ export function sessionSetCount(session: WorkoutSession): number {
   return session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
 }
 
+export interface ExerciseHistoryPoint {
+  t: number;
+  peak: number;
+  vol: number;
+}
+
+export function groupSessionsByExercise(
+  sessions: WorkoutSession[]
+): Record<string, ExerciseHistoryPoint[]> {
+  const grouped: Record<string, ExerciseHistoryPoint[]> = {};
+  for (const session of sessions) {
+    for (const ex of session.exercises) {
+      if (ex.sets.length === 0) continue;
+      const peak = Math.max(...ex.sets.map((s) => s.weight));
+      const vol = ex.sets.reduce((sum, s) => sum + s.reps * s.weight, 0);
+      if (!grouped[ex.name]) grouped[ex.name] = [];
+      grouped[ex.name].push({ t: session.startedAt, peak, vol });
+    }
+  }
+  for (const points of Object.values(grouped)) {
+    points.sort((a, b) => a.t - b.t);
+  }
+  return grouped;
+}
+
 export async function getPR(exerciseName: string): Promise<number> {
   const db = await getDB();
   const sessions = await db.getAll("workout_sessions");
