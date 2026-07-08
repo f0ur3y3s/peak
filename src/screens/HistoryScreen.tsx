@@ -1,0 +1,125 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { TopBar } from "@/components/TopBar";
+import { HistoryAnalytics } from "@/components/HistoryAnalytics";
+import { getWorkoutSessions, type WorkoutSession } from "@/lib/db";
+import { fmtRelativeDate } from "@/lib/utils";
+
+interface HistoryScreenProps {
+  onBack: () => void;
+}
+
+export function HistoryScreen({ onBack }: HistoryScreenProps) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+
+  useEffect(() => {
+    getWorkoutSessions().then(setSessions);
+  }, []);
+
+  return (
+    <div>
+      <TopBar title="History" onBack={onBack} />
+
+      <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
+
+        {/* ── Analytics panel ── */}
+        <HistoryAnalytics />
+
+        {/* ── Divider ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
+          <span style={{
+            fontFamily: "'DM Mono', monospace", fontSize: 10,
+            color: "hsl(var(--muted-foreground))",
+            letterSpacing: "0.08em", textTransform: "uppercase",
+          }}>
+            Workouts
+          </span>
+          <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
+        </div>
+
+        {/* ── Workout list ── */}
+        {sessions.map((session) => {
+          const durationMin = Math.round((session.finishedAt - session.startedAt) / 60000);
+          const volume = session.exercises.reduce(
+            (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.reps * set.weight, 0),
+            0
+          );
+          const setCount = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+          const hasPR = session.prs.length > 0;
+
+          return (
+            <Card
+              key={session.id}
+              onClick={() => setExpanded((e) => (e === session.id ? null : session.id))}
+              className="cursor-pointer transition-colors"
+              style={{
+                borderColor: expanded === session.id ? "hsl(var(--primary) / 0.4)" : undefined,
+              }}
+            >
+              <CardContent style={{ padding: "14px 16px" }}>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="flex gap-2 items-center mb-1">
+                      <p className="font-semibold text-[15px]">{session.templateName}</p>
+                      {hasPR && (
+                        <Badge
+                          style={{
+                            fontSize: 9,
+                            padding: "1px 6px",
+                            background: "hsl(var(--primary) / 0.15)",
+                            color: "hsl(var(--primary))",
+                            letterSpacing: "0.08em",
+                          }}
+                        >
+                          PR
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {fmtRelativeDate(session.startedAt)} · {durationMin}m
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-mono text-sm">{volume.toLocaleString()} kg</p>
+                      <p className="font-mono text-[11px] text-muted-foreground">
+                        {setCount} sets
+                      </p>
+                    </div>
+                    <span className={`history-chevron${expanded === session.id ? " open" : ""}`}>
+                      ▼
+                    </span>
+                  </div>
+                </div>
+
+                {expanded === session.id && (
+                  <div className="mt-3.5 pt-3.5 border-t border-border">
+                    {session.exercises.map((ex) => (
+                      <div key={ex.name} className="mb-3">
+                        <p className="font-medium text-[13px] mb-1.5">{ex.name}</p>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {ex.sets.map((s, i) => (
+                            <span
+                              key={i}
+                              className="font-mono text-xs px-2 py-0.5 rounded-md border border-border"
+                              style={{ background: "hsl(var(--secondary))" }}
+                            >
+                              {s.reps} × {s.weight}kg
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
