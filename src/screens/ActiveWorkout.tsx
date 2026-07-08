@@ -19,6 +19,7 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [session, setSession] = useState<WorkoutSession | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
@@ -57,29 +58,34 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
   };
 
   const handleFinish = async () => {
-    const loggedExercises = exercises.filter((ex) => ex.logged.length > 0);
+    setFinishError(null);
+    try {
+      const loggedExercises = exercises.filter((ex) => ex.logged.length > 0);
 
-    const prs: string[] = [];
-    for (const ex of loggedExercises) {
-      const previousBest = await getPR(ex.name);
-      const bestThisSession = Math.max(...ex.logged.map((s) => s.weight));
-      if (bestThisSession > previousBest) prs.push(ex.name);
+      const prs: string[] = [];
+      for (const ex of loggedExercises) {
+        const previousBest = await getPR(ex.name);
+        const bestThisSession = Math.max(...ex.logged.map((s) => s.weight));
+        if (bestThisSession > previousBest) prs.push(ex.name);
+      }
+
+      const built: WorkoutSession = {
+        id: crypto.randomUUID(),
+        templateName: "Push Day A",
+        startedAt: startedAt.current,
+        finishedAt: Date.now(),
+        exercises: loggedExercises.map((ex) => ({
+          name: ex.name,
+          sets: ex.logged.map((s) => ({ reps: s.reps, weight: s.weight })),
+        })),
+        prs,
+      };
+
+      await saveWorkoutSession(built);
+      setSession(built);
+    } catch {
+      setFinishError("Couldn't save workout — try again.");
     }
-
-    const built: WorkoutSession = {
-      id: crypto.randomUUID(),
-      templateName: "Push Day A",
-      startedAt: startedAt.current,
-      finishedAt: Date.now(),
-      exercises: loggedExercises.map((ex) => ({
-        name: ex.name,
-        sets: ex.logged.map((s) => ({ reps: s.reps, weight: s.weight })),
-      })),
-      prs,
-    };
-
-    await saveWorkoutSession(built);
-    setSession(built);
   };
 
   if (session) {
@@ -108,6 +114,15 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
             </Button>
           }
         />
+
+        {finishError && (
+          <p
+            className="font-mono text-[11px] px-5 pt-1"
+            style={{ color: "hsl(var(--destructive))", margin: 0 }}
+          >
+            {finishError}
+          </p>
+        )}
 
         {/* Global progress bar */}
         <div className="px-5 pt-2.5">
