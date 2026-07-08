@@ -49,6 +49,10 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
             const loggedByExerciseId = new Map(
               resumeDraft.exercises.map((e) => [e.exerciseId, e.logged])
             );
+            // Note: if an exercise was removed from the template after the draft was
+            // saved, getExercises won't return it, so any logged sets for that
+            // exercise have nothing to attach to and are silently dropped here.
+            // Known, accepted edge case — not handled.
             hydrated = exs.map((ex) => ({
               ...ex,
               logged: loggedByExerciseId.get(ex.id) ?? ex.logged,
@@ -73,24 +77,21 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
     let restSeconds = 120;
     let exerciseName = "";
     let nextSet = "";
-    let updatedExercises: Exercise[] = [];
 
-    setExercises((prev) => {
-      updatedExercises = prev.map((ex) => {
-        if (ex.id !== exId) return ex;
-        const newLogged = [...ex.logged, { id: `s${Date.now()}`, reps, weight }];
-        restSeconds = ex.restSeconds;
-        exerciseName = ex.name;
-        const setsLeft = ex.targetSets - newLogged.length;
-        nextSet =
-          setsLeft > 0
-            ? `Set ${newLogged.length + 1} of ${ex.targetSets}`
-            : "Last set done";
-        return { ...ex, logged: newLogged };
-      });
-      return updatedExercises;
+    const updatedExercises = exercises.map((ex) => {
+      if (ex.id !== exId) return ex;
+      const newLogged = [...ex.logged, { id: `s${Date.now()}`, reps, weight }];
+      restSeconds = ex.restSeconds;
+      exerciseName = ex.name;
+      const setsLeft = ex.targetSets - newLogged.length;
+      nextSet =
+        setsLeft > 0
+          ? `Set ${newLogged.length + 1} of ${ex.targetSets}`
+          : "Last set done";
+      return { ...ex, logged: newLogged };
     });
 
+    setExercises(updatedExercises);
     setTimer({ seconds: restSeconds, exerciseName, nextSet });
     setDraftError(null);
 
@@ -131,7 +132,10 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       };
 
       await saveWorkoutSession(built);
-      await clearActiveWorkoutDraft().catch(() => {});
+      // Best-effort: retry once before giving up. If the draft clear still fails,
+      // the user still proceeds to the summary — the real save above already
+      // succeeded, and surfacing an error here would be misleading.
+      await clearActiveWorkoutDraft().catch(() => clearActiveWorkoutDraft().catch(() => {}));
       setSession(built);
     } catch {
       setFinishError("Couldn't save workout — try again.");
