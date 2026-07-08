@@ -49,6 +49,10 @@ export default function App() {
         {screen === "workout" && (
           <ActiveWorkout
             onBack={() => setScreen("template")}
+            onFinish={() => {
+              setScreen("history");
+              setNav("history");
+            }}
           />
         )}
         {screen === "history" && (
