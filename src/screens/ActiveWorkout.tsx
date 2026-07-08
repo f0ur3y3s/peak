@@ -6,15 +6,25 @@ import { ExerciseCard } from "@/components/ExerciseCard";
 import { TimerSheet } from "@/components/TimerSheet";
 import { WorkoutSummary } from "@/screens/WorkoutSummary";
 import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
-import { getExercises, getTemplate, saveWorkoutSession, getPR, type WorkoutSession } from "@/lib/db";
+import {
+  getExercises,
+  getTemplate,
+  saveWorkoutSession,
+  getPR,
+  getActiveWorkoutDraft,
+  saveActiveWorkoutDraft,
+  clearActiveWorkoutDraft,
+  type WorkoutSession,
+} from "@/lib/db";
 
 interface ActiveWorkoutProps {
   templateId: string;
   onBack: () => void;
   onFinish: () => void;
+  onDiscard: () => void;
 }
 
-export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutProps) {
+export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: ActiveWorkoutProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [templateName, setTemplateName] = useState("");
   const [activeId, setActiveId] = useState("e1");
@@ -23,21 +33,39 @@ export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutPro
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [finishError, setFinishError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
-    getExercises(templateId)
-      .then((exs) => {
-        setExercises(exs);
-        if (exs.length > 0) setActiveId(exs[0].id);
-      })
-      .catch(() => setLoadError("Couldn't load exercises — try reloading."));
+    getActiveWorkoutDraft().then((draft) => {
+      const resumeDraft = draft && draft.templateId === templateId ? draft : undefined;
+      if (resumeDraft) startedAt.current = resumeDraft.startedAt;
+
+      getExercises(templateId)
+        .then((exs) => {
+          let hydrated = exs;
+          if (resumeDraft) {
+            const loggedByExerciseId = new Map(
+              resumeDraft.exercises.map((e) => [e.exerciseId, e.logged])
+            );
+            hydrated = exs.map((ex) => ({
+              ...ex,
+              logged: loggedByExerciseId.get(ex.id) ?? ex.logged,
+            }));
+          }
+          setExercises(hydrated);
+          if (hydrated.length > 0) setActiveId(hydrated[0].id);
+        })
+        .catch(() => setLoadError("Couldn't load exercises — try reloading."));
+    });
     getTemplate(templateId).then((t) => setTemplateName(t?.name ?? "Workout"));
   }, [templateId]);
 
   useEffect(() => {
-    const iv = setInterval(() => setElapsed((e) => e + 1), 1000);
+    const iv = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAt.current) / 1000));
+    }, 1000);
     return () => clearInterval(iv);
   }, []);
 
@@ -45,9 +73,10 @@ export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutPro
     let restSeconds = 120;
     let exerciseName = "";
     let nextSet = "";
+    let updatedExercises: Exercise[] = [];
 
-    setExercises((prev) =>
-      prev.map((ex) => {
+    setExercises((prev) => {
+      updatedExercises = prev.map((ex) => {
         if (ex.id !== exId) return ex;
         const newLogged = [...ex.logged, { id: `s${Date.now()}`, reps, weight }];
         restSeconds = ex.restSeconds;
@@ -58,10 +87,20 @@ export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutPro
             ? `Set ${newLogged.length + 1} of ${ex.targetSets}`
             : "Last set done";
         return { ...ex, logged: newLogged };
-      })
-    );
+      });
+      return updatedExercises;
+    });
 
     setTimer({ seconds: restSeconds, exerciseName, nextSet });
+    setDraftError(null);
+
+    saveActiveWorkoutDraft({
+      id: "current",
+      templateId,
+      templateName: templateName || "Workout",
+      startedAt: startedAt.current,
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged })),
+    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
   };
 
   const handleFinish = async () => {
@@ -92,12 +131,23 @@ export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutPro
       };
 
       await saveWorkoutSession(built);
+      await clearActiveWorkoutDraft().catch(() => {});
       setSession(built);
     } catch {
       setFinishError("Couldn't save workout — try again.");
     } finally {
       setIsFinishing(false);
     }
+  };
+
+  const handleDiscard = async () => {
+    if (!window.confirm("Discard this workout? Your logged sets will be lost.")) return;
+    try {
+      await clearActiveWorkoutDraft();
+    } catch {
+      // best-effort — still navigate away regardless of whether the clear succeeded
+    }
+    onDiscard();
   };
 
   if (session) {
@@ -117,14 +167,31 @@ export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutPro
           sub={`${fmtTime(elapsed)} · ${totalLogged}/${totalTarget} sets`}
           onBack={onBack}
           right={
-            <Button
-              variant="outline"
-              className="text-[13px] text-muted-foreground"
-              onClick={handleFinish}
-              disabled={isFinishing}
-            >
-              {isFinishing ? "Finishing…" : "Finish"}
-            </Button>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <button
+                onClick={handleDiscard}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "hsl(var(--muted-foreground))",
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 11,
+                  letterSpacing: "0.05em",
+                  padding: "4px 8px",
+                }}
+              >
+                discard
+              </button>
+              <Button
+                variant="outline"
+                className="text-[13px] text-muted-foreground"
+                onClick={handleFinish}
+                disabled={isFinishing}
+              >
+                {isFinishing ? "Finishing…" : "Finish"}
+              </Button>
+            </div>
           }
         />
 
@@ -143,6 +210,15 @@ export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutPro
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
             {finishError}
+          </p>
+        )}
+
+        {draftError && (
+          <p
+            className="font-mono text-[11px] px-5 pt-1"
+            style={{ color: "hsl(var(--destructive))", margin: 0 }}
+          >
+            {draftError}
           </p>
         )}
 
