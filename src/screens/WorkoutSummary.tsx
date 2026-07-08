@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { type WorkoutSession } from "@/lib/db";
+import { sessionVolume, sessionSetCount, type WorkoutSession } from "@/lib/db";
 import { fmtTime } from "@/lib/data";
 
 interface WorkoutSummaryProps {
@@ -11,11 +11,8 @@ interface WorkoutSummaryProps {
 
 export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
   const durationSeconds = Math.round((session.finishedAt - session.startedAt) / 1000);
-  const totalVolume = session.exercises.reduce(
-    (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.reps * set.weight, 0),
-    0
-  );
-  const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+  const totalVolume = sessionVolume(session);
+  const totalSets = sessionSetCount(session);
 
   return (
     <div className="px-5 pt-10 pb-10 flex flex-col gap-6">

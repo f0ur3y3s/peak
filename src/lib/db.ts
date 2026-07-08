@@ -62,6 +62,9 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
           });
         }
       },
+    }).catch((err) => {
+      dbPromise = null;
+      throw err;
     });
   }
   return dbPromise;
@@ -103,6 +106,17 @@ export async function getWorkoutSessions(limit?: number): Promise<WorkoutSession
   const sessions = await db.getAllFromIndex("workout_sessions", "startedAt");
   sessions.reverse();
   return limit ? sessions.slice(0, limit) : sessions;
+}
+
+export function sessionVolume(session: WorkoutSession): number {
+  return session.exercises.reduce(
+    (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.reps * set.weight, 0),
+    0
+  );
+}
+
+export function sessionSetCount(session: WorkoutSession): number {
+  return session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
 }
 
 export async function getPR(exerciseName: string): Promise<number> {

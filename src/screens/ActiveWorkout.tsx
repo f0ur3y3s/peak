@@ -20,13 +20,19 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
   const [elapsed, setElapsed] = useState(0);
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [finishError, setFinishError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isFinishing, setIsFinishing] = useState(false);
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
-    getExercises().then((exs) => {
-      setExercises(exs);
-      if (exs.length > 0) setActiveId(exs[0].id);
-    });
+    getExercises()
+      .then((exs) => {
+        setExercises(exs);
+        if (exs.length > 0) setActiveId(exs[0].id);
+      })
+      .catch(() => {
+        setLoadError("Couldn't load exercises — try reloading.");
+      });
   }, []);
 
   useEffect(() => {
@@ -58,6 +64,8 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
   };
 
   const handleFinish = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
     setFinishError(null);
     try {
       const loggedExercises = exercises.filter((ex) => ex.logged.length > 0);
@@ -85,6 +93,8 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
       setSession(built);
     } catch {
       setFinishError("Couldn't save workout — try again.");
+    } finally {
+      setIsFinishing(false);
     }
   };
 
@@ -109,11 +119,21 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
               variant="outline"
               className="text-[13px] text-muted-foreground"
               onClick={handleFinish}
+              disabled={isFinishing}
             >
-              Finish
+              {isFinishing ? "Finishing…" : "Finish"}
             </Button>
           }
         />
+
+        {loadError && (
+          <p
+            className="font-mono text-[11px] px-5 pt-1"
+            style={{ color: "hsl(var(--destructive))", margin: 0 }}
+          >
+            {loadError}
+          </p>
+        )}
 
         {finishError && (
           <p

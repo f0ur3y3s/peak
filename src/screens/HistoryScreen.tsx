@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TopBar } from "@/components/TopBar";
 import { HistoryAnalytics } from "@/components/HistoryAnalytics";
-import { getWorkoutSessions, type WorkoutSession } from "@/lib/db";
+import { getWorkoutSessions, sessionVolume, sessionSetCount, type WorkoutSession } from "@/lib/db";
 import { fmtRelativeDate } from "@/lib/utils";
 
 interface HistoryScreenProps {
@@ -13,14 +13,28 @@ interface HistoryScreenProps {
 export function HistoryScreen({ onBack }: HistoryScreenProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getWorkoutSessions().then(setSessions);
+    getWorkoutSessions()
+      .then(setSessions)
+      .catch(() => {
+        setLoadError("Couldn't load workout history — try reloading.");
+      });
   }, []);
 
   return (
     <div>
       <TopBar title="History" onBack={onBack} />
+
+      {loadError && (
+        <p
+          className="font-mono text-[11px] px-5 pt-1"
+          style={{ color: "hsl(var(--destructive))", margin: 0 }}
+        >
+          {loadError}
+        </p>
+      )}
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
 
@@ -43,11 +57,8 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
         {/* ── Workout list ── */}
         {sessions.map((session) => {
           const durationMin = Math.round((session.finishedAt - session.startedAt) / 60000);
-          const volume = session.exercises.reduce(
-            (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.reps * set.weight, 0),
-            0
-          );
-          const setCount = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+          const volume = sessionVolume(session);
+          const setCount = sessionSetCount(session);
           const hasPR = session.prs.length > 0;
 
           return (
