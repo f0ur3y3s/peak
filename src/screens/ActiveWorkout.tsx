@@ -6,15 +6,17 @@ import { ExerciseCard } from "@/components/ExerciseCard";
 import { TimerSheet } from "@/components/TimerSheet";
 import { WorkoutSummary } from "@/screens/WorkoutSummary";
 import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
-import { getExercises, saveWorkoutSession, getPR, type WorkoutSession } from "@/lib/db";
+import { getExercises, getTemplate, saveWorkoutSession, getPR, type WorkoutSession } from "@/lib/db";
 
 interface ActiveWorkoutProps {
+  templateId: string;
   onBack: () => void;
   onFinish: () => void;
 }
 
-export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
+export function ActiveWorkout({ templateId, onBack, onFinish }: ActiveWorkoutProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [templateName, setTemplateName] = useState("");
   const [activeId, setActiveId] = useState("e1");
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -25,15 +27,14 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
-    getExercises()
+    getExercises(templateId)
       .then((exs) => {
         setExercises(exs);
         if (exs.length > 0) setActiveId(exs[0].id);
       })
-      .catch(() => {
-        setLoadError("Couldn't load exercises — try reloading.");
-      });
-  }, []);
+      .catch(() => setLoadError("Couldn't load exercises — try reloading."));
+    getTemplate(templateId).then((t) => setTemplateName(t?.name ?? "Workout"));
+  }, [templateId]);
 
   useEffect(() => {
     const iv = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -79,7 +80,7 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
 
       const built: WorkoutSession = {
         id: crypto.randomUUID(),
-        templateName: "Push Day A",
+        templateName: templateName || "Workout",
         startedAt: startedAt.current,
         finishedAt: Date.now(),
         exercises: loggedExercises.map((ex) => ({
@@ -111,7 +112,7 @@ export function ActiveWorkout({ onBack, onFinish }: ActiveWorkoutProps) {
 
       <div>
         <TopBar
-          title="Push Day A"
+          title={templateName || "Workout"}
           sub={`${fmtTime(elapsed)} · ${totalLogged}/${totalTarget} sets`}
           onBack={onBack}
           right={
