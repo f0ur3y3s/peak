@@ -9,6 +9,7 @@ import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
 import {
   getExercises,
   getTemplate,
+  saveTemplate,
   saveWorkoutSession,
   getPR,
   getActiveWorkoutDraft,
@@ -104,6 +105,31 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
     }).catch(() => setDraftError("Couldn't save progress — check your connection."));
   };
 
+  const handleDeleteSet = (exId: string, setId: string) => {
+    const updatedExercises = exercises.map((ex) =>
+      ex.id === exId ? { ...ex, logged: ex.logged.filter((s) => s.id !== setId) } : ex
+    );
+
+    setExercises(updatedExercises);
+    setDraftError(null);
+
+    saveActiveWorkoutDraft({
+      id: "current",
+      templateId,
+      templateName: templateName || "Workout",
+      startedAt: startedAt.current,
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged })),
+    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
+  };
+
+  const handleUpdateRest = (exId: string, restSeconds: number) => {
+    // Deliberately local-only: this does not persist to the template until
+    // Finish, so an abandoned/discarded workout never touches the template.
+    setExercises((prev) =>
+      prev.map((ex) => (ex.id === exId ? { ...ex, restSeconds } : ex))
+    );
+  };
+
   const handleFinish = async () => {
     if (isFinishing) return;
     setIsFinishing(true);
@@ -132,6 +158,32 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       };
 
       await saveWorkoutSession(built);
+
+      // Sync any rest-duration or set-count changes made during this workout
+      // back to the template, now that the workout is actually complete —
+      // deferred rather than writing on every change so an abandoned/discarded
+      // workout never touches the template.
+      try {
+        const template = await getTemplate(templateId);
+        if (template) {
+          const updatedTemplate = {
+            ...template,
+            exercises: template.exercises.map((cfg) => {
+              const match = exercises.find((ex) => ex.id === cfg.exerciseId);
+              if (!match) return cfg;
+              return {
+                ...cfg,
+                targetSets: match.logged.length > 0 ? match.logged.length : cfg.targetSets,
+                restSeconds: match.restSeconds,
+              };
+            }),
+          };
+          await saveTemplate(updatedTemplate);
+        }
+      } catch {
+        // best-effort; the workout session itself already saved successfully above
+      }
+
       // Best-effort: retry once before giving up. If the draft clear still fails,
       // the user still proceeds to the summary — the real save above already
       // succeeded, and surfacing an error here would be misleading.
@@ -159,7 +211,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
   }
 
   const totalLogged = exercises.reduce((a, e) => a + e.logged.length, 0);
-  const totalTarget = exercises.reduce((a, e) => a + e.targetSets, 0);
+  const totalTarget = exercises.reduce((a, e) => a + Math.max(e.targetSets, e.logged.length), 0);
 
   return (
     <>
@@ -185,7 +237,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
                   padding: "4px 8px",
                 }}
               >
-                discard
+                Discard
               </button>
               <Button
                 variant="outline"
@@ -239,6 +291,8 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
               isActive={activeId === ex.id}
               onActivate={setActiveId}
               onLogSet={handleLog}
+              onDeleteSet={handleDeleteSet}
+              onUpdateRest={handleUpdateRest}
             />
           ))}
 

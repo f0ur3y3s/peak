@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useWeightUnit, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
 
 export interface ExerciseConfigValues {
   targetSets: number;
@@ -22,17 +23,20 @@ export function ExerciseConfigEditor({
   onSave,
   onCancel,
 }: ExerciseConfigEditorProps) {
+  const { unit } = useWeightUnit();
   const [targetSets, setTargetSets] = useState(initial.targetSets);
   const [repsMin, setRepsMin] = useState(initial.repsMin);
   const [repsMax, setRepsMax] = useState(initial.repsMax);
-  const [targetWeight, setTargetWeight] = useState(initial.targetWeight);
+  const [targetWeight, setTargetWeight] = useState(() => toDisplayWeight(initial.targetWeight, unit));
   const [restSeconds, setRestSeconds] = useState(initial.restSeconds);
+
+  const weightStep = unit === "lb" ? 5 : 2.5;
 
   const fields: [string, number, (v: number) => void, number, number][] = [
     ["Sets", targetSets, setTargetSets, 1, 1],
     ["Reps min", repsMin, setRepsMin, 1, 1],
     ["Reps max", repsMax, setRepsMax, 1, 1],
-    ["Weight (kg)", targetWeight, setTargetWeight, 2.5, 0],
+    [`Weight (${unit})`, targetWeight, setTargetWeight, weightStep, 0],
     ["Rest (sec)", restSeconds, setRestSeconds, 15, 0],
   ];
 
@@ -70,7 +74,13 @@ export function ExerciseConfigEditor({
           <Button
             className="flex-1 font-semibold"
             onClick={() =>
-              onSave({ targetSets, repsMin, repsMax, targetWeight, restSeconds })
+              onSave({
+                targetSets,
+                repsMin,
+                repsMax,
+                targetWeight: toKgWeight(targetWeight, unit),
+                restSeconds,
+              })
             }
           >
             Save

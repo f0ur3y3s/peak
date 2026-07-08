@@ -5,12 +5,14 @@ import { TopBar } from "@/components/TopBar";
 import { HistoryAnalytics } from "@/components/HistoryAnalytics";
 import { getWorkoutSessions, sessionVolume, sessionSetCount, type WorkoutSession } from "@/lib/db";
 import { fmtRelativeDate } from "@/lib/utils";
+import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 
 interface HistoryScreenProps {
   onBack: () => void;
 }
 
 export function HistoryScreen({ onBack }: HistoryScreenProps) {
+  const { unit } = useWeightUnit();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -95,7 +97,9 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="font-mono text-sm">{volume.toLocaleString()} kg</p>
+                      <p className="font-mono text-sm">
+                        {Number(fmtWeight(volume, unit)).toLocaleString()} {unit}
+                      </p>
                       <p className="font-mono text-[11px] text-muted-foreground">
                         {setCount} sets
                       </p>
@@ -118,7 +122,7 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
                               className="font-mono text-xs px-2 py-0.5 rounded-md border border-border"
                               style={{ background: "hsl(var(--secondary))" }}
                             >
-                              {s.reps} × {s.weight}kg
+                              {s.reps} × {fmtWeight(s.weight, unit)}{unit}
                             </span>
                           ))}
                         </div>

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { sessionVolume, sessionSetCount, type WorkoutSession } from "@/lib/db";
 import { fmtTime } from "@/lib/data";
+import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 
 interface WorkoutSummaryProps {
   session: WorkoutSession;
@@ -10,6 +11,7 @@ interface WorkoutSummaryProps {
 }
 
 export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
+  const { unit } = useWeightUnit();
   const durationSeconds = Math.round((session.finishedAt - session.startedAt) / 1000);
   const totalVolume = sessionVolume(session);
   const totalSets = sessionSetCount(session);
@@ -18,7 +20,7 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
     <div className="px-5 pt-10 pb-10 flex flex-col gap-6">
       <div className="text-center">
         <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-2">
-          Workout Complete
+          Workout Complete 🎉
         </p>
         <p className="font-semibold text-2xl">{session.templateName}</p>
       </div>
@@ -35,7 +37,7 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
         <Card>
           <CardContent style={{ padding: "14px 10px", textAlign: "center" }}>
             <p className="font-mono text-lg" style={{ color: "hsl(var(--primary))" }}>
-              {totalVolume.toLocaleString()}kg
+              {Number(fmtWeight(totalVolume, unit)).toLocaleString()}{unit}
             </p>
             <p className="text-[10px] text-muted-foreground mt-1">Volume</p>
           </CardContent>

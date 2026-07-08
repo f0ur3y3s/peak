@@ -3,23 +3,39 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { type Exercise } from "@/lib/data";
+import { fmtTime, type Exercise } from "@/lib/data";
+import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
 
 interface ExerciseCardProps {
   ex: Exercise;
   isActive: boolean;
   onActivate: (id: string) => void;
   onLogSet: (exId: string, reps: number, weight: number) => void;
+  onDeleteSet: (exId: string, setId: string) => void;
+  onUpdateRest: (exId: string, restSeconds: number) => void;
 }
 
-export function ExerciseCard({ ex, isActive, onActivate, onLogSet }: ExerciseCardProps) {
+export function ExerciseCard({
+  ex,
+  isActive,
+  onActivate,
+  onLogSet,
+  onDeleteSet,
+  onUpdateRest,
+}: ExerciseCardProps) {
+  const { unit } = useWeightUnit();
   const lastIdx = ex.logged.length;
   const defaultReps = String(ex.last?.[lastIdx]?.r ?? ex.repsMin);
-  const defaultWeight = String(ex.last?.[lastIdx]?.w ?? ex.targetWeight);
+  const defaultWeight = String(toDisplayWeight(ex.last?.[lastIdx]?.w ?? ex.targetWeight, unit));
   const [reps, setReps] = useState(defaultReps);
   const [weight, setWeight] = useState(defaultWeight);
+  const [addingExtra, setAddingExtra] = useState(false);
+  const [editingRest, setEditingRest] = useState(false);
+  const weightStep = unit === "lb" ? 1 : 0.5;
 
   const done = ex.logged.length >= ex.targetSets;
+  const showLogForm = isActive && (!done || addingExtra);
+  const effectiveTarget = Math.max(ex.targetSets, ex.logged.length);
 
   const cardBorderClass = done
     ? "card-complete"
@@ -51,8 +67,28 @@ export function ExerciseCard({ ex, isActive, onActivate, onLogSet }: ExerciseCar
                 {ex.muscle}
               </Badge>
               <span className="font-mono text-[11px] text-muted-foreground">
-                {ex.targetSets}×{ex.repsMin}–{ex.repsMax} @ {ex.targetWeight}kg
+                {ex.targetSets}×{ex.repsMin}–{ex.repsMax} @ {fmtWeight(ex.targetWeight, unit)}{unit}
               </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingRest((v) => !v);
+                }}
+                className="font-mono text-[11px]"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: editingRest ? "hsl(var(--primary) / 0.15)" : "hsl(var(--secondary))",
+                  border: `1px solid ${editingRest ? "hsl(var(--primary) / 0.5)" : "hsl(var(--border))"}`,
+                  borderRadius: 999,
+                  color: editingRest ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+                  padding: "3px 9px",
+                  cursor: "pointer",
+                }}
+              >
+                ⏱ {fmtTime(ex.restSeconds)}
+              </button>
             </div>
           </div>
           <div className="text-right">
@@ -67,12 +103,34 @@ export function ExerciseCard({ ex, isActive, onActivate, onLogSet }: ExerciseCar
               }}
             >
               {ex.logged.length}
-              <span className="text-sm text-muted-foreground">/{ex.targetSets}</span>
+              <span className="text-sm text-muted-foreground">/{effectiveTarget}</span>
             </p>
             <p className="text-[10px] text-muted-foreground">sets</p>
           </div>
         </div>
       </CardHeader>
+
+      {editingRest && (
+        <div className="px-4 pb-2.5" onClick={(e) => e.stopPropagation()}>
+          <div className="stepper" style={{ width: "100%" }}>
+            <button
+              className="stepper-btn"
+              onClick={() => onUpdateRest(ex.id, Math.max(0, ex.restSeconds - 15))}
+            >
+              −
+            </button>
+            <span className="stepper-input font-mono text-sm" style={{ textAlign: "center" }}>
+              {fmtTime(ex.restSeconds)}
+            </span>
+            <button
+              className="stepper-btn"
+              onClick={() => onUpdateRest(ex.id, ex.restSeconds + 15)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Previous session chips */}
       {ex.last && (
@@ -82,7 +140,7 @@ export function ExerciseCard({ ex, isActive, onActivate, onLogSet }: ExerciseCar
           </span>
           {ex.last.map((s, i) => (
             <span key={i} className="set-chip">
-              {s.r}×{s.w}
+              {s.r}×{fmtWeight(s.w, unit)}
             </span>
           ))}
         </div>
@@ -96,40 +154,53 @@ export function ExerciseCard({ ex, isActive, onActivate, onLogSet }: ExerciseCar
             <div
               key={s.id}
               className="grid gap-2 items-center py-1.5 border-b border-border"
-              style={{ gridTemplateColumns: "20px 1fr 1fr 28px" }}
+              style={{ gridTemplateColumns: "20px 1fr 1fr 20px" }}
             >
               <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
               <span className="font-mono text-sm">{s.reps} reps</span>
-              <span className="font-mono text-sm">{s.weight} kg</span>
-              <span
-                className="font-mono text-xs text-center rounded"
+              <span className="font-mono text-sm">{fmtWeight(s.weight, unit)} {unit}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (
+                    window.confirm(
+                      `Delete set ${i + 1} (${s.reps} reps × ${fmtWeight(s.weight, unit)}${unit})?`
+                    )
+                  ) {
+                    onDeleteSet(ex.id, s.id);
+                  }
+                }}
                 style={{
-                  color: "hsl(var(--primary))",
-                  background: "hsl(var(--primary) / 0.15)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "hsl(var(--destructive))",
+                  fontSize: 14,
+                  lineHeight: 1,
                   padding: "2px 4px",
                 }}
               >
-                ✓
-              </span>
+                ×
+              </button>
             </div>
           ))}
         </div>
       )}
 
       {/* Log set form */}
-      {isActive && !done && (
+      {showLogForm && (
         <CardContent
           className="log-form mx-4 mb-3.5 mt-2.5 rounded-[10px] border border-border"
           style={{ padding: 14, background: "hsl(var(--background))" }}
         >
           <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-3">
-            Set {ex.logged.length + 1}
+            Set {ex.logged.length + 1}{done ? " (extra)" : ""}
           </p>
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             {(
               [
                 ["Reps", reps, setReps, 1],
-                ["Weight (kg)", weight, setWeight, 0.5],
+                [`Weight (${unit})`, weight, setWeight, weightStep],
               ] as [string, string, (v: string | ((prev: string) => string)) => void, number][]
             ).map(([label, val, setter, step]) => (
               <div key={label}>
@@ -167,7 +238,8 @@ export function ExerciseCard({ ex, isActive, onActivate, onLogSet }: ExerciseCar
             className="w-full font-semibold text-[15px] tracking-tight"
             onClick={(e) => {
               e.stopPropagation();
-              onLogSet(ex.id, Number(reps), Number(weight));
+              onLogSet(ex.id, Number(reps), toKgWeight(Number(weight), unit));
+              setAddingExtra(false);
             }}
           >
             Log Set {ex.logged.length + 1}
@@ -175,11 +247,32 @@ export function ExerciseCard({ ex, isActive, onActivate, onLogSet }: ExerciseCar
         </CardContent>
       )}
 
-      {done && (
-        <div className="px-4 pb-3.5 pt-1.5">
+      {done && !addingExtra && (
+        <div className="px-4 pb-3.5 pt-1.5 flex items-center justify-between gap-2">
           <p className="font-mono text-xs" style={{ color: "hsl(142 70% 45%)" }}>
             ✓ All sets complete
           </p>
+          {isActive && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const last = ex.logged[ex.logged.length - 1];
+                setReps(String(last?.reps ?? ex.repsMin));
+                setWeight(String(toDisplayWeight(last?.weight ?? ex.targetWeight, unit)));
+                setAddingExtra(true);
+              }}
+              className="font-mono text-xs"
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "hsl(var(--muted-foreground))",
+                textDecoration: "underline",
+              }}
+            >
+              + Add set
+            </button>
+          )}
         </div>
       )}
     </Card>

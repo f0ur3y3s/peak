@@ -8,6 +8,7 @@ import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/Ex
 import { ExercisePicker } from "@/components/ExercisePicker";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
+import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 import {
   getTemplate,
   getExercises,
@@ -23,7 +24,6 @@ interface TemplateDetailProps {
   templateId: string;
   onStart: () => void;
   onBack: () => void;
-  onSignOut: () => void;
 }
 
 const DEFAULT_CONFIG: ExerciseConfigValues = {
@@ -47,7 +47,8 @@ const RENAME_INPUT_STYLE: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: TemplateDetailProps) {
+export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailProps) {
+  const { unit } = useWeightUnit();
   const [template, setTemplate] = useState<Template | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [lastPerformed, setLastPerformed] = useState<string | null>(null);
@@ -175,34 +176,6 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
         onBack={onBack}
         right={
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <button
-              onClick={onSignOut}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "hsl(var(--muted-foreground))",
-                fontFamily: "'DM Mono', monospace",
-                fontSize: 11,
-                letterSpacing: "0.05em",
-                padding: "4px 8px",
-              }}
-            >
-              sign out
-            </button>
-            <button
-              onClick={() => setEditMode((v) => !v)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: editMode ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                fontSize: 16,
-                padding: "4px 6px",
-              }}
-            >
-              ✎
-            </button>
             {!editMode && (
               <Button
                 onClick={handleStartClick}
@@ -304,7 +277,7 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
                           {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
                         </p>
                         <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
-                          @ {ex.targetWeight} kg
+                          @ {fmtWeight(ex.targetWeight, unit)} {unit}
                         </p>
                       </div>
                       {editMode && (
@@ -339,7 +312,7 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
                       <div className="flex gap-1.5 flex-wrap">
                         {ex.last.map((s, j) => (
                           <span key={j} className="set-chip">
-                            {s.r}×{s.w}kg
+                            {s.r}×{fmtWeight(s.w, unit)}{unit}
                           </span>
                         ))}
                       </div>
@@ -366,6 +339,16 @@ export function TemplateDetail({ templateId, onStart, onBack, onSignOut }: Templ
           </div>
         </>
       )}
+
+      <div className="px-5 pb-6">
+        <Button
+          variant="outline"
+          className="w-full text-muted-foreground"
+          onClick={() => setEditMode((v) => !v)}
+        >
+          {editMode ? "Done editing" : "✎ Edit template"}
+        </Button>
+      </div>
 
       {editingExisting && editingExistingConfig && (
         <ExerciseConfigEditor

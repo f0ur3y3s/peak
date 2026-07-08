@@ -7,6 +7,7 @@ import {
   type ExerciseHistoryPoint,
   type WorkoutSession,
 } from "@/lib/db";
+import { useWeightUnit, toDisplayWeight } from "@/lib/weightUnit";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -262,6 +263,7 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function HistoryAnalytics() {
+  const { unit: weightUnit } = useWeightUnit();
   const [sessions, setSessions] = useState<WorkoutSession[] | null>(null);
   const [selEx, setSelEx] = useState("");
   const [selRange, setSelRange] = useState<DateRange>(DATE_RANGES[2]);
@@ -292,7 +294,7 @@ export function HistoryAnalytics() {
     (p: ExerciseHistoryPoint) => (metric === "weight" ? p.peak : p.vol),
     [metric]
   );
-  const unit = metric === "weight" ? "kg" : "kg vol";
+  const metricUnitLabel = metric === "weight" ? weightUnit : `${weightUnit} vol`;
 
   if (sessions === null) {
     return (
@@ -313,7 +315,12 @@ export function HistoryAnalytics() {
   }
 
   const now = Date.now();
-  const allPts = grouped[selEx] ?? [];
+  const allPtsRaw = grouped[selEx] ?? [];
+  const allPts = allPtsRaw.map((p) => ({
+    t: p.t,
+    peak: toDisplayWeight(p.peak, weightUnit),
+    vol: toDisplayWeight(p.vol, weightUnit),
+  }));
   const pts = allPts.filter((p) => selRange.days === null || p.t >= now - selRange.days * MS_DAY);
   const reg = linReg(pts, getVal);
 
@@ -380,7 +387,7 @@ export function HistoryAnalytics() {
             className="flex-1 rounded-none font-mono text-[11px]"
             onClick={() => setMetric(m)}
           >
-            {m === "weight" ? "Peak weight (kg)" : "Total volume (kg)"}
+            {m === "weight" ? `Peak weight (${weightUnit})` : `Total volume (${weightUnit})`}
           </Button>
         ))}
       </div>
@@ -393,7 +400,7 @@ export function HistoryAnalytics() {
             ["Peak", peak !== null ? `${peak}` : "—", "hsl(var(--primary))"],
             [
               "Trend",
-              trendDelta !== null ? `${trendDelta >= 0 ? "+" : ""}${trendDelta} ${unit}` : "—",
+              trendDelta !== null ? `${trendDelta >= 0 ? "+" : ""}${trendDelta} ${metricUnitLabel}` : "—",
               trendDelta === null
                 ? "hsl(var(--foreground))"
                 : trendDelta >= 0
@@ -436,7 +443,7 @@ export function HistoryAnalytics() {
             }}
           >
             <p className="text-[15px] font-medium" style={{ color: "hsl(var(--primary))" }}>
-              {tooltip.value} {unit}
+              {tooltip.value} {metricUnitLabel}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">{tooltip.date}</p>
           </div>

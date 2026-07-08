@@ -7,9 +7,11 @@ import { TemplateDetail } from "@/screens/TemplateDetail";
 import { ActiveWorkout } from "@/screens/ActiveWorkout";
 import { HistoryScreen } from "@/screens/HistoryScreen";
 import { AuthScreen } from "@/screens/AuthScreen";
+import { ProfileScreen } from "@/screens/ProfileScreen";
+import { WeightUnitProvider } from "@/lib/weightUnit";
 import { getLastUsedTemplateId, getActiveWorkoutDraft } from "@/lib/db";
 
-type AppScreen = "templates" | "template" | "workout" | "history";
+type AppScreen = "templates" | "template" | "workout" | "history" | "profile";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -55,6 +57,8 @@ export default function App() {
       setScreen("history");
     } else if (tab === "templates") {
       setScreen("templates");
+    } else if (tab === "profile") {
+      setScreen("profile");
     } else {
       const draft = await getActiveWorkoutDraft();
       if (draft) {
@@ -73,6 +77,7 @@ export default function App() {
   };
 
   return (
+    <WeightUnitProvider>
     <div
       className="bg-background min-h-screen relative"
       style={{ maxWidth: 430, margin: "0 auto" }}
@@ -95,7 +100,6 @@ export default function App() {
             templateId={activeTemplateId}
             onStart={() => setScreen("workout")}
             onBack={() => handleNav("templates")}
-            onSignOut={() => supabase.auth.signOut()}
           />
         )}
         {screen === "workout" && activeTemplateId && (
@@ -112,8 +116,15 @@ export default function App() {
         {screen === "history" && (
           <HistoryScreen onBack={() => handleNav("workout")} />
         )}
+        {screen === "profile" && (
+          <ProfileScreen
+            email={session.user.email ?? null}
+            onSignOut={() => supabase.auth.signOut()}
+          />
+        )}
       </div>
       <NavBar active={nav} onNav={handleNav} />
     </div>
+    </WeightUnitProvider>
   );
 }

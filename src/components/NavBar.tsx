@@ -1,14 +1,17 @@
-type Screen = "workout" | "templates" | "history";
+import { Dumbbell, ClipboardList, LineChart, User, type LucideIcon } from "lucide-react";
+
+type Screen = "workout" | "templates" | "history" | "profile";
 
 interface NavBarProps {
   active: Screen;
   onNav: (tab: Screen) => void;
 }
 
-const TABS: { id: Screen; label: string; icon: string }[] = [
-  { id: "workout",   label: "Workout",   icon: "⚡" },
-  { id: "templates", label: "Templates", icon: "📋" },
-  { id: "history",   label: "History",   icon: "📈" },
+const TABS: { id: Screen; label: string; icon: LucideIcon }[] = [
+  { id: "workout",   label: "Workout",   icon: Dumbbell },
+  { id: "templates", label: "Templates", icon: ClipboardList },
+  { id: "history",   label: "History",   icon: LineChart },
+  { id: "profile",   label: "Profile",   icon: User },
 ];
 
 export function NavBar({ active, onNav }: NavBarProps) {
@@ -16,14 +19,11 @@ export function NavBar({ active, onNav }: NavBarProps) {
     <div className="nav-bar">
       {TABS.map((t) => (
         <button key={t.id} className="nav-tab" onClick={() => onNav(t.id)}>
-          <span
-            style={{
-              fontSize: 19,
-              filter: active === t.id ? "none" : "grayscale(1) opacity(0.35)",
-            }}
-          >
-            {t.icon}
-          </span>
+          <t.icon
+            size={19}
+            strokeWidth={2}
+            color={active === t.id ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
+          />
           <span
             className="font-mono text-[10px] uppercase tracking-wider"
             style={{
