@@ -36,6 +36,17 @@ export interface Template {
   exercises: TemplateExerciseConfig[];
 }
 
+export interface ActiveWorkoutDraft {
+  id: "current";
+  templateId: string;
+  templateName: string;
+  startedAt: number;
+  exercises: {
+    exerciseId: string;
+    logged: { id: string; reps: number; weight: number }[];
+  }[];
+}
+
 interface ExerciseRecordV1 {
   id: string;
   name: string;
@@ -61,13 +72,17 @@ interface PeakDB extends DBSchema {
     value: WorkoutSession;
     indexes: { startedAt: number };
   };
+  active_workout_draft: {
+    key: string;
+    value: ActiveWorkoutDraft;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<PeakDB>> | null = null;
 
 function getDB(): Promise<IDBPDatabase<PeakDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<PeakDB>("peak-db", 2, {
+    dbPromise = openDB<PeakDB>("peak-db", 3, {
       async upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const sessionStore = db.createObjectStore("workout_sessions", { keyPath: "id" });
@@ -79,7 +94,7 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
           const templateStore = db.createObjectStore("templates", { keyPath: "id" });
 
           if (oldVersion === 1) {
-            // "exercises" is no longer part of the typed v2 schema (removed below),
+            // "exercises" is no longer part of the typed v2+ schema (removed below),
             // so we reach it through the raw transaction for this one-time migration.
             //
             // Note: `transaction` here is idb's own Proxy-wrapped IDBTransaction (idb
@@ -114,7 +129,7 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
             });
 
             // Same reasoning as `rawTx` above — "exercises" is no longer a
-            // known store name in the typed v2 schema.
+            // known store name in the typed v2+ schema.
             (db as unknown as IDBDatabase).deleteObjectStore("exercises");
           } else {
             for (const ex of SEED_EXERCISES) {
@@ -134,6 +149,10 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
               })),
             });
           }
+        }
+
+        if (oldVersion < 3) {
+          db.createObjectStore("active_workout_draft", { keyPath: "id" });
         }
       },
     }).catch((err) => {
@@ -174,6 +193,10 @@ export async function saveTemplate(template: Template): Promise<void> {
 export async function deleteTemplate(id: string): Promise<void> {
   const db = await getDB();
   await db.delete("templates", id);
+  const draft = await db.get("active_workout_draft", "current");
+  if (draft && draft.templateId === id) {
+    await db.delete("active_workout_draft", "current");
+  }
 }
 
 export async function getExerciseLibrary(): Promise<LibraryExercise[]> {
@@ -246,6 +269,21 @@ export async function getLastUsedTemplateId(): Promise<string | null> {
   if (templates.length === 0) return null;
   const sorted = [...templates].sort((a, b) => a.name.localeCompare(b.name));
   return sorted[0].id;
+}
+
+export async function getActiveWorkoutDraft(): Promise<ActiveWorkoutDraft | undefined> {
+  const db = await getDB();
+  return db.get("active_workout_draft", "current");
+}
+
+export async function saveActiveWorkoutDraft(draft: ActiveWorkoutDraft): Promise<void> {
+  const db = await getDB();
+  await db.put("active_workout_draft", draft);
+}
+
+export async function clearActiveWorkoutDraft(): Promise<void> {
+  const db = await getDB();
+  await db.delete("active_workout_draft", "current");
 }
 
 export async function saveWorkoutSession(session: WorkoutSession): Promise<void> {
