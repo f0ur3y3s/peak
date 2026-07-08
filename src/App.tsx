@@ -7,7 +7,7 @@ import { TemplateDetail } from "@/screens/TemplateDetail";
 import { ActiveWorkout } from "@/screens/ActiveWorkout";
 import { HistoryScreen } from "@/screens/HistoryScreen";
 import { AuthScreen } from "@/screens/AuthScreen";
-import { getLastUsedTemplateId } from "@/lib/db";
+import { getLastUsedTemplateId, getActiveWorkoutDraft } from "@/lib/db";
 
 type AppScreen = "templates" | "template" | "workout" | "history";
 
@@ -29,13 +29,20 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return;
-    getLastUsedTemplateId().then((id) => {
-      if (id) {
-        setActiveTemplateId(id);
-        setScreen("template");
-      } else {
-        setScreen("templates");
+    getActiveWorkoutDraft().then((draft) => {
+      if (draft) {
+        setActiveTemplateId(draft.templateId);
+        setScreen("workout");
+        return;
       }
+      getLastUsedTemplateId().then((id) => {
+        if (id) {
+          setActiveTemplateId(id);
+          setScreen("template");
+        } else {
+          setScreen("templates");
+        }
+      });
     });
   }, [session]);
 
@@ -49,6 +56,12 @@ export default function App() {
     } else if (tab === "templates") {
       setScreen("templates");
     } else {
+      const draft = await getActiveWorkoutDraft();
+      if (draft) {
+        setActiveTemplateId(draft.templateId);
+        setScreen("workout");
+        return;
+      }
       const id = await getLastUsedTemplateId();
       if (id) {
         setActiveTemplateId(id);
@@ -93,6 +106,7 @@ export default function App() {
               setScreen("history");
               setNav("history");
             }}
+            onDiscard={() => setScreen("template")}
           />
         )}
         {screen === "history" && (
