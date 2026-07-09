@@ -184,6 +184,7 @@ export function TemplateDetail({
         title={template.name}
         sub={lastPerformed ? `Last performed ${lastPerformed}` : "Never performed"}
         onBack={onBack}
+        breadcrumb={[{ label: "Templates", onClick: onBack }]}
         right={
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             {!editMode && (

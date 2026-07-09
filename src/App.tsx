@@ -12,7 +12,7 @@ import { ExercisesScreen } from "@/screens/ExercisesScreen";
 import { ExerciseHistoryScreen } from "@/screens/ExerciseHistoryScreen";
 import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
-import { getActiveWorkoutDraft } from "@/lib/db";
+import { getActiveWorkoutDraft, getTemplate } from "@/lib/db";
 import { syncNow } from "@/lib/sync";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
@@ -33,6 +33,7 @@ export default function App() {
   const [nav, setNav] = useState<Screen>("workout");
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [viewingExerciseName, setViewingExerciseName] = useState<string | null>(null);
+  const [viewingTemplateName, setViewingTemplateName] = useState<string | null>(null);
   const resolvedUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -132,6 +133,7 @@ export default function App() {
             onBack={() => handleNav("templates")}
             onViewExerciseHistory={(name) => {
               setViewingExerciseName(name);
+              getTemplate(activeTemplateId).then((t) => setViewingTemplateName(t?.name ?? null));
               setScreen("exercise-history");
             }}
           />
@@ -145,6 +147,7 @@ export default function App() {
               setNav("history");
             }}
             onDiscard={() => setScreen("template")}
+            onBackToTemplates={() => handleNav("templates")}
           />
         )}
         {screen === "workout-home" && (
@@ -161,7 +164,9 @@ export default function App() {
         {screen === "exercise-history" && viewingExerciseName && (
           <ExerciseHistoryScreen
             exerciseName={viewingExerciseName}
+            templateName={viewingTemplateName}
             onBack={() => setScreen("template")}
+            onBackToTemplates={() => handleNav("templates")}
           />
         )}
       </div>

@@ -36,9 +36,10 @@ interface ActiveWorkoutProps {
   onBack: () => void;
   onFinish: () => void;
   onDiscard: () => void;
+  onBackToTemplates: () => void;
 }
 
-export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: ActiveWorkoutProps) {
+export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackToTemplates }: ActiveWorkoutProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [templateName, setTemplateName] = useState("");
   const [activeId, setActiveId] = useState("e1");
@@ -315,6 +316,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
           title={templateName || "Workout"}
           sub={`${fmtTime(elapsed)} · ${totalLogged}/${totalTarget} sets`}
           onBack={onBack}
+          breadcrumb={[{ label: "Templates", onClick: onBackToTemplates }]}
           right={
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <button
