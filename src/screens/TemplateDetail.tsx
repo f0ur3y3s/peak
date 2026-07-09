@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Clock, Pencil, Plus, X } from "lucide-react";
+import { Clock, GripVertical, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
+import { useDragReorder } from "@/lib/useDragReorder";
 import {
   getTemplate,
   getExercises,
@@ -113,6 +114,38 @@ export function TemplateDetail({
       setActionError("Couldn't rename template — try again.");
     }
   };
+
+  const handleReorderExercises = async (reordered: Exercise[]) => {
+    setActionError(null);
+    const updated: Template = {
+      ...template,
+      exercises: reordered.map((ex, i) => {
+        const cfg = template.exercises.find((c) => c.exerciseId === ex.id);
+        return cfg ? { ...cfg, order: i } : cfg;
+      }).filter((c): c is Template["exercises"][number] => c !== undefined),
+    };
+    setExercises(reordered);
+    try {
+      await saveTemplate(updated);
+    } catch {
+      setActionError("Couldn't reorder exercises — try again.");
+      reload();
+    }
+  };
+
+  const {
+    order: orderedExercises,
+    draggingId,
+    dragY,
+    registerRef,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+  } = useDragReorder({
+    items: exercises,
+    getId: (ex) => ex.id,
+    onDrop: handleReorderExercises,
+  });
 
   const handleDeleteExercise = async (exerciseId: string) => {
     setActionError(null);
@@ -250,22 +283,55 @@ export function TemplateDetail({
           )}
 
           <div className="px-5 pt-3.5 pb-2 flex flex-col gap-2.5">
-            {exercises.map((ex, i) => (
+            {orderedExercises.map((ex, i) => (
               <Card
                 key={ex.id}
+                ref={registerRef(ex.id)}
                 onClick={() =>
                   editMode
                     ? setEditingExisting({ exerciseId: ex.id, name: ex.name })
                     : onViewExerciseHistory(ex.name)
                 }
-                style={{ cursor: "pointer" }}
+                style={{
+                  cursor: "pointer",
+                  position: "relative",
+                  transform: draggingId === ex.id ? `translateY(${dragY}px)` : undefined,
+                  zIndex: draggingId === ex.id ? 10 : undefined,
+                  boxShadow: draggingId === ex.id ? "0 8px 24px hsl(0 0% 0% / 0.4)" : undefined,
+                  transition: draggingId === ex.id ? "none" : "transform 0.15s",
+                }}
               >
                 <CardHeader style={{ padding: "14px 16px 10px" }}>
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-muted-foreground min-w-[20px]">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
+                      {editMode ? (
+                        <button
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            handlePointerDown(ex.id)(e);
+                          }}
+                          onPointerMove={handlePointerMove}
+                          onPointerUp={handlePointerUp}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "grab",
+                            color: "hsl(var(--muted-foreground))",
+                            padding: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            touchAction: "none",
+                          }}
+                          aria-label="Drag to reorder"
+                        >
+                          <GripVertical size={16} strokeWidth={2} />
+                        </button>
+                      ) : (
+                        <span className="font-mono text-[10px] text-muted-foreground min-w-[20px]">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                      )}
                       <div>
                         <p className="font-semibold text-[15px]">{ex.name}</p>
                         <div className="flex gap-1.5 items-center mt-1">

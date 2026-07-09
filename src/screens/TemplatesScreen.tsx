@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
+import { GripVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/TopBar";
 import { fmtRelativeDate } from "@/lib/utils";
 import { groupForMuscle } from "@/lib/muscles";
+import { useDragReorder } from "@/lib/useDragReorder";
 import {
   getTemplates,
   getWorkoutSessions,
   getExerciseLibrary,
   saveTemplate,
+  reorderTemplates,
   type Template,
   type LibraryExercise,
 } from "@/lib/db";
@@ -17,7 +20,6 @@ import {
 interface TemplatesScreenProps {
   onSelectTemplate: (id: string) => void;
   onCreateTemplate: (id: string) => void;
-  onOpenLibrary: () => void;
 }
 
 const NEW_TEMPLATE_INPUT_STYLE: React.CSSProperties = {
@@ -36,7 +38,6 @@ const NEW_TEMPLATE_INPUT_STYLE: React.CSSProperties = {
 export function TemplatesScreen({
   onSelectTemplate,
   onCreateTemplate,
-  onOpenLibrary,
 }: TemplatesScreenProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [lastPerformed, setLastPerformed] = useState<Map<string, number>>(new Map());
@@ -64,7 +65,14 @@ export function TemplatesScreen({
     const name = newName.trim();
     if (!name) return;
     setCreateError(null);
-    const template: Template = { id: crypto.randomUUID(), name, exercises: [], updatedAt: Date.now() };
+    const nextOrder = templates.reduce((max, t) => Math.max(max, t.order), -1) + 1;
+    const template: Template = {
+      id: crypto.randomUUID(),
+      name,
+      exercises: [],
+      order: nextOrder,
+      updatedAt: Date.now(),
+    };
     try {
       await saveTemplate(template);
     } catch {
@@ -74,31 +82,29 @@ export function TemplatesScreen({
     onCreateTemplate(template.id);
   };
 
+  const {
+    order: orderedTemplates,
+    draggingId,
+    dragY,
+    registerRef,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+  } = useDragReorder({
+    items: templates,
+    getId: (t) => t.id,
+    onDrop: (reordered) => {
+      setTemplates(reordered);
+      reorderTemplates(reordered.map((t) => t.id));
+    },
+  });
+
   return (
     <div>
-      <TopBar
-        title="Templates"
-        right={
-          <button
-            onClick={onOpenLibrary}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "hsl(var(--muted-foreground))",
-              fontFamily: "'DM Mono', monospace",
-              fontSize: 11,
-              letterSpacing: "0.05em",
-              padding: "4px 8px",
-            }}
-          >
-            Library
-          </button>
-        }
-      />
+      <TopBar title="Templates" />
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
-        {templates.map((t) => {
+        {orderedTemplates.map((t) => {
           const lastTs = lastPerformed.get(t.id) ?? lastPerformed.get(`name:${t.name}`);
           const muscleGroups = [
             ...new Set(
@@ -111,34 +117,67 @@ export function TemplatesScreen({
           return (
             <Card
               key={t.id}
+              ref={registerRef(t.id)}
               onClick={() => onSelectTemplate(t.id)}
               className="cursor-pointer transition-colors"
+              style={{
+                position: "relative",
+                transform: draggingId === t.id ? `translateY(${dragY}px)` : undefined,
+                zIndex: draggingId === t.id ? 10 : undefined,
+                boxShadow: draggingId === t.id ? "0 8px 24px hsl(0 0% 0% / 0.4)" : undefined,
+                transition: draggingId === t.id ? "none" : "transform 0.15s",
+              }}
             >
-              <CardContent style={{ padding: "14px 16px" }}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold text-[15px]">{t.name}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
-                      {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
+              <CardContent style={{ padding: "14px 16px" }} className="flex items-center gap-3">
+                <button
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    handlePointerDown(t.id)(e);
+                  }}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "grab",
+                    color: "hsl(var(--muted-foreground))",
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    flexShrink: 0,
+                    touchAction: "none",
+                  }}
+                  aria-label="Drag to reorder"
+                >
+                  <GripVertical size={16} strokeWidth={2} />
+                </button>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-[15px]">{t.name}</p>
+                      <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                        {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {lastTs ? fmtRelativeDate(lastTs) : "Never"}
                     </p>
                   </div>
-                  <p className="font-mono text-[11px] text-muted-foreground">
-                    {lastTs ? fmtRelativeDate(lastTs) : "Never"}
-                  </p>
+                  {muscleGroups.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap mt-2.5">
+                      {muscleGroups.map((group) => (
+                        <Badge
+                          key={group}
+                          variant="secondary"
+                          style={{ fontSize: 10, padding: "1px 7px" }}
+                        >
+                          {group}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {muscleGroups.length > 0 && (
-                  <div className="flex gap-1.5 flex-wrap mt-2.5">
-                    {muscleGroups.map((group) => (
-                      <Badge
-                        key={group}
-                        variant="secondary"
-                        style={{ fontSize: 10, padding: "1px 7px" }}
-                      >
-                        {group}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </CardContent>
             </Card>
           );

@@ -123,7 +123,6 @@ export default function App() {
               setActiveTemplateId(id);
               setScreen("template");
             }}
-            onOpenLibrary={() => handleNav("exercises")}
           />
         )}
         {screen === "template" && activeTemplateId && (

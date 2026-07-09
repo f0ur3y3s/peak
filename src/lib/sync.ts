@@ -76,6 +76,7 @@ async function pushChanges(userId: string, since: number): Promise<void> {
         user_id: userId,
         name: t.name,
         exercises: t.exercises,
+        position: t.order,
         updated_at: new Date(t.updatedAt).toISOString(),
       }))
     );
@@ -195,6 +196,7 @@ async function pullChanges(userId: string, since: number): Promise<void> {
       id: row.id,
       name: row.name,
       exercises: row.exercises,
+      order: row.position ?? 0,
       updatedAt,
     };
     await putTemplateRaw(local);

@@ -36,6 +36,7 @@ export interface Template {
   id: string;
   name: string;
   exercises: TemplateExerciseConfig[];
+  order: number;
   updatedAt: number;
 }
 
@@ -109,7 +110,7 @@ let dbPromise: Promise<IDBPDatabase<PeakDB>> | null = null;
 
 function getDB(): Promise<IDBPDatabase<PeakDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<PeakDB>("peak-db", 4, {
+    dbPromise = openDB<PeakDB>("peak-db", 5, {
       async upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const sessionStore = db.createObjectStore("workout_sessions", { keyPath: "id" });
@@ -153,6 +154,7 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
                 targetWeight: rec.targetWeight,
                 restSeconds: rec.restSeconds,
               })),
+              order: 0,
               updatedAt: Date.now(),
             });
 
@@ -175,6 +177,7 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
                 targetWeight: ex.targetWeight,
                 restSeconds: ex.restSeconds,
               })),
+              order: 0,
               updatedAt: Date.now(),
             });
           }
@@ -212,6 +215,20 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
           const draftStore = transaction.objectStore("active_workout_draft");
           for (let cursor = await draftStore.openCursor(); cursor; cursor = await cursor.continue()) {
             if (!cursor.value.updatedAt) await cursor.update({ ...cursor.value, updatedAt: now });
+          }
+        }
+
+        if (oldVersion < 5) {
+          // Templates gained a manual `order` field for drag-to-reorder.
+          // Backfill existing rows using cursor traversal order (roughly
+          // insertion order) so the list doesn't jump around on first load.
+          let i = 0;
+          const templateStore = transaction.objectStore("templates");
+          for (let cursor = await templateStore.openCursor(); cursor; cursor = await cursor.continue()) {
+            if (cursor.value.order === undefined) {
+              await cursor.update({ ...cursor.value, order: i });
+            }
+            i++;
           }
         }
       },
@@ -253,7 +270,21 @@ export async function lastSetsFor(exerciseName: string): Promise<{ r: number; w:
 
 export async function getTemplates(): Promise<Template[]> {
   const db = await getDB();
-  return db.getAll("templates");
+  const all = await db.getAll("templates");
+  return all.sort((a, b) => a.order - b.order);
+}
+
+export async function reorderTemplates(orderedIds: string[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction("templates", "readwrite");
+  await Promise.all(
+    orderedIds.map(async (id, i) => {
+      const t = await tx.store.get(id);
+      if (t && t.order !== i) await tx.store.put({ ...t, order: i, updatedAt: Date.now() });
+    })
+  );
+  await tx.done;
+  await Promise.all(orderedIds.map((id) => clearTombstoneFor("templates", id)));
 }
 
 export async function getTemplate(id: string): Promise<Template | undefined> {
