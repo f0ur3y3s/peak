@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWeightUnit, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
 
@@ -53,7 +54,7 @@ export function ExerciseConfigEditor({
                   className="stepper-btn"
                   onClick={() => setter(Math.max(min, val - step))}
                 >
-                  −
+                  <Minus size={16} strokeWidth={2} />
                 </button>
                 <input
                   className="stepper-input"
@@ -61,7 +62,7 @@ export function ExerciseConfigEditor({
                   onChange={(e) => setter(Number(e.target.value) || 0)}
                 />
                 <button className="stepper-btn" onClick={() => setter(val + step)}>
-                  +
+                  <Plus size={16} strokeWidth={2} />
                 </button>
               </div>
             </div>

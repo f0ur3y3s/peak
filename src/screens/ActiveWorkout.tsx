@@ -4,6 +4,9 @@ import { Progress } from "@/components/ui/progress";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { TimerSheet } from "@/components/TimerSheet";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ExercisePicker } from "@/components/ExercisePicker";
+import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
 import { WorkoutSummary } from "@/screens/WorkoutSummary";
 import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
 import {
@@ -15,8 +18,18 @@ import {
   getActiveWorkoutDraft,
   saveActiveWorkoutDraft,
   clearActiveWorkoutDraft,
+  lastSetsFor,
   type WorkoutSession,
+  type LibraryExercise,
 } from "@/lib/db";
+
+const DEFAULT_CONFIG: ExerciseConfigValues = {
+  targetSets: 4,
+  repsMin: 6,
+  repsMax: 8,
+  targetWeight: 20,
+  restSeconds: 90,
+};
 
 interface ActiveWorkoutProps {
   templateId: string;
@@ -36,6 +49,9 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [pickingExercise, setPickingExercise] = useState(false);
+  const [addingExercise, setAddingExercise] = useState<LibraryExercise | null>(null);
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
@@ -130,6 +146,37 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
     );
   };
 
+  const handleAddExercise = async (values: ExerciseConfigValues) => {
+    if (!addingExercise) return;
+    const last = await lastSetsFor(addingExercise.name).catch(() => null);
+    const newExercise: Exercise = {
+      id: addingExercise.id,
+      name: addingExercise.name,
+      muscle: addingExercise.muscle,
+      ...values,
+      last,
+      logged: [],
+    };
+    const updatedExercises = [...exercises, newExercise];
+    setExercises(updatedExercises);
+    setActiveId(newExercise.id);
+    setAddingExercise(null);
+    setDraftError(null);
+
+    // Note: a newly-added exercise isn't part of the template yet (that only
+    // happens at Finish, see handleFinish), so if the app reloads before this
+    // workout finishes, getExercises(templateId) won't return it and this
+    // addition — along with any sets logged for it — is lost. Known, accepted
+    // edge case, same as the removed-from-template case noted above.
+    saveActiveWorkoutDraft({
+      id: "current",
+      templateId,
+      templateName: templateName || "Workout",
+      startedAt: startedAt.current,
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged })),
+    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
+  };
+
   const handleFinish = async () => {
     if (isFinishing) return;
     setIsFinishing(true);
@@ -166,17 +213,32 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       try {
         const template = await getTemplate(templateId);
         if (template) {
+          const existingIds = new Set(template.exercises.map((cfg) => cfg.exerciseId));
+          const newConfigs = loggedExercises
+            .filter((ex) => !existingIds.has(ex.id))
+            .map((ex, i) => ({
+              exerciseId: ex.id,
+              order: template.exercises.length + i,
+              targetSets: ex.logged.length,
+              repsMin: ex.repsMin,
+              repsMax: ex.repsMax,
+              targetWeight: ex.targetWeight,
+              restSeconds: ex.restSeconds,
+            }));
           const updatedTemplate = {
             ...template,
-            exercises: template.exercises.map((cfg) => {
-              const match = exercises.find((ex) => ex.id === cfg.exerciseId);
-              if (!match) return cfg;
-              return {
-                ...cfg,
-                targetSets: match.logged.length > 0 ? match.logged.length : cfg.targetSets,
-                restSeconds: match.restSeconds,
-              };
-            }),
+            exercises: [
+              ...template.exercises.map((cfg) => {
+                const match = exercises.find((ex) => ex.id === cfg.exerciseId);
+                if (!match) return cfg;
+                return {
+                  ...cfg,
+                  targetSets: match.logged.length > 0 ? match.logged.length : cfg.targetSets,
+                  restSeconds: match.restSeconds,
+                };
+              }),
+              ...newConfigs,
+            ],
           };
           await saveTemplate(updatedTemplate);
         }
@@ -197,7 +259,6 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
   };
 
   const handleDiscard = async () => {
-    if (!window.confirm("Discard this workout? Your logged sets will be lost.")) return;
     try {
       await clearActiveWorkoutDraft();
     } catch {
@@ -225,7 +286,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
           right={
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <button
-                onClick={handleDiscard}
+                onClick={() => setConfirmingDiscard(true)}
                 style={{
                   background: "none",
                   border: "none",
@@ -300,11 +361,44 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
             variant="outline"
             className="text-muted-foreground rounded-xl h-auto py-4"
             style={{ border: "1px dashed hsl(var(--border))" }}
+            onClick={() => setPickingExercise(true)}
           >
             + Add exercise
           </Button>
         </div>
       </div>
+
+      {confirmingDiscard && (
+        <ConfirmDialog
+          title="Discard workout"
+          message="Discard this workout? Your logged sets will be lost."
+          onConfirm={() => {
+            setConfirmingDiscard(false);
+            handleDiscard();
+          }}
+          onCancel={() => setConfirmingDiscard(false)}
+        />
+      )}
+
+      {pickingExercise && (
+        <ExercisePicker
+          existingExerciseIds={exercises.map((ex) => ex.id)}
+          onPick={(libraryExercise) => {
+            setPickingExercise(false);
+            setAddingExercise(libraryExercise);
+          }}
+          onCancel={() => setPickingExercise(false)}
+        />
+      )}
+
+      {addingExercise && (
+        <ExerciseConfigEditor
+          exerciseName={addingExercise.name}
+          initial={DEFAULT_CONFIG}
+          onSave={handleAddExercise}
+          onCancel={() => setAddingExercise(null)}
+        />
+      )}
     </>
   );
 }

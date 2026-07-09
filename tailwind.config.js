@@ -41,6 +41,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
+        title: ["Allerta Stencil", "Inter", "system-ui", "sans-serif"],
         mono: ["DM Mono", "monospace"],
         sans: ["Inter", "system-ui", "sans-serif"],
       },

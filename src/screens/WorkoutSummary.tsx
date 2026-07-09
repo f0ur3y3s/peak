@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PartyPopper } from "lucide-react";
 import { sessionVolume, sessionSetCount, type WorkoutSession } from "@/lib/db";
 import { fmtTime } from "@/lib/data";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
@@ -19,10 +20,11 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
   return (
     <div className="px-5 pt-10 pb-10 flex flex-col gap-6">
       <div className="text-center">
-        <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-2">
-          Workout Complete 🎉
+        <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
+          Workout Complete
+          <PartyPopper size={13} strokeWidth={2} />
         </p>
-        <p className="font-semibold text-2xl">{session.templateName}</p>
+        <p className="font-title text-2xl uppercase tracking-wide">{session.templateName}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">

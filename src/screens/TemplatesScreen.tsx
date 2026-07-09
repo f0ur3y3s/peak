@@ -1,13 +1,23 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/TopBar";
 import { fmtRelativeDate } from "@/lib/utils";
-import { getTemplates, getWorkoutSessions, saveTemplate, type Template } from "@/lib/db";
+import { groupForMuscle } from "@/lib/muscles";
+import {
+  getTemplates,
+  getWorkoutSessions,
+  getExerciseLibrary,
+  saveTemplate,
+  type Template,
+  type LibraryExercise,
+} from "@/lib/db";
 
 interface TemplatesScreenProps {
   onSelectTemplate: (id: string) => void;
   onCreateTemplate: (id: string) => void;
+  onOpenLibrary: () => void;
 }
 
 const NEW_TEMPLATE_INPUT_STYLE: React.CSSProperties = {
@@ -23,9 +33,14 @@ const NEW_TEMPLATE_INPUT_STYLE: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: TemplatesScreenProps) {
+export function TemplatesScreen({
+  onSelectTemplate,
+  onCreateTemplate,
+  onOpenLibrary,
+}: TemplatesScreenProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [lastPerformed, setLastPerformed] = useState<Map<string, number>>(new Map());
+  const [libraryById, setLibraryById] = useState<Map<string, LibraryExercise>>(new Map());
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
@@ -39,6 +54,9 @@ export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: Template
         if (!map.has(key)) map.set(key, s.startedAt);
       }
       setLastPerformed(map);
+    });
+    getExerciseLibrary().then((library) => {
+      setLibraryById(new Map(library.map((ex) => [ex.id, ex])));
     });
   }, []);
 
@@ -58,30 +76,69 @@ export function TemplatesScreen({ onSelectTemplate, onCreateTemplate }: Template
 
   return (
     <div>
-      <TopBar title="Templates" />
+      <TopBar
+        title="Templates"
+        right={
+          <button
+            onClick={onOpenLibrary}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "hsl(var(--muted-foreground))",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 11,
+              letterSpacing: "0.05em",
+              padding: "4px 8px",
+            }}
+          >
+            Library
+          </button>
+        }
+      />
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
         {templates.map((t) => {
           const lastTs = lastPerformed.get(t.id) ?? lastPerformed.get(`name:${t.name}`);
+          const muscleGroups = [
+            ...new Set(
+              t.exercises
+                .map((cfg) => libraryById.get(cfg.exerciseId)?.muscle)
+                .filter((m): m is string => !!m)
+                .map(groupForMuscle)
+            ),
+          ];
           return (
             <Card
               key={t.id}
               onClick={() => onSelectTemplate(t.id)}
               className="cursor-pointer transition-colors"
             >
-              <CardContent
-                style={{ padding: "14px 16px" }}
-                className="flex justify-between items-center"
-              >
-                <div>
-                  <p className="font-semibold text-[15px]">{t.name}</p>
-                  <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
-                    {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
+              <CardContent style={{ padding: "14px 16px" }}>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold text-[15px]">{t.name}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                      {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <p className="font-mono text-[11px] text-muted-foreground">
+                    {lastTs ? fmtRelativeDate(lastTs) : "Never"}
                   </p>
                 </div>
-                <p className="font-mono text-[11px] text-muted-foreground">
-                  {lastTs ? fmtRelativeDate(lastTs) : "Never"}
-                </p>
+                {muscleGroups.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap mt-2.5">
+                    {muscleGroups.map((group) => (
+                      <Badge
+                        key={group}
+                        variant="secondary"
+                        style={{ fontSize: 10, padding: "1px 7px" }}
+                      >
+                        {group}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

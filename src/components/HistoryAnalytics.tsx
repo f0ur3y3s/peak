@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -9,7 +10,7 @@ import {
 } from "@/lib/db";
 import { useWeightUnit, toDisplayWeight } from "@/lib/weightUnit";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// Types
 
 interface Regression {
   slope: number;
@@ -45,7 +46,7 @@ type Metric = "weight" | "volume";
 const mono = "'DM Mono', 'Courier New', monospace";
 const sans = "'Inter', system-ui, sans-serif";
 
-// ── Math helpers ──────────────────────────────────────────────────────────────
+// Math helpers
 
 function linReg(
   pts: ExerciseHistoryPoint[],
@@ -81,7 +82,7 @@ function fmtShortDate(ts: number) {
   return new Date(ts).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 }
 
-// ── SVG Chart ─────────────────────────────────────────────────────────────────
+// SVG Chart
 
 const PAD = { t: 14, r: 16, b: 38, l: 46 };
 const CHART_H = 200;
@@ -260,12 +261,17 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// Main component
 
-export function HistoryAnalytics() {
+interface HistoryAnalyticsProps {
+  /** When set, locks the view to this exercise and hides the exercise selector. */
+  focusExercise?: string;
+}
+
+export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) {
   const { unit: weightUnit } = useWeightUnit();
   const [sessions, setSessions] = useState<WorkoutSession[] | null>(null);
-  const [selEx, setSelEx] = useState("");
+  const [selEx, setSelEx] = useState(focusExercise ?? "");
   const [selRange, setSelRange] = useState<DateRange>(DATE_RANGES[2]);
   const [metric, setMetric] = useState<Metric>("weight");
   const [tooltip, setTooltip] = useState<TooltipState>({
@@ -287,8 +293,8 @@ export function HistoryAnalytics() {
   const EXERCISES = useMemo(() => Object.keys(grouped), [grouped]);
 
   useEffect(() => {
-    if (!selEx && EXERCISES.length > 0) setSelEx(EXERCISES[0]);
-  }, [EXERCISES, selEx]);
+    if (!focusExercise && !selEx && EXERCISES.length > 0) setSelEx(EXERCISES[0]);
+  }, [EXERCISES, selEx, focusExercise]);
 
   const getVal = useCallback(
     (p: ExerciseHistoryPoint) => (metric === "weight" ? p.peak : p.vol),
@@ -304,11 +310,15 @@ export function HistoryAnalytics() {
     );
   }
 
-  if (EXERCISES.length === 0) {
+  if (focusExercise ? !grouped[focusExercise]?.length : EXERCISES.length === 0) {
     return (
       <Card>
         <CardContent className="py-10 text-center">
-          <p className="text-muted-foreground text-sm">Log a workout to see your progress</p>
+          <p className="text-muted-foreground text-sm">
+            {focusExercise
+              ? `No logged history yet for ${focusExercise}`
+              : "Log a workout to see your progress"}
+          </p>
         </CardContent>
       </Card>
     );
@@ -343,22 +353,51 @@ export function HistoryAnalytics() {
   return (
     <div style={{ padding: 16, fontFamily: sans }}>
       {/* Exercise selector */}
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-        Exercise
-      </p>
-      <div className="flex flex-wrap gap-1.5 mb-3.5">
-        {EXERCISES.map((ex) => (
-          <Button
-            key={ex}
-            variant={selEx === ex ? "default" : "outline"}
-            size="sm"
-            className="font-mono text-[11px] rounded-full h-auto py-1"
-            onClick={() => setSelEx(ex)}
-          >
-            {ex}
-          </Button>
-        ))}
-      </div>
+      {!focusExercise && (
+        <>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+            Exercise
+          </p>
+          <div style={{ position: "relative" }} className="mb-3.5">
+            <select
+              value={selEx}
+              onChange={(e) => setSelEx(e.target.value)}
+              className="font-mono text-[13px]"
+              style={{
+                appearance: "none",
+                WebkitAppearance: "none",
+                background: "hsl(var(--background))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 10,
+                padding: "10px 36px 10px 12px",
+                color: "hsl(var(--foreground))",
+                outline: "none",
+                width: "100%",
+                boxSizing: "border-box",
+                cursor: "pointer",
+              }}
+            >
+              {EXERCISES.map((ex) => (
+                <option key={ex} value={ex}>
+                  {ex}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              strokeWidth={2}
+              style={{
+                position: "absolute",
+                right: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "hsl(var(--muted-foreground))",
+                pointerEvents: "none",
+              }}
+            />
+          </div>
+        </>
+      )}
 
       {/* Date range */}
       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">

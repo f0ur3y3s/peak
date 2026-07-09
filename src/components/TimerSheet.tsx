@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ArrowRight, Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { fmtTime, type TimerState } from "@/lib/data";
@@ -82,7 +83,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
         }}
       >
         {collapsed ? (
-          /* ── Collapsed pill ── */
+          /* Collapsed pill */
           <div
             className="timer-pill"
             onClick={() => setCollapsed(false)}
@@ -103,12 +104,13 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
             <button
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               className="bg-transparent border-none text-muted-foreground cursor-pointer text-lg px-1"
+              aria-label="Close timer"
             >
-              ×
+              <X size={18} strokeWidth={2} />
             </button>
           </div>
         ) : (
-          /* ── Full sheet ── */
+          /* Full sheet */
           <>
             <div
               className="drag-handle"
@@ -145,14 +147,15 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
 
               {/* Controls */}
               <div className="flex gap-2.5 mb-5">
-                {([["−30s", -30], ["+30s", 30]] as const).map(([label, d]) => (
+                {([-30, 30] as const).map((d) => (
                   <Button
-                    key={label}
+                    key={d}
                     variant="outline"
                     onClick={() => setRemaining((r) => Math.max(0, Math.min(600, r + d)))}
-                    className="font-mono text-[13px] min-w-[76px]"
+                    className="font-mono text-[13px] min-w-[76px] gap-1"
                   >
-                    {label}
+                    {d < 0 ? <Minus size={13} strokeWidth={2} /> : <Plus size={13} strokeWidth={2} />}
+                    {Math.abs(d)}s
                   </Button>
                 ))}
               </div>
@@ -161,10 +164,17 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
               <Button
                 variant="ghost"
                 onClick={onClose}
-                className="font-mono text-xs tracking-widest"
+                className="font-mono text-xs tracking-widest gap-1.5"
                 style={{ color: done ? "hsl(72 100% 64%)" : "hsl(var(--muted-foreground))" }}
               >
-                {done ? "Back to workout →" : "skip"}
+                {done ? (
+                  <>
+                    Back to workout
+                    <ArrowRight size={13} strokeWidth={2} />
+                  </>
+                ) : (
+                  "skip"
+                )}
               </Button>
             </div>
 

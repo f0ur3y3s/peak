@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TopBar } from "@/components/TopBar";
@@ -7,11 +8,7 @@ import { getWorkoutSessions, sessionVolume, sessionSetCount, type WorkoutSession
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 
-interface HistoryScreenProps {
-  onBack: () => void;
-}
-
-export function HistoryScreen({ onBack }: HistoryScreenProps) {
+export function HistoryScreen() {
   const { unit } = useWeightUnit();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
@@ -27,7 +24,7 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
 
   return (
     <div>
-      <TopBar title="History" onBack={onBack} />
+      <TopBar title="History" />
 
       {loadError && (
         <p
@@ -40,10 +37,10 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
 
-        {/* ── Analytics panel ── */}
+        {/* Analytics panel */}
         <HistoryAnalytics />
 
-        {/* ── Divider ── */}
+        {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
           <span style={{
@@ -56,7 +53,7 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
           <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
         </div>
 
-        {/* ── Workout list ── */}
+        {/* Workout list */}
         {sessions.map((session) => {
           const durationMin = Math.round((session.finishedAt - session.startedAt) / 60000);
           const volume = sessionVolume(session);
@@ -104,9 +101,11 @@ export function HistoryScreen({ onBack }: HistoryScreenProps) {
                         {setCount} sets
                       </p>
                     </div>
-                    <span className={`history-chevron${expanded === session.id ? " open" : ""}`}>
-                      ▼
-                    </span>
+                    <ChevronDown
+                      size={16}
+                      strokeWidth={2}
+                      className={`history-chevron${expanded === session.id ? " open" : ""}`}
+                    />
                   </div>
                 </div>
 

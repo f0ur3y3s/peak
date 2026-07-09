@@ -163,7 +163,7 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
   return dbPromise;
 }
 
-async function lastSetsFor(exerciseName: string): Promise<{ r: number; w: number }[] | null> {
+export async function lastSetsFor(exerciseName: string): Promise<{ r: number; w: number }[] | null> {
   const db = await getDB();
   const sessions = await db.getAllFromIndex("workout_sessions", "startedAt");
   for (let i = sessions.length - 1; i >= 0; i--) {

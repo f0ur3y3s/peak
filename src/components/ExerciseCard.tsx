@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Check, Clock, Minus, Plus, X } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
 
@@ -31,6 +33,9 @@ export function ExerciseCard({
   const [weight, setWeight] = useState(defaultWeight);
   const [addingExtra, setAddingExtra] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
+  const [deletingSet, setDeletingSet] = useState<
+    { id: string; index: number; reps: number; weight: number } | null
+  >(null);
   const weightStep = unit === "lb" ? 1 : 0.5;
 
   const done = ex.logged.length >= ex.targetSets;
@@ -44,6 +49,7 @@ export function ExerciseCard({
     : "";
 
   return (
+    <>
     <Card
       className={cardBorderClass}
       onClick={() => !isActive && onActivate(ex.id)}
@@ -60,8 +66,6 @@ export function ExerciseCard({
                 style={{
                   fontSize: 10,
                   padding: "1px 7px",
-                  color: "#a78bfa",
-                  background: "hsl(262 80% 58% / 0.15)",
                 }}
               >
                 {ex.muscle}
@@ -87,7 +91,8 @@ export function ExerciseCard({
                   cursor: "pointer",
                 }}
               >
-                ⏱ {fmtTime(ex.restSeconds)}
+                <Clock size={12} strokeWidth={2} />
+                {fmtTime(ex.restSeconds)}
               </button>
             </div>
           </div>
@@ -95,11 +100,10 @@ export function ExerciseCard({
             <p
               className="font-mono text-[22px] font-medium"
               style={{
-                color: done
-                  ? "hsl(142 70% 45%)"
-                  : isActive
-                  ? "hsl(var(--primary))"
-                  : "hsl(var(--muted-foreground))",
+                color:
+                  done || isActive
+                    ? "hsl(var(--primary))"
+                    : "hsl(var(--muted-foreground))",
               }}
             >
               {ex.logged.length}
@@ -117,7 +121,7 @@ export function ExerciseCard({
               className="stepper-btn"
               onClick={() => onUpdateRest(ex.id, Math.max(0, ex.restSeconds - 15))}
             >
-              −
+              <Minus size={16} strokeWidth={2} />
             </button>
             <span className="stepper-input font-mono text-sm" style={{ textAlign: "center" }}>
               {fmtTime(ex.restSeconds)}
@@ -126,7 +130,7 @@ export function ExerciseCard({
               className="stepper-btn"
               onClick={() => onUpdateRest(ex.id, ex.restSeconds + 15)}
             >
-              +
+              <Plus size={16} strokeWidth={2} />
             </button>
           </div>
         </div>
@@ -154,7 +158,7 @@ export function ExerciseCard({
             <div
               key={s.id}
               className="grid gap-2 items-center py-1.5 border-b border-border"
-              style={{ gridTemplateColumns: "20px 1fr 1fr 20px" }}
+              style={{ gridTemplateColumns: "20px 1fr 1fr 40px" }}
             >
               <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
               <span className="font-mono text-sm">{s.reps} reps</span>
@@ -162,25 +166,24 @@ export function ExerciseCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (
-                    window.confirm(
-                      `Delete set ${i + 1} (${s.reps} reps × ${fmtWeight(s.weight, unit)}${unit})?`
-                    )
-                  ) {
-                    onDeleteSet(ex.id, s.id);
-                  }
+                  setDeletingSet({ id: s.id, index: i, reps: s.reps, weight: s.weight });
                 }}
                 style={{
-                  background: "none",
-                  border: "none",
+                  background: "hsl(var(--destructive) / 0.1)",
+                  border: "1px solid hsl(var(--destructive) / 0.3)",
+                  borderRadius: 8,
                   cursor: "pointer",
                   color: "hsl(var(--destructive))",
-                  fontSize: 14,
-                  lineHeight: 1,
-                  padding: "2px 4px",
+                  width: 36,
+                  height: 36,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  justifySelf: "end",
                 }}
+                aria-label="Delete set"
               >
-                ×
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
           ))}
@@ -213,7 +216,7 @@ export function ExerciseCard({
                       setter((v) => String(Math.max(0, parseFloat(v) - step)));
                     }}
                   >
-                    −
+                    <Minus size={16} strokeWidth={2} />
                   </button>
                   <input
                     className="stepper-input"
@@ -228,7 +231,7 @@ export function ExerciseCard({
                       setter((v) => String(parseFloat(v) + step));
                     }}
                   >
-                    +
+                    <Plus size={16} strokeWidth={2} />
                   </button>
                 </div>
               </div>
@@ -249,8 +252,9 @@ export function ExerciseCard({
 
       {done && !addingExtra && (
         <div className="px-4 pb-3.5 pt-1.5 flex items-center justify-between gap-2">
-          <p className="font-mono text-xs" style={{ color: "hsl(142 70% 45%)" }}>
-            ✓ All sets complete
+          <p className="font-mono text-xs inline-flex items-center gap-1" style={{ color: "hsl(var(--primary))" }}>
+            <Check size={14} strokeWidth={2} />
+            All sets complete
           </p>
           {isActive && (
             <button
@@ -261,7 +265,7 @@ export function ExerciseCard({
                 setWeight(String(toDisplayWeight(last?.weight ?? ex.targetWeight, unit)));
                 setAddingExtra(true);
               }}
-              className="font-mono text-xs"
+              className="font-mono text-xs inline-flex items-center gap-1"
               style={{
                 background: "none",
                 border: "none",
@@ -270,11 +274,25 @@ export function ExerciseCard({
                 textDecoration: "underline",
               }}
             >
-              + Add set
+              <Plus size={13} strokeWidth={2} />
+              Add set
             </button>
           )}
         </div>
       )}
     </Card>
+
+    {deletingSet && (
+      <ConfirmDialog
+        title="Delete set"
+        message={`Delete set ${deletingSet.index + 1} (${deletingSet.reps} reps × ${fmtWeight(deletingSet.weight, unit)}${unit})?`}
+        onConfirm={() => {
+          onDeleteSet(ex.id, deletingSet.id);
+          setDeletingSet(null);
+        }}
+        onCancel={() => setDeletingSet(null)}
+      />
+    )}
+    </>
   );
 }

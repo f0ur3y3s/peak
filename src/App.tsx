@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { NavBar, type Screen } from "@/components/NavBar";
@@ -8,16 +8,29 @@ import { ActiveWorkout } from "@/screens/ActiveWorkout";
 import { HistoryScreen } from "@/screens/HistoryScreen";
 import { AuthScreen } from "@/screens/AuthScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
+import { ExercisesScreen } from "@/screens/ExercisesScreen";
+import { ExerciseHistoryScreen } from "@/screens/ExerciseHistoryScreen";
+import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
-import { getLastUsedTemplateId, getActiveWorkoutDraft } from "@/lib/db";
+import { getActiveWorkoutDraft } from "@/lib/db";
 
-type AppScreen = "templates" | "template" | "workout" | "history" | "profile";
+type AppScreen =
+  | "templates"
+  | "template"
+  | "workout"
+  | "workout-home"
+  | "history"
+  | "profile"
+  | "exercises"
+  | "exercise-history";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [screen, setScreen] = useState<AppScreen>("templates");
   const [nav, setNav] = useState<Screen>("workout");
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [viewingExerciseName, setViewingExerciseName] = useState<string | null>(null);
+  const resolvedUserId = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -31,20 +44,23 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return;
+    // Supabase fires onAuthStateChange (with a new session object) on every
+    // background token refresh, not just real sign-ins — without this guard,
+    // that would re-run the initial-landing-screen logic and yank the user
+    // away from whatever they're doing (e.g. mid-workout) every ~time the
+    // token refreshes. Only resolve the landing screen once per actual user.
+    if (resolvedUserId.current === session.user.id) return;
+    resolvedUserId.current = session.user.id;
+
     getActiveWorkoutDraft().then((draft) => {
       if (draft) {
         setActiveTemplateId(draft.templateId);
         setScreen("workout");
+        setNav("workout");
         return;
       }
-      getLastUsedTemplateId().then((id) => {
-        if (id) {
-          setActiveTemplateId(id);
-          setScreen("template");
-        } else {
-          setScreen("templates");
-        }
-      });
+      setScreen("profile");
+      setNav("profile");
     });
   }, [session]);
 
@@ -59,6 +75,8 @@ export default function App() {
       setScreen("templates");
     } else if (tab === "profile") {
       setScreen("profile");
+    } else if (tab === "exercises") {
+      setScreen("exercises");
     } else {
       const draft = await getActiveWorkoutDraft();
       if (draft) {
@@ -66,13 +84,7 @@ export default function App() {
         setScreen("workout");
         return;
       }
-      const id = await getLastUsedTemplateId();
-      if (id) {
-        setActiveTemplateId(id);
-        setScreen("template");
-      } else {
-        setScreen("templates");
-      }
+      setScreen("workout-home");
     }
   };
 
@@ -93,6 +105,7 @@ export default function App() {
               setActiveTemplateId(id);
               setScreen("template");
             }}
+            onOpenLibrary={() => handleNav("exercises")}
           />
         )}
         {screen === "template" && activeTemplateId && (
@@ -100,6 +113,10 @@ export default function App() {
             templateId={activeTemplateId}
             onStart={() => setScreen("workout")}
             onBack={() => handleNav("templates")}
+            onViewExerciseHistory={(name) => {
+              setViewingExerciseName(name);
+              setScreen("exercise-history");
+            }}
           />
         )}
         {screen === "workout" && activeTemplateId && (
@@ -113,13 +130,21 @@ export default function App() {
             onDiscard={() => setScreen("template")}
           />
         )}
-        {screen === "history" && (
-          <HistoryScreen onBack={() => handleNav("workout")} />
+        {screen === "workout-home" && (
+          <WorkoutHomeScreen onBrowseTemplates={() => handleNav("templates")} />
         )}
+        {screen === "history" && <HistoryScreen />}
         {screen === "profile" && (
           <ProfileScreen
             email={session.user.email ?? null}
             onSignOut={() => supabase.auth.signOut()}
+          />
+        )}
+        {screen === "exercises" && <ExercisesScreen />}
+        {screen === "exercise-history" && viewingExerciseName && (
+          <ExerciseHistoryScreen
+            exerciseName={viewingExerciseName}
+            onBack={() => setScreen("template")}
           />
         )}
       </div>

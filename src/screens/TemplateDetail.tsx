@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Clock, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
 import { ExercisePicker } from "@/components/ExercisePicker";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
@@ -24,6 +26,7 @@ interface TemplateDetailProps {
   templateId: string;
   onStart: () => void;
   onBack: () => void;
+  onViewExerciseHistory: (exerciseName: string) => void;
 }
 
 const DEFAULT_CONFIG: ExerciseConfigValues = {
@@ -47,7 +50,12 @@ const RENAME_INPUT_STYLE: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailProps) {
+export function TemplateDetail({
+  templateId,
+  onStart,
+  onBack,
+  onViewExerciseHistory,
+}: TemplateDetailProps) {
   const { unit } = useWeightUnit();
   const [template, setTemplate] = useState<Template | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -57,6 +65,7 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
   const [addingNew, setAddingNew] = useState<LibraryExercise | null>(null);
   const [pickingExercise, setPickingExercise] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const autoEditApplied = useRef(false);
 
   const reload = () => {
@@ -143,7 +152,6 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
   };
 
   const handleDeleteTemplate = async () => {
-    if (!window.confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
     setActionError(null);
     try {
       await deleteTemplate(templateId);
@@ -205,7 +213,7 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
             defaultValue={template.name}
             onBlur={(e) => handleRename(e.target.value)}
           />
-          <Button variant="destructive" className="w-full" onClick={handleDeleteTemplate}>
+          <Button variant="destructive" className="w-full" onClick={() => setConfirmingDelete(true)}>
             Delete template
           </Button>
         </div>
@@ -238,12 +246,16 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
             </div>
           )}
 
-          <div className="px-5 pt-3.5 pb-24 flex flex-col gap-2.5">
+          <div className="px-5 pt-3.5 pb-2 flex flex-col gap-2.5">
             {exercises.map((ex, i) => (
               <Card
                 key={ex.id}
-                onClick={() => editMode && setEditingExisting({ exerciseId: ex.id, name: ex.name })}
-                style={{ cursor: editMode ? "pointer" : "default" }}
+                onClick={() =>
+                  editMode
+                    ? setEditingExisting({ exerciseId: ex.id, name: ex.name })
+                    : onViewExerciseHistory(ex.name)
+                }
+                style={{ cursor: "pointer" }}
               >
                 <CardHeader style={{ padding: "14px 16px 10px" }}>
                   <div className="flex justify-between items-start">
@@ -256,17 +268,13 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
                         <div className="flex gap-1.5 items-center mt-1">
                           <Badge
                             variant="secondary"
-                            style={{
-                              fontSize: 10,
-                              padding: "1px 7px",
-                              color: "#a78bfa",
-                              background: "hsl(262 80% 58% / 0.15)",
-                            }}
+                            style={{ fontSize: 10, padding: "1px 7px" }}
                           >
                             {ex.muscle}
                           </Badge>
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            ⏱ {fmtTime(ex.restSeconds)}
+                          <span className="font-mono text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                            <Clock size={12} strokeWidth={2} />
+                            {fmtTime(ex.restSeconds)}
                           </span>
                         </div>
                       </div>
@@ -287,16 +295,21 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
                             handleDeleteExercise(ex.id);
                           }}
                           style={{
-                            background: "none",
-                            border: "none",
+                            background: "hsl(var(--destructive) / 0.1)",
+                            border: "1px solid hsl(var(--destructive) / 0.3)",
+                            borderRadius: 8,
                             cursor: "pointer",
                             color: "hsl(var(--destructive))",
-                            fontSize: 16,
-                            lineHeight: 1,
-                            padding: "2px 4px",
+                            width: 36,
+                            height: 36,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
                           }}
+                          aria-label="Delete exercise"
                         >
-                          ×
+                          <X size={16} strokeWidth={2} />
                         </button>
                       )}
                     </div>
@@ -333,20 +346,28 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
                 style={{ border: "1px dashed hsl(var(--border))" }}
                 onClick={() => setPickingExercise(true)}
               >
-                + Add exercise
+                <Plus size={16} strokeWidth={2} />
+                Add exercise
               </Button>
             )}
           </div>
         </>
       )}
 
-      <div className="px-5 pb-6">
+      <div className="px-5 pb-6 flex flex-col gap-2.5">
         <Button
           variant="outline"
-          className="w-full text-muted-foreground"
+          className="w-full text-muted-foreground gap-2"
           onClick={() => setEditMode((v) => !v)}
         >
-          {editMode ? "Done editing" : "✎ Edit template"}
+          {editMode ? (
+            "Done editing"
+          ) : (
+            <>
+              <Pencil size={14} strokeWidth={2} />
+              Edit template
+            </>
+          )}
         </Button>
       </div>
 
@@ -376,6 +397,18 @@ export function TemplateDetail({ templateId, onStart, onBack }: TemplateDetailPr
             setAddingNew(libraryExercise);
           }}
           onCancel={() => setPickingExercise(false)}
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Delete template"
+          message={`Delete "${template.name}"? This cannot be undone.`}
+          onConfirm={() => {
+            setConfirmingDelete(false);
+            handleDeleteTemplate();
+          }}
+          onCancel={() => setConfirmingDelete(false)}
         />
       )}
     </div>

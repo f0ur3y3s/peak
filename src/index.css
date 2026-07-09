@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Allerta Stencil";
+  src: url("/fonts/AllertaStencil-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -39,7 +47,7 @@
   }
 }
 
-/* ── Nav bar ───────────────────────────────── */
+/* Nav bar */
 .nav-bar {
   position: fixed;
   bottom: 0;
@@ -64,7 +72,7 @@
   gap: 3px;
 }
 
-/* ── Timer sheet ───────────────────────────── */
+/* Timer sheet */
 .timer-sheet {
   position: fixed;
   left: 0;
@@ -95,7 +103,7 @@
   flex-shrink: 0;
 }
 
-/* ── Set chip ──────────────────────────────── */
+/* Set chip */
 .set-chip {
   font-family: "DM Mono", monospace;
   font-size: 12px;
@@ -106,7 +114,7 @@
   border: 1px solid hsl(72 100% 64% / 0.2);
 }
 
-/* ── Stepper ───────────────────────────────── */
+/* Stepper */
 .stepper {
   display: flex;
   align-items: center;
@@ -146,10 +154,35 @@
   width: 64px;
 }
 
-/* ── Misc ──────────────────────────────────── */
+/* Custom scrollbar — themed thin thumb, no layout shift when it appears */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Misc */
 .scroll-area {
   overflow-y: auto;
   height: 100vh;
+  scrollbar-gutter: stable;
 }
 
 .timer-pill {
@@ -176,7 +209,7 @@
   background: hsl(var(--primary)) !important;
 }
 
-/* ── Auth Input ────────────────────────────── */
+/* Auth Input */
 .auth-input:focus {
   border-color: hsl(var(--primary));
   outline: none;
@@ -186,7 +219,7 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* ── Config Editor / Picker Modal ────────────── */
+/* Config Editor / Picker Modal */
 .config-editor-overlay {
   position: fixed;
   inset: 0;

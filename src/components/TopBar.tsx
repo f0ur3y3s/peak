@@ -1,4 +1,5 @@
 import React from "react";
+import { ChevronLeft } from "lucide-react";
 
 interface TopBarProps {
   title: string;
@@ -14,13 +15,14 @@ export function TopBar({ title, sub, onBack, right }: TopBarProps) {
         {onBack && (
           <button
             onClick={onBack}
-            className="text-muted-foreground text-xl leading-none bg-transparent border-none cursor-pointer p-0"
+            className="text-muted-foreground leading-none bg-transparent border-none cursor-pointer p-0"
+            aria-label="Go back"
           >
-            ←
+            <ChevronLeft size={22} strokeWidth={2} />
           </button>
         )}
         <div>
-          <p className="font-semibold text-base text-foreground">{title}</p>
+          <p className="font-title text-lg uppercase tracking-wide text-foreground">{title}</p>
           {sub && (
             <p className="font-mono text-[11px] text-muted-foreground mt-px">{sub}</p>
           )}

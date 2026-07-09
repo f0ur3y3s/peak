@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,6 +8,8 @@ import {
   deleteLibraryExercise,
   type LibraryExercise,
 } from "@/lib/db";
+import { MuscleSelect } from "@/components/MuscleSelect";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const TEXT_INPUT_STYLE: React.CSSProperties = {
   background: "hsl(var(--background))",
@@ -36,6 +39,7 @@ export function ExercisePicker({
   const [filter, setFilter] = useState("");
   const [creatingMuscle, setCreatingMuscle] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deletingExercise, setDeletingExercise] = useState<LibraryExercise | null>(null);
 
   const reload = () => getExerciseLibrary().then(setLibrary);
 
@@ -115,28 +119,30 @@ export function ExercisePicker({
                 <span className="text-[14px]">{ex.name}</span>
                 <Badge
                   variant="secondary"
-                  style={{
-                    fontSize: 10,
-                    padding: "1px 7px",
-                    color: "#a78bfa",
-                    background: "hsl(262 80% 58% / 0.15)",
-                  }}
+                  style={{ fontSize: 10, padding: "1px 7px" }}
                 >
                   {ex.muscle}
                 </Badge>
               </button>
               <button
-                onClick={() => handleDelete(ex.id, ex.name)}
+                onClick={() => setDeletingExercise(ex)}
                 style={{
-                  background: "none",
-                  border: "none",
+                  background: "hsl(var(--destructive) / 0.1)",
+                  border: "1px solid hsl(var(--destructive) / 0.3)",
+                  borderRadius: 8,
                   cursor: "pointer",
                   color: "hsl(var(--destructive))",
-                  fontSize: 15,
-                  padding: "2px 6px",
+                  width: 36,
+                  height: 36,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginRight: 6,
                 }}
+                aria-label={`Delete ${ex.name}`}
               >
-                ×
+                <X size={16} strokeWidth={2} />
               </button>
             </div>
           ))}
@@ -150,12 +156,7 @@ export function ExercisePicker({
             <p className="text-[11px] text-muted-foreground mb-1.5">
               Create "{filter.trim()}" — muscle group
             </p>
-            <input
-              style={TEXT_INPUT_STYLE}
-              placeholder="e.g. Chest"
-              value={creatingMuscle}
-              onChange={(e) => setCreatingMuscle(e.target.value)}
-            />
+            <MuscleSelect value={creatingMuscle} onChange={setCreatingMuscle} />
           </div>
         )}
 
@@ -170,6 +171,19 @@ export function ExercisePicker({
           )}
         </div>
       </div>
+
+      {deletingExercise && (
+        <ConfirmDialog
+          title="Delete exercise"
+          message={`Delete "${deletingExercise.name}"?`}
+          onConfirm={() => {
+            const ex = deletingExercise;
+            setDeletingExercise(null);
+            handleDelete(ex.id, ex.name);
+          }}
+          onCancel={() => setDeletingExercise(null)}
+        />
+      )}
     </div>
   );
 }
