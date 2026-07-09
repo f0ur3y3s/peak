@@ -30,6 +30,47 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// Table-based layout with only inline styles — the safe subset that
+// renders consistently across email clients (no flexbox/grid, no
+// external fonts, no <style> blocks relied upon).
+function buildEmailHtml(code: string): string {
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f0f0f;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:420px;">
+        <tr>
+          <td align="center" style="padding-bottom:28px;">
+            <span style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:bold;letter-spacing:6px;color:#e8ff47;">PEAK</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#1a1a1a;border:1px solid #292929;border-radius:12px;padding:32px 28px;">
+            <p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#8a8a8a;text-align:center;">
+              Your sign-in code
+            </p>
+            <p style="margin:0 0 20px;font-family:'Courier New',Courier,monospace;font-size:36px;font-weight:bold;letter-spacing:10px;color:#ffffff;text-align:center;">
+              ${code}
+            </p>
+            <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#8a8a8a;text-align:center;">
+              Enter this code in the app to sign in. It expires shortly.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-top:20px;">
+            <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#5c5c5c;text-align:center;">
+              Didn't request this? You can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -106,12 +147,8 @@ Deno.serve(async (req: Request) => {
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: email,
-      subject: "Your Peak sign-in code",
-      html: `
-        <p>Your Peak sign-in code is:</p>
-        <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px;">${code}</p>
-        <p>This code expires shortly. If you didn't request this, you can ignore this email.</p>
-      `,
+      subject: `${code} is your Peak sign-in code`,
+      html: buildEmailHtml(code),
     }),
   });
 
