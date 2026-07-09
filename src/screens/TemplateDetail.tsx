@@ -1,17 +1,26 @@
 import { useState, useEffect, useRef } from "react";
 import { Clock, GripVertical, Pencil, Plus, X } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { TopBar } from "@/components/TopBar";
+import { SortableRow, type DragHandleProps } from "@/components/SortableRow";
 import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
 import { ExercisePicker } from "@/components/ExercisePicker";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
-import { useDragReorder } from "@/lib/useDragReorder";
 import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
   getTemplate,
@@ -121,19 +130,15 @@ export function TemplateDetail({
     }
   };
 
-  const {
-    order: orderedExercises,
-    draggingId,
-    dragY,
-    registerRef,
-    handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
-  } = useDragReorder({
-    items: exercises,
-    getId: (ex) => ex.id,
-    onDrop: handleReorderExercises,
-  });
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  const handleDragEndExercises = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = exercises.findIndex((ex) => ex.id === active.id);
+    const newIndex = exercises.findIndex((ex) => ex.id === over.id);
+    handleReorderExercises(arrayMove(exercises, oldIndex, newIndex));
+  };
 
   const handleDeleteExercise = async (exerciseId: string) => {
     setActionError(null);
@@ -198,6 +203,113 @@ export function TemplateDetail({
   const editingExistingConfig: ExerciseConfigValues | undefined = editingExisting
     ? template.exercises.find((e) => e.exerciseId === editingExisting.exerciseId)
     : undefined;
+
+  const renderExerciseCard = (ex: Exercise, index: number, handleProps?: DragHandleProps) => (
+    <Card
+      key={ex.id}
+      onClick={() =>
+        editMode
+          ? setEditingExisting({ exerciseId: ex.id, name: ex.name })
+          : onViewExerciseHistory(ex.name)
+      }
+      style={{ cursor: "pointer" }}
+    >
+      <CardHeader style={{ padding: "14px 16px 10px" }}>
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2">
+            {handleProps ? (
+              <button
+                {...handleProps}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "grab",
+                  color: "hsl(var(--muted-foreground))",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  touchAction: "none",
+                }}
+                aria-label="Drag to reorder"
+              >
+                <GripVertical size={16} strokeWidth={2} />
+              </button>
+            ) : (
+              <span className="font-mono text-[10px] text-muted-foreground min-w-[20px]">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+            )}
+            <div>
+              <p className="font-semibold text-[15px]">{ex.name}</p>
+              <div className="flex gap-1.5 items-center mt-1">
+                <Badge variant="secondary" style={{ fontSize: 10, padding: "1px 7px" }}>
+                  {ex.muscle}
+                </Badge>
+                <span className="font-mono text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                  <Clock size={12} strokeWidth={2} />
+                  {fmtTime(ex.restSeconds)}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="text-right">
+              <p className="font-mono text-sm">
+                {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
+              </p>
+              <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                @ {fmtWeight(ex.targetWeight, unit)} {unit}
+              </p>
+            </div>
+            {editMode && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteExercise(ex.id);
+                }}
+                style={{
+                  background: "hsl(var(--destructive) / 0.1)",
+                  border: "1px solid hsl(var(--destructive) / 0.3)",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  color: "hsl(var(--destructive))",
+                  width: 36,
+                  height: 36,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+                aria-label="Delete exercise"
+              >
+                <X size={16} strokeWidth={2} />
+              </button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <Separator />
+      <CardContent style={{ padding: "12px 16px" }}>
+        {ex.last ? (
+          <>
+            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1.5">
+              Last session
+            </p>
+            <div className="flex gap-1.5 flex-wrap">
+              {ex.last.map((s, j) => (
+                <span key={j} className="set-chip">
+                  {s.r}×{fmtWeight(s.w, unit)}{unit}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="font-mono text-[11px] text-muted-foreground italic">No previous data</p>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div>
@@ -271,130 +383,19 @@ export function TemplateDetail({
           )}
 
           <div className="px-5 pt-3.5 pb-2 flex flex-col gap-2.5">
-            {orderedExercises.map((ex, i) => (
-              <Card
-                key={ex.id}
-                ref={registerRef(ex.id)}
-                onClick={() =>
-                  editMode
-                    ? setEditingExisting({ exerciseId: ex.id, name: ex.name })
-                    : onViewExerciseHistory(ex.name)
-                }
-                style={{
-                  cursor: "pointer",
-                  position: "relative",
-                  transform: draggingId === ex.id ? `translateY(${dragY}px)` : undefined,
-                  zIndex: draggingId === ex.id ? 10 : undefined,
-                  boxShadow: draggingId === ex.id ? "0 8px 24px hsl(0 0% 0% / 0.4)" : undefined,
-                  transition: draggingId === ex.id ? "none" : "transform 0.15s",
-                }}
-              >
-                <CardHeader style={{ padding: "14px 16px 10px" }}>
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2">
-                      {editMode ? (
-                        <button
-                          onPointerDown={(e) => {
-                            e.stopPropagation();
-                            handlePointerDown(ex.id)(e);
-                          }}
-                          onPointerMove={handlePointerMove}
-                          onPointerUp={handlePointerUp}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "grab",
-                            color: "hsl(var(--muted-foreground))",
-                            padding: 0,
-                            display: "flex",
-                            alignItems: "center",
-                            touchAction: "none",
-                          }}
-                          aria-label="Drag to reorder"
-                        >
-                          <GripVertical size={16} strokeWidth={2} />
-                        </button>
-                      ) : (
-                        <span className="font-mono text-[10px] text-muted-foreground min-w-[20px]">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                      )}
-                      <div>
-                        <p className="font-semibold text-[15px]">{ex.name}</p>
-                        <div className="flex gap-1.5 items-center mt-1">
-                          <Badge
-                            variant="secondary"
-                            style={{ fontSize: 10, padding: "1px 7px" }}
-                          >
-                            {ex.muscle}
-                          </Badge>
-                          <span className="font-mono text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                            <Clock size={12} strokeWidth={2} />
-                            {fmtTime(ex.restSeconds)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="text-right">
-                        <p className="font-mono text-sm">
-                          {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
-                        </p>
-                        <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
-                          @ {fmtWeight(ex.targetWeight, unit)} {unit}
-                        </p>
-                      </div>
-                      {editMode && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteExercise(ex.id);
-                          }}
-                          style={{
-                            background: "hsl(var(--destructive) / 0.1)",
-                            border: "1px solid hsl(var(--destructive) / 0.3)",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            color: "hsl(var(--destructive))",
-                            width: 36,
-                            height: 36,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                          }}
-                          aria-label="Delete exercise"
-                        >
-                          <X size={16} strokeWidth={2} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <Separator />
-                <CardContent style={{ padding: "12px 16px" }}>
-                  {ex.last ? (
-                    <>
-                      <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1.5">
-                        Last session
-                      </p>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {ex.last.map((s, j) => (
-                          <span key={j} className="set-chip">
-                            {s.r}×{fmtWeight(s.w, unit)}{unit}
-                          </span>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <p className="font-mono text-[11px] text-muted-foreground italic">
-                      No previous data
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+            {editMode ? (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndExercises}>
+                <SortableContext items={exercises.map((ex) => ex.id)} strategy={verticalListSortingStrategy}>
+                  {exercises.map((ex) => (
+                    <SortableRow key={ex.id} id={ex.id}>
+                      {(handleProps) => renderExerciseCard(ex, 0, handleProps)}
+                    </SortableRow>
+                  ))}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              exercises.map((ex, i) => renderExerciseCard(ex, i))
+            )}
 
             {editMode && (
               <Button
