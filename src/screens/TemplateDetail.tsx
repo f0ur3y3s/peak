@@ -65,6 +65,7 @@ export function TemplateDetail({
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const autoEditApplied = useRef(false);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const reload = () => {
     getTemplate(templateId).then((t) => setTemplate(t ?? null));
@@ -129,8 +130,6 @@ export function TemplateDetail({
       reload();
     }
   };
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const handleDragEndExercises = (event: DragEndEvent) => {
     const { active, over } = event;
