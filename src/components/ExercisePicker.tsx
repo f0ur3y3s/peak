@@ -10,19 +10,7 @@ import {
 } from "@/lib/db";
 import { MuscleSelect } from "@/components/MuscleSelect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-
-const TEXT_INPUT_STYLE: React.CSSProperties = {
-  background: "hsl(var(--background))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "hsl(var(--foreground))",
-  fontFamily: "'DM Mono', monospace",
-  fontSize: 14,
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-};
+import { TEXT_INPUT_STYLE, normalizeMuscle } from "@/lib/inputStyles";
 
 interface ExercisePickerProps {
   existingExerciseIds: string[];
@@ -61,7 +49,7 @@ export function ExercisePicker({
     const newExercise: LibraryExercise = {
       id: crypto.randomUUID(),
       name: filter.trim(),
-      muscle: creatingMuscle.trim() || "Other",
+      muscle: normalizeMuscle(creatingMuscle),
       updatedAt: Date.now(),
     };
     try {

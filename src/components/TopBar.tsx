@@ -18,7 +18,8 @@ export function TopBar({ title, sub, onBack, right }: TopBarProps) {
         {onBack && (
           <button
             onClick={onBack}
-            className="text-muted-foreground leading-none bg-transparent border-none cursor-pointer p-0"
+            className="text-muted-foreground leading-none bg-transparent border-none cursor-pointer flex items-center justify-center"
+            style={{ width: 44, height: 44, marginLeft: -11 }}
             aria-label="Go back"
           >
             <ChevronLeft size={22} strokeWidth={2} />

@@ -1,19 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MuscleSelect } from "@/components/MuscleSelect";
-
-const TEXT_INPUT_STYLE: React.CSSProperties = {
-  background: "hsl(var(--background))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "hsl(var(--foreground))",
-  fontFamily: "'DM Mono', monospace",
-  fontSize: 14,
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-};
+import { TEXT_INPUT_STYLE, normalizeMuscle } from "@/lib/inputStyles";
 
 interface ExerciseEditFormProps {
   title: string;
@@ -61,7 +49,7 @@ export function ExerciseEditForm({
           <Button
             className="flex-1 font-semibold"
             disabled={!canSave}
-            onClick={() => onSave(name.trim(), muscle.trim() || "Other")}
+            onClick={() => onSave(name.trim(), normalizeMuscle(muscle))}
           >
             Save
           </Button>

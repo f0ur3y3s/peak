@@ -32,12 +32,14 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
     setCollapsed(false);
   }, [timer, totalSeconds]);
 
-  // Countdown
+  // Countdown — depends only on [timer], not [remaining], so the interval
+  // isn't torn down and recreated every single tick (60x/minute).
   useEffect(() => {
-    if (remaining <= 0) return;
-    const iv = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
+    const iv = setInterval(() => {
+      setRemaining((r) => Math.max(0, r - 1));
+    }, 1000);
     return () => clearInterval(iv);
-  }, [remaining]);
+  }, [timer]);
 
   const pct = (remaining / totalSeconds) * 100;
   const danger = remaining <= 10 && remaining > 0;

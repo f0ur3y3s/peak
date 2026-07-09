@@ -20,6 +20,7 @@ export function AuthScreen() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     setLoading(true);
     // Delivered via our own Edge Function + Resend, not Supabase's own
@@ -40,6 +41,7 @@ export function AuthScreen() {
 
   async function handleVerifyCode(e: FormEvent) {
     e.preventDefault();
+    if (verifying) return;
     setError(null);
     setVerifying(true);
     const { error: verifyError } = await supabase.auth.verifyOtp({
@@ -57,6 +59,7 @@ export function AuthScreen() {
 
   async function handleRequest(e: FormEvent) {
     e.preventDefault();
+    if (requestLoading) return;
     setRequestError(null);
     setRequestSent(false);
     setRequestLoading(true);

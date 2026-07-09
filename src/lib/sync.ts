@@ -27,7 +27,21 @@ import {
 
 type SyncResult = { ok: true } | { ok: false; error: string };
 
-export async function syncNow(): Promise<SyncResult> {
+// Guards against overlapping sync passes (periodic timer + manual button +
+// on-sign-in trigger can all fire close together) — two syncs racing would
+// each capture their own "since" watermark and could interleave push/pull
+// calls against the same rows.
+let syncInFlight: Promise<SyncResult> | null = null;
+
+export function syncNow(): Promise<SyncResult> {
+  if (syncInFlight) return syncInFlight;
+  syncInFlight = runSync().finally(() => {
+    syncInFlight = null;
+  });
+  return syncInFlight;
+}
+
+async function runSync(): Promise<SyncResult> {
   const {
     data: { session },
   } = await supabase.auth.getSession();

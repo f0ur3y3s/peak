@@ -95,7 +95,9 @@ export function TemplateDetail({
   if (!template) return null;
 
   const totalTargetSets = exercises.reduce((a, e) => a + e.targetSets, 0);
-  const avgSeconds = exercises.reduce((a, e) => a + e.restSeconds * e.targetSets, 0);
+  // Sum of restSeconds × targetSets across all exercises — total time spent
+  // resting for the whole template, not a per-exercise average.
+  const totalRestSeconds = exercises.reduce((a, e) => a + e.restSeconds * e.targetSets, 0);
 
   const handleRename = async (name: string) => {
     const trimmed = name.trim();
@@ -233,7 +235,7 @@ export function TemplateDetail({
                     [
                       [String(exercises.length), "exercises"],
                       [String(totalTargetSets), "total sets"],
-                      [`~${Math.round(avgSeconds / 60)}`, "min avg"],
+                      [`~${Math.round(totalRestSeconds / 60)}`, "min rest"],
                     ] as const
                   ).map(([v, l]) => (
                     <div key={l}>

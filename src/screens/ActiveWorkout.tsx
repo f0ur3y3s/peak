@@ -53,6 +53,17 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
   const [pickingExercise, setPickingExercise] = useState(false);
   const [addingExercise, setAddingExercise] = useState<LibraryExercise | null>(null);
   const startedAt = useRef(Date.now());
+  // Mirrors `exercises` but updated synchronously (not via a setState
+  // functional-updater read-back — that's not guaranteed to run before this
+  // function returns). Handlers read/write this instead of the closed-over
+  // `exercises` state variable so two handlers firing back-to-back (before a
+  // re-render lands) each see the other's change instead of clobbering it.
+  const exercisesRef = useRef<Exercise[]>([]);
+
+  const applyExercises = (updated: Exercise[]) => {
+    exercisesRef.current = updated;
+    setExercises(updated);
+  };
 
   useEffect(() => {
     getActiveWorkoutDraft().then((draft) => {
@@ -63,19 +74,23 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
         .then((exs) => {
           let hydrated = exs;
           if (resumeDraft) {
-            const loggedByExerciseId = new Map(
-              resumeDraft.exercises.map((e) => [e.exerciseId, e.logged])
+            const draftByExerciseId = new Map(
+              resumeDraft.exercises.map((e) => [e.exerciseId, e])
             );
             // Note: if an exercise was removed from the template after the draft was
             // saved, getExercises won't return it, so any logged sets for that
             // exercise have nothing to attach to and are silently dropped here.
             // Known, accepted edge case — not handled.
-            hydrated = exs.map((ex) => ({
-              ...ex,
-              logged: loggedByExerciseId.get(ex.id) ?? ex.logged,
-            }));
+            hydrated = exs.map((ex) => {
+              const draftEx = draftByExerciseId.get(ex.id);
+              return {
+                ...ex,
+                logged: draftEx?.logged ?? ex.logged,
+                restSeconds: draftEx?.restSeconds ?? ex.restSeconds,
+              };
+            });
           }
-          setExercises(hydrated);
+          applyExercises(hydrated);
           if (hydrated.length > 0) setActiveId(hydrated[0].id);
         })
         .catch(() => setLoadError("Couldn't load exercises — try reloading."));
@@ -95,7 +110,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
     let exerciseName = "";
     let nextSet = "";
 
-    const updatedExercises = exercises.map((ex) => {
+    const updatedExercises = exercisesRef.current.map((ex) => {
       if (ex.id !== exId) return ex;
       const newLogged = [...ex.logged, { id: `s${Date.now()}`, reps, weight }];
       restSeconds = ex.restSeconds;
@@ -108,7 +123,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       return { ...ex, logged: newLogged };
     });
 
-    setExercises(updatedExercises);
+    applyExercises(updatedExercises);
     setTimer({ seconds: restSeconds, exerciseName, nextSet });
     setDraftError(null);
 
@@ -117,16 +132,16 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       templateId,
       templateName: templateName || "Workout",
       startedAt: startedAt.current,
-      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged })),
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
     }).catch(() => setDraftError("Couldn't save progress — check your connection."));
   };
 
   const handleDeleteSet = (exId: string, setId: string) => {
-    const updatedExercises = exercises.map((ex) =>
+    const updatedExercises = exercisesRef.current.map((ex) =>
       ex.id === exId ? { ...ex, logged: ex.logged.filter((s) => s.id !== setId) } : ex
     );
 
-    setExercises(updatedExercises);
+    applyExercises(updatedExercises);
     setDraftError(null);
 
     saveActiveWorkoutDraft({
@@ -134,16 +149,28 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       templateId,
       templateName: templateName || "Workout",
       startedAt: startedAt.current,
-      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged })),
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
     }).catch(() => setDraftError("Couldn't save progress — check your connection."));
   };
 
   const handleUpdateRest = (exId: string, restSeconds: number) => {
-    // Deliberately local-only: this does not persist to the template until
-    // Finish, so an abandoned/discarded workout never touches the template.
-    setExercises((prev) =>
-      prev.map((ex) => (ex.id === exId ? { ...ex, restSeconds } : ex))
+    // Persisted to the draft (so a mid-workout reload doesn't lose the
+    // adjustment) but not to the template — that only happens at Finish,
+    // so an abandoned/discarded workout never touches the template.
+    const updatedExercises = exercisesRef.current.map((ex) =>
+      ex.id === exId ? { ...ex, restSeconds } : ex
     );
+
+    applyExercises(updatedExercises);
+    setDraftError(null);
+
+    saveActiveWorkoutDraft({
+      id: "current",
+      templateId,
+      templateName: templateName || "Workout",
+      startedAt: startedAt.current,
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
+    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
   };
 
   const handleAddExercise = async (values: ExerciseConfigValues) => {
@@ -157,8 +184,8 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       last,
       logged: [],
     };
-    const updatedExercises = [...exercises, newExercise];
-    setExercises(updatedExercises);
+    const updatedExercises = [...exercisesRef.current, newExercise];
+    applyExercises(updatedExercises);
     setActiveId(newExercise.id);
     setAddingExercise(null);
     setDraftError(null);
@@ -173,7 +200,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
       templateId,
       templateName: templateName || "Workout",
       startedAt: startedAt.current,
-      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged })),
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
     }).catch(() => setDraftError("Couldn't save progress — check your connection."));
   };
 
@@ -182,7 +209,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
     setIsFinishing(true);
     setFinishError(null);
     try {
-      const loggedExercises = exercises.filter((ex) => ex.logged.length > 0);
+      const loggedExercises = exercisesRef.current.filter((ex) => ex.logged.length > 0);
 
       const prs: string[] = [];
       for (const ex of loggedExercises) {
@@ -230,7 +257,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
             ...template,
             exercises: [
               ...template.exercises.map((cfg) => {
-                const match = exercises.find((ex) => ex.id === cfg.exerciseId);
+                const match = exercisesRef.current.find((ex) => ex.id === cfg.exerciseId);
                 if (!match) return cfg;
                 return {
                   ...cfg,

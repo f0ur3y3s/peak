@@ -1,18 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { MUSCLE_GROUPS, fuzzyMatch } from "@/lib/muscles";
-
-const TEXT_INPUT_STYLE: React.CSSProperties = {
-  background: "hsl(var(--background))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "hsl(var(--foreground))",
-  fontFamily: "'DM Mono', monospace",
-  fontSize: 14,
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-};
+import { TEXT_INPUT_STYLE } from "@/lib/inputStyles";
 
 interface MuscleSelectProps {
   value: string;

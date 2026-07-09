@@ -47,6 +47,7 @@ export interface ActiveWorkoutDraft {
   exercises: {
     exerciseId: string;
     logged: { id: string; reps: number; weight: number }[];
+    restSeconds?: number;
   }[];
   updatedAt: number;
 }

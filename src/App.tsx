@@ -40,6 +40,7 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!s) resolvedUserId.current = null;
       setSession(s);
     });
     return () => subscription.unsubscribe();
@@ -62,8 +63,8 @@ export default function App() {
         setNav("workout");
         return;
       }
-      setScreen("profile");
-      setNav("profile");
+      setScreen("workout-home");
+      setNav("workout");
     });
 
     // One sync pass on sign-in/app-open, in addition to the periodic timer

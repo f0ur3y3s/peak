@@ -108,6 +108,9 @@ Deno.serve(async (req: Request) => {
     `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
     { headers: adminHeaders },
   );
+  if (!lookupRes.ok) {
+    return jsonResponse({ success: false, error: "Couldn't verify account — try again." }, 500);
+  }
   const lookupData = await lookupRes.json();
   const users = Array.isArray(lookupData) ? lookupData : lookupData.users ?? [];
   const matchedUser = users.find(
@@ -127,10 +130,7 @@ Deno.serve(async (req: Request) => {
   const linkData = await linkRes.json();
 
   if (!linkRes.ok) {
-    return jsonResponse(
-      { success: false, error: linkData?.msg ?? "Couldn't generate a sign-in code." },
-      500,
-    );
+    return jsonResponse({ success: false, error: "Couldn't generate a sign-in code." }, 500);
   }
 
   const code = linkData.email_otp ?? linkData.properties?.email_otp;
@@ -153,8 +153,7 @@ Deno.serve(async (req: Request) => {
   });
 
   if (!resendResponse.ok) {
-    const resendData = await resendResponse.json();
-    return jsonResponse({ success: false, error: "Couldn't send the email.", resend: resendData }, 500);
+    return jsonResponse({ success: false, error: "Couldn't send the email." }, 500);
   }
 
   return jsonResponse({ success: true });
