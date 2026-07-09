@@ -95,6 +95,7 @@ interface ChartProps {
 
 function Chart({ pts, getVal, onHover }: ChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [activeTapIdx, setActiveTapIdx] = useState<number | null>(null);
   const [W, setW] = useState(340);
 
   useEffect(() => {
@@ -192,7 +193,7 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
     );
   });
 
-  const handleDotEnter = (_e: React.MouseEvent<SVGCircleElement>, pt: ExerciseHistoryPoint) => {
+  const handleDotEnter = (pt: ExerciseHistoryPoint) => {
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
@@ -244,18 +245,41 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
       )}
 
       {pts.map((pt, i) => (
-        <circle
-          key={i}
-          cx={tx(pt.t)}
-          cy={ty(getVal(pt))}
-          r={4}
-          fill="hsl(var(--primary))"
-          stroke="hsl(var(--primary) / 0.6)"
-          strokeWidth={1}
-          style={{ cursor: "pointer" }}
-          onMouseEnter={(e) => handleDotEnter(e, pt)}
-          onMouseLeave={() => onHover({ visible: false, x: 0, y: 0, value: 0, date: "" })}
-        />
+        <g key={i}>
+          {/* Larger invisible hit target — the visible 4px dot is too small
+              to reliably tap on a phone, the primary target device. Handles
+              both mouse hover and touch tap (onPointerDown covers touch;
+              there's no touch equivalent of "leave", so a tap toggles the
+              tooltip instead of requiring a hover-out). */}
+          <circle
+            cx={tx(pt.t)}
+            cy={ty(getVal(pt))}
+            r={14}
+            fill="transparent"
+            style={{ cursor: "pointer" }}
+            onMouseEnter={() => handleDotEnter(pt)}
+            onMouseLeave={() => onHover({ visible: false, x: 0, y: 0, value: 0, date: "" })}
+            onPointerDown={(e) => {
+              if (e.pointerType !== "touch") return;
+              if (activeTapIdx === i) {
+                setActiveTapIdx(null);
+                onHover({ visible: false, x: 0, y: 0, value: 0, date: "" });
+              } else {
+                setActiveTapIdx(i);
+                handleDotEnter(pt);
+              }
+            }}
+          />
+          <circle
+            cx={tx(pt.t)}
+            cy={ty(getVal(pt))}
+            r={4}
+            fill="hsl(var(--primary))"
+            stroke="hsl(var(--primary) / 0.6)"
+            strokeWidth={1}
+            style={{ pointerEvents: "none" }}
+          />
+        </g>
       ))}
     </svg>
   );

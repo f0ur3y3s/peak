@@ -21,6 +21,17 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
   const dragDeltaRef = useRef(0);
   const sheetRef = useRef<HTMLDivElement>(null);
 
+  // ActiveWorkout renders one <TimerSheet> for the whole workout and just
+  // swaps the `timer` prop on every logged set (no `key`, so this component
+  // never remounts) — without this, `remaining`'s useState initializer only
+  // ran once on the very first rest period, so a second set logged while
+  // the sheet was still open/collapsed kept counting down from the
+  // *previous* period's leftover time instead of restarting.
+  useEffect(() => {
+    setRemaining(totalSeconds);
+    setCollapsed(false);
+  }, [timer, totalSeconds]);
+
   // Countdown
   useEffect(() => {
     if (remaining <= 0) return;

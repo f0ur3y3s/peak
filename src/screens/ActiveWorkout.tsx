@@ -234,7 +234,11 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
                 if (!match) return cfg;
                 return {
                   ...cfg,
-                  targetSets: match.logged.length > 0 ? match.logged.length : cfg.targetSets,
+                  // Only raise the target when extra sets were logged beyond
+                  // the plan — logging fewer than planned (a lighter day,
+                  // cut short, etc.) must never silently lower the template's
+                  // default for future workouts.
+                  targetSets: Math.max(cfg.targetSets, match.logged.length),
                   restSeconds: match.restSeconds,
                 };
               }),

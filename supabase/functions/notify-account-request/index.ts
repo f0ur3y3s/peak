@@ -7,8 +7,13 @@
 //
 // The trigger POSTs the standard Supabase "webhook-shaped" payload:
 //   { type: "INSERT", table: "account_requests", schema: "public", record: {...}, old_record: null }
-// via pg_net's net.http_post, authenticated with a service_role bearer token
-// pulled from Vault (never hardcoded in SQL).
+// via pg_net's net.http_post, authenticated with a dedicated shared secret
+// pulled from Vault (never hardcoded in SQL) — see NOTIFY_TRIGGER_SECRET
+// below. This is intentionally its own random secret rather than the
+// project's actual service_role key: Supabase has both a legacy JWT-format
+// service_role key and a newer sb_secret_... key, and Deno.env.get in an
+// Edge Function doesn't reliably resolve to whichever one happens to be
+// stored in Vault — a dedicated secret sidesteps that entirely.
 
 const RESEND_API_URL = "https://api.resend.com/emails";
 const ADMIN_EMAIL = "dchung0812@gmail.com";
@@ -37,6 +42,21 @@ function escapeHtml(value: string): string {
 }
 
 Deno.serve(async (req: Request) => {
+  // Only the Postgres trigger should ever be able to make this function fire
+  // an admin email — it authenticates with a dedicated shared secret (see
+  // header comment). Supabase's default JWT gate only requires *a* valid
+  // project JWT, and the anon key is public (it ships in the client
+  // bundle), so without this check anyone holding the anon key could invoke
+  // this function directly and spam the admin inbox / burn the Resend quota.
+  const triggerSecret = Deno.env.get("NOTIFY_TRIGGER_SECRET");
+  const authHeader = req.headers.get("Authorization");
+  if (!triggerSecret || authHeader !== `Bearer ${triggerSecret}`) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Unauthorized." }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   const apiKey = Deno.env.get("RESEND_API_KEY");
 
   if (!apiKey) {

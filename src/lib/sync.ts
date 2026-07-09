@@ -17,6 +17,7 @@ import {
   deleteActiveWorkoutDraftRaw,
   getTemplate,
   getLibraryExercise,
+  getWorkoutSession,
   getActiveWorkoutDraft,
   type Template,
   type LibraryExercise,
@@ -35,12 +36,17 @@ export async function syncNow(): Promise<SyncResult> {
 
   try {
     const since = await getSyncedAt();
+    // Captured before push/pull run, not after — advancing the watermark to
+    // a timestamp taken after the pull query executes would silently and
+    // permanently miss anything written remotely in that window (it would
+    // fall below every future "since" too, not just this pass's).
+    const syncStartedAt = Date.now();
 
     await pushChanges(userId, since);
     await pushTombstones(userId);
     await pullChanges(userId, since);
 
-    await setSyncedAt(Date.now());
+    await setSyncedAt(syncStartedAt);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Sync failed — try again." };
@@ -113,25 +119,36 @@ async function pushTombstones(userId: string): Promise<void> {
   const tombstones = await getSyncTombstones();
   for (const t of tombstones) {
     const deletedAtIso = new Date(t.deletedAt).toISOString();
+    // Last-write-wins applies to deletes too: only apply this delete if the
+    // remote row isn't already newer than the delete itself (an ".lt" guard
+    // on updated_at). Without this, an old local delete could silently
+    // overwrite a genuinely newer edit made on another device — the delete
+    // would win purely because it happened to sync last, not because it
+    // was last. If the remote row is newer, this delete lost the race and
+    // is simply dropped (its tombstone is still cleared below — there is
+    // no reason to keep re-asserting a delete that lost).
     if (t.store === "templates") {
       const { error } = await supabase
         .from("templates")
         .update({ deleted_at: deletedAtIso, updated_at: deletedAtIso })
         .eq("id", t.id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .lt("updated_at", deletedAtIso);
       if (error) throw error;
     } else if (t.store === "exercise_library") {
       const { error } = await supabase
         .from("exercise_library")
         .update({ deleted_at: deletedAtIso, updated_at: deletedAtIso })
         .eq("id", t.id)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .lt("updated_at", deletedAtIso);
       if (error) throw error;
     } else {
       const { error } = await supabase
         .from("active_workout_draft")
         .update({ deleted_at: deletedAtIso, updated_at: deletedAtIso })
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .lt("updated_at", deletedAtIso);
       if (error) throw error;
     }
     await clearSyncTombstone(t.key);
@@ -199,6 +216,9 @@ async function pullChanges(userId: string, since: number): Promise<void> {
     .gt("updated_at", sinceIso);
   if (sessionsError) throw sessionsError;
   for (const row of remoteSessions ?? []) {
+    const updatedAt = new Date(row.updated_at).getTime();
+    const existing = await getWorkoutSession(row.id);
+    if (existing && existing.updatedAt >= updatedAt) continue;
     const local: WorkoutSession = {
       id: row.id,
       templateId: row.template_id ?? undefined,
@@ -207,7 +227,7 @@ async function pullChanges(userId: string, since: number): Promise<void> {
       finishedAt: row.finished_at,
       exercises: row.exercises,
       prs: row.prs,
-      updatedAt: new Date(row.updated_at).getTime(),
+      updatedAt,
     };
     await putWorkoutSessionRaw(local);
   }

@@ -227,6 +227,17 @@ async function tombstone(store: SyncTombstone["store"], id: string): Promise<voi
   await db.put("sync_tombstones", { key: `${store}:${id}`, store, id, deletedAt: Date.now() });
 }
 
+// Writing a fresh value for a record inherently supersedes any pending
+// "this was deleted" tombstone for the same id — most relevant for
+// active_workout_draft, which always reuses the id "current": finish a
+// workout (tombstones it), start a new one (writes a new draft under the
+// same id) — without this, the next sync would re-push the stale tombstone
+// and mark the brand-new, live draft as deleted remotely.
+async function clearTombstoneFor(store: SyncTombstone["store"], id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete("sync_tombstones", `${store}:${id}`);
+}
+
 export async function lastSetsFor(exerciseName: string): Promise<{ r: number; w: number }[] | null> {
   const db = await getDB();
   const sessions = await db.getAllFromIndex("workout_sessions", "startedAt");
@@ -252,6 +263,7 @@ export async function getTemplate(id: string): Promise<Template | undefined> {
 export async function saveTemplate(template: Omit<Template, "updatedAt">): Promise<void> {
   const db = await getDB();
   await db.put("templates", { ...template, updatedAt: Date.now() });
+  await clearTombstoneFor("templates", template.id);
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
@@ -278,6 +290,7 @@ export async function getLibraryExercise(id: string): Promise<LibraryExercise | 
 export async function saveLibraryExercise(exercise: Omit<LibraryExercise, "updatedAt">): Promise<void> {
   const db = await getDB();
   await db.put("exercise_library", { ...exercise, updatedAt: Date.now() });
+  await clearTombstoneFor("exercise_library", exercise.id);
 }
 
 export async function deleteLibraryExercise(
@@ -351,6 +364,7 @@ export async function getActiveWorkoutDraft(): Promise<ActiveWorkoutDraft | unde
 export async function saveActiveWorkoutDraft(draft: Omit<ActiveWorkoutDraft, "updatedAt">): Promise<void> {
   const db = await getDB();
   await db.put("active_workout_draft", { ...draft, updatedAt: Date.now() });
+  await clearTombstoneFor("active_workout_draft", "current");
 }
 
 export async function clearActiveWorkoutDraft(): Promise<void> {
@@ -369,6 +383,11 @@ export async function getWorkoutSessions(limit?: number): Promise<WorkoutSession
   const sessions = await db.getAllFromIndex("workout_sessions", "startedAt");
   sessions.reverse();
   return limit ? sessions.slice(0, limit) : sessions;
+}
+
+export async function getWorkoutSession(id: string): Promise<WorkoutSession | undefined> {
+  const db = await getDB();
+  return db.get("workout_sessions", id);
 }
 
 export function sessionVolume(session: WorkoutSession): number {

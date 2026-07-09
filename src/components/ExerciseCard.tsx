@@ -38,6 +38,10 @@ export function ExerciseCard({
   >(null);
   const weightStep = unit === "lb" ? 1 : 0.5;
 
+  const repsNum = Number(reps);
+  const weightNum = Number(weight);
+  const canLog = Number.isFinite(repsNum) && repsNum > 0 && Number.isFinite(weightNum) && weightNum >= 0;
+
   const done = ex.logged.length >= ex.targetSets;
   const showLogForm = isActive && (!done || addingExtra);
   const effectiveTarget = Math.max(ex.targetSets, ex.logged.length);
@@ -213,7 +217,13 @@ export function ExerciseCard({
                     className="stepper-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setter((v) => String(Math.max(0, parseFloat(v) - step)));
+                      // An empty/invalid field parses to NaN, which would
+                      // otherwise get stuck (NaN - step is still NaN) with
+                      // no way to recover except retyping the whole value.
+                      setter((v) => {
+                        const n = parseFloat(v);
+                        return String(Math.max(0, (Number.isFinite(n) ? n : 0) - step));
+                      });
                     }}
                   >
                     <Minus size={16} strokeWidth={2} />
@@ -228,7 +238,10 @@ export function ExerciseCard({
                     className="stepper-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setter((v) => String(parseFloat(v) + step));
+                      setter((v) => {
+                        const n = parseFloat(v);
+                        return String((Number.isFinite(n) ? n : 0) + step);
+                      });
                     }}
                   >
                     <Plus size={16} strokeWidth={2} />
@@ -239,9 +252,11 @@ export function ExerciseCard({
           </div>
           <Button
             className="w-full font-semibold text-[15px] tracking-tight"
+            disabled={!canLog}
             onClick={(e) => {
               e.stopPropagation();
-              onLogSet(ex.id, Number(reps), toKgWeight(Number(weight), unit));
+              if (!canLog) return;
+              onLogSet(ex.id, repsNum, toKgWeight(weightNum, unit));
               setAddingExtra(false);
             }}
           >
