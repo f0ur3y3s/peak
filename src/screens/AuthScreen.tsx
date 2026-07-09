@@ -166,13 +166,12 @@ export function AuthScreen() {
                     margin: 0,
                   }}
                 >
-                  Enter the 6-digit code sent to your email.
+                  Enter the OTP sent to your email.
                 </p>
                 <input
                   type="text"
-                  inputMode="numeric"
                   autoComplete="one-time-code"
-                  placeholder="6-digit code"
+                  placeholder="OTP"
                   required
                   autoFocus
                   value={code}
