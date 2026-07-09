@@ -46,7 +46,7 @@ function Stepper({ value, onChange, onStep }: StepperProps) {
   );
 }
 
-const SECTION_LABEL_STYLE = "text-[11px] text-muted-foreground mb-1.5 inline-flex items-center gap-1.5";
+const SECTION_LABEL_STYLE = "text-[13px] font-medium text-foreground mb-2 inline-flex items-center gap-2";
 
 export function ExerciseConfigEditor({
   exerciseName,
@@ -80,12 +80,12 @@ export function ExerciseConfigEditor({
   return (
     <div className="config-editor-overlay">
       <div className="config-editor-panel">
-        <p className="font-semibold text-[15px] mb-4">{exerciseName}</p>
+        <p className="font-semibold text-[17px] mb-4">{exerciseName}</p>
 
         <div className="flex flex-col gap-4 mb-5">
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Layers size={13} strokeWidth={2} />
+              <Layers size={15} strokeWidth={2} />
               Sets
             </p>
             <Stepper
@@ -97,12 +97,12 @@ export function ExerciseConfigEditor({
 
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Repeat size={13} strokeWidth={2} />
+              <Repeat size={15} strokeWidth={2} />
               Reps
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <p className="text-[10px] text-muted-foreground mb-1">Min</p>
+                <p className="text-[12px] text-muted-foreground mb-1.5">Min</p>
                 <Stepper
                   value={repsMin}
                   onChange={setRepsMin}
@@ -110,7 +110,7 @@ export function ExerciseConfigEditor({
                 />
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground mb-1">Max</p>
+                <p className="text-[12px] text-muted-foreground mb-1.5">Max</p>
                 <Stepper
                   value={repsMax}
                   onChange={setRepsMax}
@@ -119,7 +119,7 @@ export function ExerciseConfigEditor({
               </div>
             </div>
             {!repsValid && (
-              <p className="font-mono text-[11px] mt-1.5" style={{ color: "hsl(var(--destructive))" }}>
+              <p className="font-mono text-[12px] mt-1.5" style={{ color: "hsl(var(--destructive))" }}>
                 Min reps can't be greater than max.
               </p>
             )}
@@ -127,7 +127,7 @@ export function ExerciseConfigEditor({
 
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Dumbbell size={13} strokeWidth={2} />
+              <Dumbbell size={15} strokeWidth={2} />
               Weight ({unit})
             </p>
             <Stepper
@@ -139,7 +139,7 @@ export function ExerciseConfigEditor({
 
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Clock size={13} strokeWidth={2} />
+              <Clock size={15} strokeWidth={2} />
               Rest (sec)
             </p>
             <Stepper
