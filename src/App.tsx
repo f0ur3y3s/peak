@@ -14,6 +14,7 @@ import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
 import { getActiveWorkoutDraft, getTemplate } from "@/lib/db";
 import { syncNow } from "@/lib/sync";
+import { UpdateBanner } from "@/components/UpdateBanner";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -82,8 +83,13 @@ export default function App() {
     return () => clearInterval(iv);
   }, [session]);
 
-  if (session === undefined) return null;
-  if (session === null) return <AuthScreen />;
+  if (session === undefined) return <UpdateBanner />;
+  if (session === null) return (
+    <>
+      <UpdateBanner />
+      <AuthScreen />
+    </>
+  );
 
   const handleNav = async (tab: Screen) => {
     setNav(tab);
@@ -108,6 +114,7 @@ export default function App() {
 
   return (
     <WeightUnitProvider>
+    <UpdateBanner />
     <div
       className="bg-background min-h-screen relative"
       style={{ maxWidth: 430, margin: "0 auto" }}

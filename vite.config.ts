@@ -38,4 +38,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Splits third-party deps that change far less often than app code
+        // into their own chunks, so a deploy that only touches app code
+        // doesn't force a re-download of vendor code the browser already
+        // cached from the previous deploy. Also lets the browser fetch
+        // these in parallel with the app chunk on first load.
+        manualChunks: {
+          "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+          "vendor-supabase": ["@supabase/supabase-js"],
+        },
+      },
+    },
+  },
 });
