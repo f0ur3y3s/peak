@@ -35,10 +35,11 @@ export function HistoryScreen() {
         </p>
       )}
 
-      <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
+      {/* Analytics panel — no outer horizontal padding here; HistoryAnalytics
+          has its own internal padding, matching ExerciseHistoryScreen. */}
+      <HistoryAnalytics />
 
-        {/* Analytics panel */}
-        <HistoryAnalytics />
+      <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
 
         {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
