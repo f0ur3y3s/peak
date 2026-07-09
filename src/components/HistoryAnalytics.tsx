@@ -336,15 +336,17 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
 
   if (focusExercise ? !grouped[focusExercise]?.length : EXERCISES.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            {focusExercise
-              ? `No logged history yet for ${focusExercise}`
-              : "Log a workout to see your progress"}
-          </p>
-        </CardContent>
-      </Card>
+      <div style={{ padding: 16 }}>
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="text-muted-foreground text-sm">
+              {focusExercise
+                ? `No logged history yet for ${focusExercise}`
+                : "Log a workout to see your progress"}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
