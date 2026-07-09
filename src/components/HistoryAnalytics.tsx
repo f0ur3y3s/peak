@@ -43,7 +43,7 @@ const DATE_RANGES: DateRange[] = [
 
 type Metric = "weight" | "volume";
 
-const mono = "'DM Mono', 'Courier New', monospace";
+const mono = "'DM Mono', monospace";
 const sans = "'Inter', system-ui, sans-serif";
 
 // Math helpers
@@ -469,7 +469,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               trendDelta === null
                 ? "hsl(var(--foreground))"
                 : trendDelta >= 0
-                ? "hsl(142 70% 45%)"
+                ? "hsl(var(--primary))"
                 : "hsl(var(--destructive))",
             ],
           ] as const

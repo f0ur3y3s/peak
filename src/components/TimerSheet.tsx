@@ -49,10 +49,10 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
   const done = remaining === 0;
 
   const timerColor = done
-    ? "hsl(72 100% 64%)"
+    ? "hsl(var(--primary))"
     : danger
-    ? "hsl(4 90% 62%)"
-    : "hsl(0 0% 94%)";
+    ? "hsl(var(--destructive))"
+    : "hsl(var(--foreground))";
 
   // Drag handlers
   const onPointerDown = useCallback((e: React.PointerEvent) => {
@@ -95,7 +95,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
       <div
         className="timer-sheet-inner"
         style={{
-          borderColor: done ? "hsl(72 100% 64% / 0.5)" : undefined,
+          borderColor: done ? "hsl(var(--primary) / 0.5)" : undefined,
         }}
       >
         {collapsed ? (
@@ -135,7 +135,10 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
               onPointerUp={onPointerUp}
             />
 
-            <div className="flex flex-col items-center px-6 pt-6 pb-9 gap-0">
+            <div
+              className="flex flex-col items-center px-6 pt-6 gap-0"
+              style={{ paddingBottom: "calc(2.25rem + env(safe-area-inset-bottom, 0px))" }}
+            >
               {/* Context */}
               <p className="font-mono text-[11px] text-muted-foreground tracking-widest uppercase mb-1">
                 {exerciseName}
@@ -181,7 +184,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                 variant="ghost"
                 onClick={onClose}
                 className="font-mono text-xs tracking-widest gap-1.5"
-                style={{ color: done ? "hsl(72 100% 64%)" : "hsl(var(--muted-foreground))" }}
+                style={{ color: done ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
               >
                 {done ? (
                   <>

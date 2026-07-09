@@ -80,7 +80,7 @@ export function ExercisePicker({
   return (
     <div className="config-editor-overlay">
       <div className="config-editor-panel">
-        <p className="font-semibold text-[15px] mb-3">Add exercise</p>
+        <p className="font-semibold text-[17px] mb-3">Add exercise</p>
         <input
           style={{ ...TEXT_INPUT_STYLE, marginBottom: 12 }}
           placeholder="Search or create exercise"

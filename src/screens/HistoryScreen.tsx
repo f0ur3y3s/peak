@@ -39,16 +39,12 @@ export function HistoryScreen() {
           has its own internal padding, matching ExerciseHistoryScreen. */}
       <HistoryAnalytics />
 
-      <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
+      <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
 
         {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
-          <span style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 10,
-            color: "hsl(var(--muted-foreground))",
-            letterSpacing: "0.08em", textTransform: "uppercase",
-          }}>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             Workouts
           </span>
           <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
@@ -117,11 +113,7 @@ export function HistoryScreen() {
                         <p className="font-medium text-[13px] mb-1.5">{ex.name}</p>
                         <div className="flex gap-1.5 flex-wrap">
                           {ex.sets.map((s, i) => (
-                            <span
-                              key={i}
-                              className="font-mono text-xs px-2 py-0.5 rounded-md border border-border"
-                              style={{ background: "hsl(var(--secondary))" }}
-                            >
+                            <span key={i} className="set-chip">
                               {s.reps} × {fmtWeight(s.weight, unit)}{unit}
                             </span>
                           ))}

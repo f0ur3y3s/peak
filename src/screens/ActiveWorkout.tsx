@@ -378,7 +378,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
           <Progress value={totalTarget > 0 ? (totalLogged / totalTarget) * 100 : 0} className="h-[3px]" />
         </div>
 
-        <div className="px-5 pt-3.5 pb-28 flex flex-col gap-3">
+        <div className="px-5 pt-3.5 pb-28 flex flex-col gap-2.5">
           {exercises.map((ex) => (
             <ExerciseCard
               key={ex.id}

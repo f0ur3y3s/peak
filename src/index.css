@@ -16,8 +16,6 @@
     --foreground: 0 0% 94%;
     --card: 0 0% 10%;
     --card-foreground: 0 0% 94%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 94%;
     --primary: 72 100% 64%;
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 14%;
@@ -115,9 +113,9 @@
   font-size: 12px;
   padding: 3px 9px;
   border-radius: 6px;
-  background: hsl(72 100% 64% / 0.1);
+  background: hsl(var(--primary) / 0.1);
   color: hsl(72 80% 55%);
-  border: 1px solid hsl(72 100% 64% / 0.2);
+  border: 1px solid hsl(var(--primary) / 0.2);
 }
 
 /* Stepper */
@@ -211,11 +209,6 @@
   transform: rotate(180deg);
 }
 
-/* shadcn Progress accent override */
-[data-slot="progress-indicator"] {
-  background: hsl(var(--primary)) !important;
-}
-
 /* Auth Input */
 .auth-input:focus {
   border-color: hsl(var(--primary));
@@ -243,7 +236,7 @@
 .config-editor-panel {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  border-radius: 14px;
+  border-radius: var(--radius);
   padding: 20px;
   width: 100%;
   max-width: 360px;

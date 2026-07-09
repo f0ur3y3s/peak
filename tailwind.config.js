@@ -55,8 +55,8 @@ export default {
           to: { height: "0" },
         },
         "pulse-border": {
-          "0%, 100%": { borderColor: "hsl(72 100% 64% / 0.4)" },
-          "50%": { borderColor: "hsl(72 100% 64% / 0.8)" },
+          "0%, 100%": { borderColor: "hsl(var(--primary) / 0.4)" },
+          "50%": { borderColor: "hsl(var(--primary) / 0.8)" },
         },
         "slide-up": {
           from: { transform: "translateY(12px)", opacity: "0" },

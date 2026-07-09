@@ -12,6 +12,7 @@ import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 import { useDragReorder } from "@/lib/useDragReorder";
+import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
   getTemplate,
   getExercises,
@@ -36,19 +37,6 @@ const DEFAULT_CONFIG: ExerciseConfigValues = {
   repsMax: 8,
   targetWeight: 20,
   restSeconds: 90,
-};
-
-const RENAME_INPUT_STYLE: React.CSSProperties = {
-  background: "hsl(var(--card))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "hsl(var(--foreground))",
-  fontFamily: "'DM Mono', monospace",
-  fontSize: 14,
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
 };
 
 export function TemplateDetail({
@@ -245,7 +233,7 @@ export function TemplateDetail({
       {editMode && (
         <div className="px-5 pt-3 flex flex-col gap-2.5">
           <input
-            style={RENAME_INPUT_STYLE}
+            style={PAGE_INPUT_STYLE}
             defaultValue={template.name}
             onBlur={(e) => handleRename(e.target.value)}
           />

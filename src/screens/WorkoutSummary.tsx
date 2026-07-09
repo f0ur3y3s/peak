@@ -20,7 +20,7 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
   return (
     <div className="px-5 pt-10 pb-10 flex flex-col gap-6">
       <div className="text-center">
-        <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
+        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
           Workout Complete
           <PartyPopper size={13} strokeWidth={2} />
         </p>
@@ -33,7 +33,7 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
             <p className="font-mono text-lg" style={{ color: "hsl(var(--primary))" }}>
               {fmtTime(durationSeconds)}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-1">Duration</p>
+            <p className="text-[11px] text-muted-foreground mt-px">Duration</p>
           </CardContent>
         </Card>
         <Card>
@@ -41,7 +41,7 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
             <p className="font-mono text-lg" style={{ color: "hsl(var(--primary))" }}>
               {Number(fmtWeight(totalVolume, unit)).toLocaleString()}{unit}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-1">Volume</p>
+            <p className="text-[11px] text-muted-foreground mt-px">Volume</p>
           </CardContent>
         </Card>
         <Card>
@@ -49,14 +49,14 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
             <p className="font-mono text-lg" style={{ color: "hsl(var(--primary))" }}>
               {totalSets}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-1">Sets</p>
+            <p className="text-[11px] text-muted-foreground mt-px">Sets</p>
           </CardContent>
         </Card>
       </div>
 
       {session.prs.length > 0 && (
         <div>
-          <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-widest mb-2.5">
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2.5">
             Personal Records
           </p>
           <div className="flex flex-col gap-2">

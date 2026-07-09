@@ -6,25 +6,13 @@ import { TopBar } from "@/components/TopBar";
 import { ExerciseEditForm } from "@/components/ExerciseEditForm";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MUSCLE_GROUPS, fuzzyMatch, groupForMuscle } from "@/lib/muscles";
+import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
   getExerciseLibrary,
   saveLibraryExercise,
   deleteLibraryExercise,
   type LibraryExercise,
 } from "@/lib/db";
-
-const SEARCH_INPUT_STYLE: React.CSSProperties = {
-  background: "hsl(var(--background))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "hsl(var(--foreground))",
-  fontFamily: "'DM Mono', monospace",
-  fontSize: 14,
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-};
 
 const GROUP_ORDER = [...MUSCLE_GROUPS.map((g) => g.group), "Other"];
 
@@ -123,7 +111,7 @@ export function ExercisesScreen() {
 
       <div className="px-5 pt-4">
         <input
-          style={SEARCH_INPUT_STYLE}
+          style={PAGE_INPUT_STYLE}
           placeholder="Search exercises"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

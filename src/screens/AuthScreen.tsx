@@ -310,7 +310,7 @@ export function AuthScreen() {
           style={{
             marginTop: 4,
             background: "hsl(var(--primary))",
-            color: "#000",
+            color: "hsl(var(--primary-foreground))",
             border: "none",
             borderRadius: 10,
             padding: "13px 0",

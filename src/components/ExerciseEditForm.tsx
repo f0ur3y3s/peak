@@ -26,10 +26,10 @@ export function ExerciseEditForm({
   return (
     <div className="config-editor-overlay">
       <div className="config-editor-panel">
-        <p className="font-semibold text-[15px] mb-4">{title}</p>
+        <p className="font-semibold text-[17px] mb-4">{title}</p>
         <div className="flex flex-col gap-2.5 mb-5">
           <div>
-            <p className="text-[11px] text-muted-foreground mb-1.5">Name</p>
+            <p className="text-[12px] text-muted-foreground mb-1.5">Name</p>
             <input
               style={TEXT_INPUT_STYLE}
               value={name}
@@ -38,7 +38,7 @@ export function ExerciseEditForm({
             />
           </div>
           <div>
-            <p className="text-[11px] text-muted-foreground mb-1.5">Muscle group</p>
+            <p className="text-[12px] text-muted-foreground mb-1.5">Muscle group</p>
             <MuscleSelect value={muscle} onChange={setMuscle} />
           </div>
         </div>

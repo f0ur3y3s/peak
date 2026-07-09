@@ -20,7 +20,7 @@ export function ConfirmDialog({
   return (
     <div className="config-editor-overlay">
       <div className="config-editor-panel">
-        <p className="font-semibold text-[15px] mb-2">{title}</p>
+        <p className="font-semibold text-[17px] mb-2">{title}</p>
         <p className="text-[13px] text-muted-foreground mb-5">{message}</p>
         <div className="flex gap-2.5">
           <Button variant="outline" className="flex-1" onClick={onCancel}>

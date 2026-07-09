@@ -7,6 +7,7 @@ import { TopBar } from "@/components/TopBar";
 import { fmtRelativeDate } from "@/lib/utils";
 import { groupForMuscle } from "@/lib/muscles";
 import { useDragReorder } from "@/lib/useDragReorder";
+import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
   getTemplates,
   getWorkoutSessions,
@@ -21,19 +22,6 @@ interface TemplatesScreenProps {
   onSelectTemplate: (id: string) => void;
   onCreateTemplate: (id: string) => void;
 }
-
-const NEW_TEMPLATE_INPUT_STYLE: React.CSSProperties = {
-  background: "hsl(var(--background))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "hsl(var(--foreground))",
-  fontFamily: "'DM Mono', monospace",
-  fontSize: 14,
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-};
 
 export function TemplatesScreen({
   onSelectTemplate,
@@ -187,7 +175,7 @@ export function TemplatesScreen({
           <Card>
             <CardContent style={{ padding: 14 }} className="flex flex-col gap-2.5">
               <input
-                style={NEW_TEMPLATE_INPUT_STYLE}
+                style={PAGE_INPUT_STYLE}
                 placeholder="Template name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
