@@ -234,7 +234,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  /* Above .nav-bar (z-index: 50) — otherwise the nav bar, which comes later
+     in the DOM, paints over the bottom of a modal tall enough to reach it. */
+  z-index: 60;
   padding: 20px;
 }
 
@@ -245,6 +247,10 @@
   padding: 20px;
   width: 100%;
   max-width: 360px;
+  /* Scroll internally instead of overflowing past the viewport on shorter
+     screens or content-heavy forms (e.g. the 4-section exercise config). */
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
 
 .exercise-picker-row {
