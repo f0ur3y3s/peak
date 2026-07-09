@@ -10,7 +10,10 @@ interface TopBarProps {
 
 export function TopBar({ title, sub, onBack, right }: TopBarProps) {
   return (
-    <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border sticky top-0 z-30 bg-background">
+    <div
+      className="flex items-center justify-between px-5 pb-3 border-b border-border sticky top-0 z-30 bg-background"
+      style={{ paddingTop: "calc(1rem + env(safe-area-inset-top, 0px))" }}
+    >
       <div className="flex items-center gap-3">
         {onBack && (
           <button

@@ -89,7 +89,7 @@ export function AuthScreen() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "0 24px",
+        padding: "env(safe-area-inset-top, 0px) 24px env(safe-area-inset-bottom, 0px)",
       }}
     >
       {/* Wordmark */}
