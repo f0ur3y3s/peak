@@ -128,7 +128,10 @@ export default function App() {
         {screen === "template" && activeTemplateId && (
           <TemplateDetail
             templateId={activeTemplateId}
-            onStart={() => setScreen("workout")}
+            onStart={() => {
+              setScreen("workout");
+              setNav("workout");
+            }}
             onBack={() => handleNav("templates")}
             onViewExerciseHistory={(name) => {
               setViewingExerciseName(name);
@@ -140,12 +143,18 @@ export default function App() {
         {screen === "workout" && activeTemplateId && (
           <ActiveWorkout
             templateId={activeTemplateId}
-            onBack={() => setScreen("template")}
+            onBack={() => {
+              setScreen("template");
+              setNav("templates");
+            }}
             onFinish={() => {
               setScreen("history");
               setNav("history");
             }}
-            onDiscard={() => setScreen("template")}
+            onDiscard={() => {
+              setScreen("template");
+              setNav("templates");
+            }}
             onBackToTemplates={() => handleNav("templates")}
           />
         )}
