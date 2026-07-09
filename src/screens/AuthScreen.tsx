@@ -8,7 +8,9 @@ export function AuthScreen() {
   const [email, setEmail]       = useState("");
   const [error, setError]       = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode]         = useState("");
+  const [verifying, setVerifying] = useState(false);
   const [requestName, setRequestName]       = useState("");
   const [requestEmail, setRequestEmail]     = useState("");
   const [requestMessage, setRequestMessage] = useState("");
@@ -19,24 +21,38 @@ export function AuthScreen() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setMagicLinkSent(false);
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin,
-        // Only approved accounts (created by an admin in the Supabase
-        // dashboard) can sign in — a magic-link request must never
-        // silently create a new account for an unapproved email.
-        shouldCreateUser: false,
-      },
+    // Delivered via our own Edge Function + Resend, not Supabase's own
+    // auth email, so the code is guaranteed to actually be visible in the
+    // email (Supabase's dashboard-configured templates only worked for
+    // rendering the magic-link, not the code). Verification below still
+    // goes through Supabase's own verifyOtp — this only changes delivery.
+    const { data, error: fnError } = await supabase.functions.invoke("request-signin-code", {
+      body: { email },
     });
     setLoading(false);
-    if (authError) {
-      setError(authError.message);
+    if (fnError || data?.success !== true) {
+      setError(fnError?.message ?? data?.error ?? "Couldn't send the code — try again.");
       return;
     }
-    setMagicLinkSent(true);
+    setCodeSent(true);
+  }
+
+  async function handleVerifyCode(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setVerifying(true);
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token: code.trim(),
+      type: "email",
+    });
+    setVerifying(false);
+    if (verifyError) {
+      setError(verifyError.message);
+    }
+    // On success, App.tsx's onAuthStateChange listener picks up the new
+    // session and navigates away from this screen automatically.
   }
 
   async function handleRequest(e: FormEvent) {
@@ -106,7 +122,7 @@ export function AuthScreen() {
       </div>
 
       <form
-        onSubmit={mode === "login" ? handleSubmit : handleRequest}
+        onSubmit={mode === "login" ? (codeSent ? handleVerifyCode : handleSubmit) : handleRequest}
         style={{
           width: "100%",
           maxWidth: 360,
@@ -122,8 +138,9 @@ export function AuthScreen() {
               placeholder="Email"
               autoComplete="email"
               required
+              disabled={codeSent}
               value={email}
-              onChange={e => { setEmail(e.target.value); setError(null); setMagicLinkSent(false); }}
+              onChange={e => { setEmail(e.target.value); setError(null); }}
               className="auth-input"
               style={{
                 background: "hsl(var(--card))",
@@ -136,8 +153,48 @@ export function AuthScreen() {
                 outline: "none",
                 width: "100%",
                 boxSizing: "border-box",
+                opacity: codeSent ? 0.6 : 1,
               }}
             />
+            {codeSent && (
+              <>
+                <p
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 12,
+                    color: "hsl(var(--muted-foreground))",
+                    margin: 0,
+                  }}
+                >
+                  Enter the 6-digit code sent to your email.
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
+                  required
+                  autoFocus
+                  value={code}
+                  onChange={e => { setCode(e.target.value); setError(null); }}
+                  className="auth-input"
+                  style={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 10,
+                    padding: "12px 14px",
+                    color: "hsl(var(--foreground))",
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 18,
+                    letterSpacing: "0.3em",
+                    textAlign: "center",
+                    outline: "none",
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </>
+            )}
           </>
         ) : (
           <>
@@ -232,19 +289,6 @@ export function AuthScreen() {
           </p>
         )}
 
-        {mode === "login" && magicLinkSent && (
-          <p
-            style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: 12,
-              color: "hsl(var(--primary))",
-              margin: 0,
-            }}
-          >
-            Check your email for a sign-in link.
-          </p>
-        )}
-
         {mode === "request" && requestSent && (
           <p
             style={{
@@ -260,7 +304,7 @@ export function AuthScreen() {
 
         <button
           type="submit"
-          disabled={mode === "login" ? loading : requestLoading}
+          disabled={mode === "login" ? (codeSent ? verifying : loading) : requestLoading}
           style={{
             marginTop: 4,
             background: "hsl(var(--primary))",
@@ -272,22 +316,50 @@ export function AuthScreen() {
             fontSize: 13,
             fontWeight: 500,
             letterSpacing: "0.06em",
-            cursor: (mode === "login" ? loading : requestLoading) ? "not-allowed" : "pointer",
-            opacity: (mode === "login" ? loading : requestLoading) ? 0.6 : 1,
+            cursor: (mode === "login" ? (codeSent ? verifying : loading) : requestLoading) ? "not-allowed" : "pointer",
+            opacity: (mode === "login" ? (codeSent ? verifying : loading) : requestLoading) ? 0.6 : 1,
             width: "100%",
           }}
         >
           {mode === "login"
-            ? loading ? "Sending link..." : "Send magic link"
+            ? codeSent
+              ? verifying ? "Verifying..." : "Verify code"
+              : loading ? "Sending code..." : "Send code"
             : requestLoading ? "Submitting..." : "Request account"}
         </button>
+
+        {mode === "login" && codeSent && (
+          <button
+            type="button"
+            onClick={() => {
+              setCodeSent(false);
+              setCode("");
+              setError(null);
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "hsl(var(--muted-foreground))",
+              cursor: "pointer",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 12,
+              letterSpacing: "0.04em",
+              padding: "6px 0 0",
+              textDecoration: "underline",
+              textUnderlineOffset: 4,
+            }}
+          >
+            Use a different email
+          </button>
+        )}
 
         <button
           type="button"
           onClick={() => {
             setMode((current) => (current === "login" ? "request" : "login"));
             setError(null);
-            setMagicLinkSent(false);
+            setCodeSent(false);
+            setCode("");
             setRequestError(null);
             setRequestSent(false);
           }}

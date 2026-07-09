@@ -51,7 +51,7 @@ export function ExercisesScreen() {
 
   const handleCreate = async (name: string, muscle: string) => {
     setActionError(null);
-    const exercise: LibraryExercise = { id: crypto.randomUUID(), name, muscle };
+    const exercise: LibraryExercise = { id: crypto.randomUUID(), name, muscle, updatedAt: Date.now() };
     try {
       await saveLibraryExercise(exercise);
       setCreating(false);

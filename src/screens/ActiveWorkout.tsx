@@ -202,6 +202,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard }: Activ
           sets: ex.logged.map((s) => ({ reps: s.reps, weight: s.weight })),
         })),
         prs,
+        updatedAt: Date.now(),
       };
 
       await saveWorkoutSession(built);

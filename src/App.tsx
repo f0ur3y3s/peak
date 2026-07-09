@@ -13,6 +13,9 @@ import { ExerciseHistoryScreen } from "@/screens/ExerciseHistoryScreen";
 import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
 import { getActiveWorkoutDraft } from "@/lib/db";
+import { syncNow } from "@/lib/sync";
+
+const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 type AppScreen =
   | "templates"
@@ -62,6 +65,19 @@ export default function App() {
       setScreen("profile");
       setNav("profile");
     });
+
+    // One sync pass on sign-in/app-open, in addition to the periodic timer
+    // below, so a freshly opened app catches up immediately rather than
+    // waiting for the first interval tick.
+    if (navigator.onLine) syncNow();
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    const iv = setInterval(() => {
+      if (navigator.onLine) syncNow();
+    }, SYNC_INTERVAL_MS);
+    return () => clearInterval(iv);
   }, [session]);
 
   if (session === undefined) return null;

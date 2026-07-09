@@ -64,7 +64,7 @@ export function TemplatesScreen({
     const name = newName.trim();
     if (!name) return;
     setCreateError(null);
-    const template: Template = { id: crypto.randomUUID(), name, exercises: [] };
+    const template: Template = { id: crypto.randomUUID(), name, exercises: [], updatedAt: Date.now() };
     try {
       await saveTemplate(template);
     } catch {

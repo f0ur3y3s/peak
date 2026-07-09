@@ -62,6 +62,7 @@ export function ExercisePicker({
       id: crypto.randomUUID(),
       name: filter.trim(),
       muscle: creatingMuscle.trim() || "Other",
+      updatedAt: Date.now(),
     };
     try {
       await saveLibraryExercise(newExercise);
