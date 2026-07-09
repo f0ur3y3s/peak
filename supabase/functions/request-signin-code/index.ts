@@ -41,7 +41,7 @@ function buildEmailHtml(code: string): string {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:420px;">
         <tr>
           <td align="center" style="padding-bottom:28px;">
-            <span style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:bold;letter-spacing:6px;color:#e8ff47;">PEAK</span>
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:bold;letter-spacing:6px;color:#e8ff47;">PEAK</span>
           </td>
         </tr>
         <tr>
