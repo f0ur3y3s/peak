@@ -32,6 +32,12 @@
     --input: 0 0% 14%;
     --ring: 72 100% 64%;
     --radius: 0.75rem;
+    /* Total on-screen height of .nav-bar: the 60px tab row plus whatever
+       safe-area inset it pads out by on devices with a home indicator.
+       Anything that needs to sit above the nav bar (scroll padding, the
+       collapsed TimerSheet pill) must use this instead of a bare 60px, or
+       it sits under the inset portion and gets covered by the nav bar. */
+    --nav-total-h: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -183,6 +189,7 @@
   overflow-y: auto;
   height: 100vh;
   scrollbar-gutter: stable;
+  padding-bottom: var(--nav-total-h);
 }
 
 .timer-pill {

@@ -9,7 +9,10 @@ interface TimerSheetProps {
   onClose: () => void;
 }
 
-const NAV_H = 60;
+// Matches --nav-total-h in index.css (the 60px tab row plus whatever
+// safe-area inset the nav bar pads out by) so the collapsed pill sits
+// fully above the nav bar instead of under its inset portion.
+const NAV_H = "var(--nav-total-h)";
 const COLLAPSE_THRESHOLD = 80;
 
 export function TimerSheet({ timer, onClose }: TimerSheetProps) {

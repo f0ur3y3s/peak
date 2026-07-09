@@ -111,7 +111,7 @@ export default function App() {
       className="bg-background min-h-screen relative"
       style={{ maxWidth: 430, margin: "0 auto" }}
     >
-      <div className="scroll-area" style={{ paddingBottom: 60 }}>
+      <div className="scroll-area">
         {screen === "templates" && (
           <TemplatesScreen
             onSelectTemplate={(id) => {
