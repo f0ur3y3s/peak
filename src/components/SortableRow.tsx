@@ -19,15 +19,22 @@ export function SortableRow({ id, children }: SortableRowProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id });
 
+  // CSS.Transform.toString only encodes dnd-kit's translate — append the
+  // scale ourselves so the dragged row visibly lifts off the list instead
+  // of just following the pointer at its normal size.
+  const baseTransform = CSS.Transform.toString(transform);
+  const draggingTransform = baseTransform ? `${baseTransform} scale(1.04)` : "scale(1.04)";
+
   return (
     <div
       ref={setNodeRef}
       style={{
-        transform: CSS.Transform.toString(transform),
+        transform: isDragging ? draggingTransform : baseTransform,
         transition,
         zIndex: isDragging ? 10 : undefined,
-        opacity: isDragging ? 0.85 : undefined,
-        boxShadow: isDragging ? "0 8px 24px hsl(0 0% 0% / 0.4)" : undefined,
+        boxShadow: isDragging
+          ? "0 0 0 2px hsl(var(--primary)), 0 8px 24px hsl(0 0% 0% / 0.4)"
+          : undefined,
         borderRadius: "var(--radius)",
       }}
     >
