@@ -21,7 +21,11 @@
     --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 94%;
     --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 40%;
+    /* 58% L clears ~6.3:1 on --background and ~5.8:1 on --card — the
+       previous 40% computed to ~3.3:1 against --background, below the
+       4.5:1 AA minimum for normal text, on a token used everywhere
+       (timestamps, subtitles, badge fine print, empty states). */
+    --muted-foreground: 0 0% 58%;
     --accent: 72 100% 64%;
     --accent-foreground: 0 0% 0%;
     --destructive: 4 90% 58%;
@@ -116,6 +120,27 @@
   background: hsl(var(--primary) / 0.1);
   color: hsl(72 80% 55%);
   border: 1px solid hsl(var(--primary) / 0.2);
+}
+
+/* Active-workout exercise card state — referenced by ExerciseCard.tsx's
+   `cardBorderClass` but previously undefined anywhere, so the card gave no
+   visual signal for "this is the one you're logging" vs "this one's done"
+   beyond a subtle text-color change on the set counter. */
+.card-active {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--primary) / 0.04);
+}
+
+.card-complete {
+  border-color: hsl(var(--primary) / 0.25);
+}
+
+/* Log-set form — reuses the slide-up keyframe already defined in
+   tailwind.config.js (animation: "slide-up") but never applied anywhere,
+   so a newly-revealed log form previously just popped in with no
+   transition. */
+.log-form {
+  animation: slide-up 0.18s ease;
 }
 
 /* Stepper */

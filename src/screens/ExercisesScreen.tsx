@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { IconButton } from "@/components/ui/icon-button";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseEditForm } from "@/components/ExerciseEditForm";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -148,28 +149,16 @@ export function ExercisesScreen() {
                         {ex.muscle}
                       </Badge>
                     </div>
-                    <button
+                    <IconButton
+                      variant="destructive"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeletingExercise(ex);
                       }}
-                      style={{
-                        background: "hsl(var(--destructive) / 0.1)",
-                        border: "1px solid hsl(var(--destructive) / 0.3)",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        color: "hsl(var(--destructive))",
-                        width: 36,
-                        height: 36,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
                       aria-label={`Delete ${ex.name}`}
                     >
                       <X size={16} strokeWidth={2} />
-                    </button>
+                    </IconButton>
                   </CardContent>
                 </Card>
               ))}

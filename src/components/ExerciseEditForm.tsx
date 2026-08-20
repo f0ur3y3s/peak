@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MuscleSelect } from "@/components/MuscleSelect";
+import { Modal } from "@/components/Modal";
 import { TEXT_INPUT_STYLE, normalizeMuscle } from "@/lib/inputStyles";
 
 interface ExerciseEditFormProps {
@@ -18,15 +19,15 @@ export function ExerciseEditForm({
   onSave,
   onCancel,
 }: ExerciseEditFormProps) {
+  const titleId = useId();
   const [name, setName] = useState(initialName);
   const [muscle, setMuscle] = useState(initialMuscle);
 
   const canSave = name.trim().length > 0;
 
   return (
-    <div className="config-editor-overlay">
-      <div className="config-editor-panel">
-        <p className="font-semibold text-[17px] mb-4">{title}</p>
+    <Modal onClose={onCancel} labelledBy={titleId}>
+        <p id={titleId} className="font-semibold text-[17px] mb-4">{title}</p>
         <div className="flex flex-col gap-2.5 mb-5">
           <div>
             <p className="text-[12px] text-muted-foreground mb-1.5">Name</p>
@@ -54,7 +55,6 @@ export function ExerciseEditForm({
             Save
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

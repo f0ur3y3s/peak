@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { GripVertical } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -96,6 +96,18 @@ export function TemplatesScreen({
     reorderTemplates(reordered.map((t) => t.id));
   };
 
+  // Button-based reorder alternative alongside the drag handle — dragging
+  // alone has no single-pointer/keyboard equivalent, which WCAG 2.2 SC 2.5.7
+  // (Dragging Movements) requires.
+  const moveTemplate = (id: string, direction: -1 | 1) => {
+    const idx = templates.findIndex((t) => t.id === id);
+    const newIndex = idx + direction;
+    if (idx === -1 || newIndex < 0 || newIndex >= templates.length) return;
+    const reordered = arrayMove(templates, idx, newIndex);
+    setTemplates(reordered);
+    reorderTemplates(reordered.map((t) => t.id));
+  };
+
   return (
     <div>
       <TopBar title="Templates" />
@@ -103,7 +115,7 @@ export function TemplatesScreen({
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={templates.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-            {templates.map((t) => {
+            {templates.map((t, i) => {
               const lastTs = lastPerformed.get(t.id) ?? lastPerformed.get(`name:${t.name}`);
               const muscleGroups = [
                 ...new Set(
@@ -120,7 +132,7 @@ export function TemplatesScreen({
                       onClick={() => onSelectTemplate(t.id)}
                       className="cursor-pointer transition-colors"
                     >
-                      <CardContent style={{ padding: "14px 16px" }} className="flex items-center gap-3">
+                      <CardContent style={{ padding: "14px 16px" }} className="flex items-center gap-1">
                         <button
                           {...handleProps}
                           onClick={(e) => e.stopPropagation()}
@@ -129,16 +141,65 @@ export function TemplatesScreen({
                             border: "none",
                             cursor: "grab",
                             color: "hsl(var(--muted-foreground))",
-                            padding: 0,
+                            width: 44,
+                            height: 44,
                             display: "flex",
                             alignItems: "center",
+                            justifyContent: "center",
                             flexShrink: 0,
+                            marginLeft: -12,
                             touchAction: "none",
                           }}
                           aria-label="Drag to reorder"
                         >
                           <GripVertical size={16} strokeWidth={2} />
                         </button>
+                        <div className="flex flex-col" style={{ marginLeft: -8, marginRight: 6, flexShrink: 0 }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveTemplate(t.id, -1);
+                            }}
+                            disabled={i === 0}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              width: 28,
+                              height: 22,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "hsl(var(--muted-foreground))",
+                              cursor: i === 0 ? "default" : "pointer",
+                              opacity: i === 0 ? 0.3 : 1,
+                            }}
+                            aria-label={`Move ${t.name} up`}
+                          >
+                            <ChevronUp size={14} strokeWidth={2} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveTemplate(t.id, 1);
+                            }}
+                            disabled={i === templates.length - 1}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              width: 28,
+                              height: 22,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "hsl(var(--muted-foreground))",
+                              cursor: i === templates.length - 1 ? "default" : "pointer",
+                              opacity: i === templates.length - 1 ? 0.3 : 1,
+                            }}
+                            aria-label={`Move ${t.name} down`}
+                          >
+                            <ChevronDown size={14} strokeWidth={2} />
+                          </button>
+                        </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="flex justify-between items-center">
                             <div>

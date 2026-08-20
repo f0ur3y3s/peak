@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useId, useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   getExerciseLibrary,
   saveLibraryExercise,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/db";
 import { MuscleSelect } from "@/components/MuscleSelect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Modal } from "@/components/Modal";
 import { TEXT_INPUT_STYLE, normalizeMuscle } from "@/lib/inputStyles";
 
 interface ExercisePickerProps {
@@ -23,6 +25,7 @@ export function ExercisePicker({
   onPick,
   onCancel,
 }: ExercisePickerProps) {
+  const titleId = useId();
   const [library, setLibrary] = useState<LibraryExercise[]>([]);
   const [filter, setFilter] = useState("");
   const [creatingMuscle, setCreatingMuscle] = useState("");
@@ -78,9 +81,8 @@ export function ExercisePicker({
   };
 
   return (
-    <div className="config-editor-overlay">
-      <div className="config-editor-panel">
-        <p className="font-semibold text-[17px] mb-3">Add exercise</p>
+    <Modal onClose={onCancel} labelledBy={titleId}>
+        <p id={titleId} className="font-semibold text-[17px] mb-3">Add exercise</p>
         <input
           style={{ ...TEXT_INPUT_STYLE, marginBottom: 12 }}
           placeholder="Search or create exercise"
@@ -113,26 +115,14 @@ export function ExercisePicker({
                   {ex.muscle}
                 </Badge>
               </button>
-              <button
+              <IconButton
+                variant="destructive"
                 onClick={() => setDeletingExercise(ex)}
-                style={{
-                  background: "hsl(var(--destructive) / 0.1)",
-                  border: "1px solid hsl(var(--destructive) / 0.3)",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  color: "hsl(var(--destructive))",
-                  width: 36,
-                  height: 36,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginRight: 6,
-                }}
+                style={{ marginRight: 6 }}
                 aria-label={`Delete ${ex.name}`}
               >
                 <X size={16} strokeWidth={2} />
-              </button>
+              </IconButton>
             </div>
           ))}
           {filtered.length === 0 && !canCreate && (
@@ -159,7 +149,6 @@ export function ExercisePicker({
             </Button>
           )}
         </div>
-      </div>
 
       {deletingExercise && (
         <ConfirmDialog
@@ -173,6 +162,6 @@ export function ExercisePicker({
           onCancel={() => setDeletingExercise(null)}
         />
       )}
-    </div>
+    </Modal>
   );
 }

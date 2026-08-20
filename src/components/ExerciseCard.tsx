@@ -4,6 +4,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { IconButton } from "@/components/ui/icon-button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
@@ -162,33 +163,22 @@ export function ExerciseCard({
             <div
               key={s.id}
               className="grid gap-2 items-center py-1.5 border-b border-border"
-              style={{ gridTemplateColumns: "20px 1fr 1fr 40px" }}
+              style={{ gridTemplateColumns: "20px 1fr 1fr 44px" }}
             >
               <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
               <span className="font-mono text-sm">{s.reps} reps</span>
               <span className="font-mono text-sm">{fmtWeight(s.weight, unit)} {unit}</span>
-              <button
+              <IconButton
+                variant="destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   setDeletingSet({ id: s.id, index: i, reps: s.reps, weight: s.weight });
                 }}
-                style={{
-                  background: "hsl(var(--destructive) / 0.1)",
-                  border: "1px solid hsl(var(--destructive) / 0.3)",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  color: "hsl(var(--destructive))",
-                  width: 36,
-                  height: 36,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  justifySelf: "end",
-                }}
+                style={{ justifySelf: "end" }}
                 aria-label="Delete set"
               >
                 <X size={16} strokeWidth={2} />
-              </button>
+              </IconButton>
             </div>
           ))}
         </div>

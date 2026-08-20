@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Clock, Dumbbell, Layers, Minus, Plus, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/Modal";
 import { useWeightUnit, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
 
 export interface ExerciseConfigValues {
@@ -54,6 +55,7 @@ export function ExerciseConfigEditor({
   onSave,
   onCancel,
 }: ExerciseConfigEditorProps) {
+  const titleId = useId();
   const { unit } = useWeightUnit();
   const [targetSets, setTargetSets] = useState(String(initial.targetSets));
   const [repsMin, setRepsMin] = useState(String(initial.repsMin));
@@ -78,9 +80,8 @@ export function ExerciseConfigEditor({
     Number.isFinite(restNum) && restNum >= 0;
 
   return (
-    <div className="config-editor-overlay">
-      <div className="config-editor-panel">
-        <p className="font-semibold text-[17px] mb-4">{exerciseName}</p>
+    <Modal onClose={onCancel} labelledBy={titleId}>
+        <p id={titleId} className="font-semibold text-[17px] mb-4">{exerciseName}</p>
 
         <div className="flex flex-col gap-4 mb-5">
           <div>
@@ -170,7 +171,6 @@ export function ExerciseConfigEditor({
             Save
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

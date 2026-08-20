@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Clock, GripVertical, Pencil, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, GripVertical, Pencil, Plus, X } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { IconButton } from "@/components/ui/icon-button";
 import { TopBar } from "@/components/TopBar";
 import { SortableRow, type DragHandleProps } from "@/components/SortableRow";
 import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
@@ -139,6 +140,16 @@ export function TemplateDetail({
     handleReorderExercises(arrayMove(exercises, oldIndex, newIndex));
   };
 
+  // Button-based reorder alternative alongside the drag handle — dragging
+  // alone has no single-pointer/keyboard equivalent, which WCAG 2.2 SC 2.5.7
+  // (Dragging Movements) requires.
+  const moveExercise = (id: string, direction: -1 | 1) => {
+    const idx = exercises.findIndex((ex) => ex.id === id);
+    const newIndex = idx + direction;
+    if (idx === -1 || newIndex < 0 || newIndex >= exercises.length) return;
+    handleReorderExercises(arrayMove(exercises, idx, newIndex));
+  };
+
   const handleDeleteExercise = async (exerciseId: string) => {
     setActionError(null);
     const updated: Template = {
@@ -203,7 +214,12 @@ export function TemplateDetail({
     ? template.exercises.find((e) => e.exerciseId === editingExisting.exerciseId)
     : undefined;
 
-  const renderExerciseCard = (ex: Exercise, index: number, handleProps?: DragHandleProps) => (
+  const renderExerciseCard = (
+    ex: Exercise,
+    index: number,
+    handleProps?: DragHandleProps,
+    reorder?: { onMoveUp: () => void; onMoveDown: () => void; canMoveUp: boolean; canMoveDown: boolean }
+  ) => (
     <Card
       key={ex.id}
       onClick={() =>
@@ -215,25 +231,79 @@ export function TemplateDetail({
     >
       <CardHeader style={{ padding: "14px 16px 10px" }}>
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {handleProps ? (
-              <button
-                {...handleProps}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "grab",
-                  color: "hsl(var(--muted-foreground))",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  touchAction: "none",
-                }}
-                aria-label="Drag to reorder"
-              >
-                <GripVertical size={16} strokeWidth={2} />
-              </button>
+              <>
+                <button
+                  {...handleProps}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "grab",
+                    color: "hsl(var(--muted-foreground))",
+                    width: 44,
+                    height: 44,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginLeft: -12,
+                    touchAction: "none",
+                  }}
+                  aria-label="Drag to reorder"
+                >
+                  <GripVertical size={16} strokeWidth={2} />
+                </button>
+                {reorder && (
+                  <div className="flex flex-col" style={{ marginLeft: -8, marginRight: 2 }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        reorder.onMoveUp();
+                      }}
+                      disabled={!reorder.canMoveUp}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        width: 28,
+                        height: 22,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "hsl(var(--muted-foreground))",
+                        cursor: reorder.canMoveUp ? "pointer" : "default",
+                        opacity: reorder.canMoveUp ? 1 : 0.3,
+                      }}
+                      aria-label={`Move ${ex.name} up`}
+                    >
+                      <ChevronUp size={14} strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        reorder.onMoveDown();
+                      }}
+                      disabled={!reorder.canMoveDown}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        width: 28,
+                        height: 22,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "hsl(var(--muted-foreground))",
+                        cursor: reorder.canMoveDown ? "pointer" : "default",
+                        opacity: reorder.canMoveDown ? 1 : 0.3,
+                      }}
+                      aria-label={`Move ${ex.name} down`}
+                    >
+                      <ChevronDown size={14} strokeWidth={2} />
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <span className="font-mono text-[10px] text-muted-foreground min-w-[20px]">
                 {String(index + 1).padStart(2, "0")}
@@ -262,28 +332,16 @@ export function TemplateDetail({
               </p>
             </div>
             {editMode && (
-              <button
+              <IconButton
+                variant="destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDeleteExercise(ex.id);
                 }}
-                style={{
-                  background: "hsl(var(--destructive) / 0.1)",
-                  border: "1px solid hsl(var(--destructive) / 0.3)",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  color: "hsl(var(--destructive))",
-                  width: 36,
-                  height: 36,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
                 aria-label="Delete exercise"
               >
                 <X size={16} strokeWidth={2} />
-              </button>
+              </IconButton>
             )}
           </div>
         </div>
@@ -385,9 +443,16 @@ export function TemplateDetail({
             {editMode ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndExercises}>
                 <SortableContext items={exercises.map((ex) => ex.id)} strategy={verticalListSortingStrategy}>
-                  {exercises.map((ex) => (
+                  {exercises.map((ex, i) => (
                     <SortableRow key={ex.id} id={ex.id}>
-                      {(handleProps) => renderExerciseCard(ex, 0, handleProps)}
+                      {(handleProps) =>
+                        renderExerciseCard(ex, i, handleProps, {
+                          onMoveUp: () => moveExercise(ex.id, -1),
+                          onMoveDown: () => moveExercise(ex.id, 1),
+                          canMoveUp: i > 0,
+                          canMoveDown: i < exercises.length - 1,
+                        })
+                      }
                     </SortableRow>
                   ))}
                 </SortableContext>
