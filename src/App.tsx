@@ -18,6 +18,14 @@ import { UpdateBanner } from "@/components/UpdateBanner";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
+// Opt-in local preview: with no real Supabase project configured, set
+// VITE_LOCAL_PREVIEW=1 in .env to skip AuthScreen and use the app directly.
+// Templates, exercises, workouts, and history all live in IndexedDB via
+// lib/db.ts — only auth and cross-device sync need a real backend — so this
+// is enough to run and click through the whole app locally. Gated on DEV so
+// it can never affect a production build regardless of env misconfiguration.
+const LOCAL_PREVIEW = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PREVIEW === "1";
+
 type AppScreen =
   | "templates"
   | "template"
@@ -49,14 +57,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session && !LOCAL_PREVIEW) return;
     // Supabase fires onAuthStateChange (with a new session object) on every
     // background token refresh, not just real sign-ins — without this guard,
     // that would re-run the initial-landing-screen logic and yank the user
     // away from whatever they're doing (e.g. mid-workout) every ~time the
-    // token refreshes. Only resolve the landing screen once per actual user.
-    if (resolvedUserId.current === session.user.id) return;
-    resolvedUserId.current = session.user.id;
+    // token refreshes. Only resolve the landing screen once per actual user
+    // (or once for the local-preview "user", which has no real session).
+    const userKey = session?.user.id ?? "local-preview";
+    if (resolvedUserId.current === userKey) return;
+    resolvedUserId.current = userKey;
 
     getActiveWorkoutDraft().then((draft) => {
       if (draft) {
@@ -71,8 +81,9 @@ export default function App() {
 
     // One sync pass on sign-in/app-open, in addition to the periodic timer
     // below, so a freshly opened app catches up immediately rather than
-    // waiting for the first interval tick.
-    if (navigator.onLine) syncNow();
+    // waiting for the first interval tick. Skipped in local-preview mode —
+    // there's no real backend to sync with.
+    if (session && navigator.onLine) syncNow();
   }, [session]);
 
   useEffect(() => {
@@ -84,7 +95,7 @@ export default function App() {
   }, [session]);
 
   if (session === undefined) return <UpdateBanner />;
-  if (session === null) return (
+  if (session === null && !LOCAL_PREVIEW) return (
     <>
       <UpdateBanner />
       <AuthScreen />
@@ -177,7 +188,7 @@ export default function App() {
         {screen === "history" && <HistoryScreen />}
         {screen === "profile" && (
           <ProfileScreen
-            email={session.user.email ?? null}
+            email={session?.user.email ?? (LOCAL_PREVIEW ? "local-preview" : null)}
             onSignOut={() => supabase.auth.signOut()}
           />
         )}
