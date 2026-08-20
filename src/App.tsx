@@ -12,7 +12,7 @@ import { ExercisesScreen } from "@/screens/ExercisesScreen";
 import { ExerciseHistoryScreen } from "@/screens/ExerciseHistoryScreen";
 import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
-import { getActiveWorkoutDraft, getTemplate } from "@/lib/db";
+import { getActiveWorkoutDraft } from "@/lib/db";
 import { syncNow } from "@/lib/sync";
 import { UpdateBanner } from "@/components/UpdateBanner";
 
@@ -140,9 +140,9 @@ export default function App() {
               setNav("workout");
             }}
             onBack={() => handleNav("templates")}
-            onViewExerciseHistory={(name) => {
+            onViewExerciseHistory={(name, templateName) => {
               setViewingExerciseName(name);
-              getTemplate(activeTemplateId).then((t) => setViewingTemplateName(t?.name ?? null));
+              setViewingTemplateName(templateName);
               setScreen("exercise-history");
             }}
           />
@@ -166,7 +166,13 @@ export default function App() {
           />
         )}
         {screen === "workout-home" && (
-          <WorkoutHomeScreen onBrowseTemplates={() => handleNav("templates")} />
+          <WorkoutHomeScreen
+            onBrowseTemplates={() => handleNav("templates")}
+            onSelectTemplate={(id) => {
+              setActiveTemplateId(id);
+              setScreen("template");
+            }}
+          />
         )}
         {screen === "history" && <HistoryScreen />}
         {screen === "profile" && (

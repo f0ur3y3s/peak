@@ -39,7 +39,7 @@ interface TemplateDetailProps {
   templateId: string;
   onStart: () => void;
   onBack: () => void;
-  onViewExerciseHistory: (exerciseName: string) => void;
+  onViewExerciseHistory: (exerciseName: string, templateName: string) => void;
 }
 
 const DEFAULT_CONFIG: ExerciseConfigValues = {
@@ -226,7 +226,7 @@ export function TemplateDetail({
       onClick={() =>
         editMode
           ? setEditingExisting({ exerciseId: ex.id, name: ex.name })
-          : onViewExerciseHistory(ex.name)
+          : onViewExerciseHistory(ex.name, template.name)
       }
       style={{ cursor: "pointer" }}
     >
