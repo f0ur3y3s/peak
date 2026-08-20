@@ -403,8 +403,10 @@ export function TemplateDetail({
       {editMode && (
         <div className="px-5 pt-3 flex flex-col gap-2.5">
           <input
+            className="field-input"
             style={PAGE_INPUT_STYLE}
             defaultValue={template.name}
+            aria-label="Template name"
             onBlur={(e) => handleRename(e.target.value)}
           />
           <Button variant="destructive" className="w-full" onClick={() => setConfirmingDelete(true)}>

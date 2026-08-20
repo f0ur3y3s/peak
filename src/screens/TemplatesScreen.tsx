@@ -239,8 +239,10 @@ export function TemplatesScreen({
           <Card>
             <CardContent style={{ padding: 14 }} className="flex flex-col gap-2.5">
               <input
+                className="field-input"
                 style={PAGE_INPUT_STYLE}
                 placeholder="Template name"
+                aria-label="Template name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 autoFocus

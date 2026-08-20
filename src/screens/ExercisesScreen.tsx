@@ -113,8 +113,10 @@ export function ExercisesScreen() {
 
       <div className="px-5 pt-4">
         <input
+          className="field-input"
           style={PAGE_INPUT_STYLE}
           placeholder="Search exercises"
+          aria-label="Search exercises"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

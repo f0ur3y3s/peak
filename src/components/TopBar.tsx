@@ -58,7 +58,7 @@ export function TopBar({ title, sub, onBack, right, breadcrumb }: TopBarProps) {
               hero) — it loses its cut-out legibility at small, repeated
               sizes, so every screen's navigational heading uses a bold
               sans instead. */}
-          <p className="font-sans font-bold text-lg tracking-tight text-foreground">{title}</p>
+          <h1 className="font-sans font-bold text-lg tracking-tight text-foreground m-0">{title}</h1>
           {sub && (
             <p className="font-mono text-[11px] text-muted-foreground mt-px">{sub}</p>
           )}

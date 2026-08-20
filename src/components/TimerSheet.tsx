@@ -44,6 +44,21 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
     return () => clearInterval(iv);
   }, [timer]);
 
+  // Screen-reader announcement — the visual countdown updates every second,
+  // but announcing every second would drown a screen-reader user in noise.
+  // Only announce at a handful of meaningful checkpoints instead.
+  const [announcement, setAnnouncement] = useState("");
+  const lastAnnouncedRef = useRef<number | null>(null);
+  useEffect(() => {
+    lastAnnouncedRef.current = null;
+  }, [timer]);
+  useEffect(() => {
+    const milestones = [60, 30, 15, 10, 5, 4, 3, 2, 1, 0];
+    if (!milestones.includes(remaining) || lastAnnouncedRef.current === remaining) return;
+    lastAnnouncedRef.current = remaining;
+    setAnnouncement(remaining === 0 ? "Rest complete — time to lift" : `${remaining} seconds left`);
+  }, [remaining]);
+
   const pct = (remaining / totalSeconds) * 100;
   const danger = remaining <= 10 && remaining > 0;
   const done = remaining === 0;
@@ -92,6 +107,13 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
           : "bottom 0.3s cubic-bezier(.32,.72,0,1), transform 0.3s cubic-bezier(.32,.72,0,1)",
       }}
     >
+      {/* Visually hidden — announces the rest countdown at a handful of
+          checkpoints instead of the visual per-second tick, which would
+          otherwise be silent to (if throttled) or overwhelming for (if not)
+          a screen-reader user. */}
+      <span aria-live="polite" role="status" className="sr-only">
+        {announcement}
+      </span>
       <div
         className="timer-sheet-inner"
         style={{

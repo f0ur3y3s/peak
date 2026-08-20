@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, Clock, Minus, Plus, X } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,9 @@ export function ExerciseCard({
   onUpdateRest,
 }: ExerciseCardProps) {
   const { unit } = useWeightUnit();
+  const logFormIdBase = useId();
+  const repsFieldId = `${logFormIdBase}-reps`;
+  const weightFieldId = `${logFormIdBase}-weight`;
   const lastIdx = ex.logged.length;
   const defaultReps = String(ex.last?.[lastIdx]?.r ?? ex.repsMin);
   const defaultWeight = String(toDisplayWeight(ex.last?.[lastIdx]?.w ?? ex.targetWeight, unit));
@@ -197,15 +200,16 @@ export function ExerciseCard({
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             {(
               [
-                ["Reps", reps, setReps, 1],
-                [`Weight (${unit})`, weight, setWeight, weightStep],
-              ] as [string, string, (v: string | ((prev: string) => string)) => void, number][]
-            ).map(([label, val, setter, step]) => (
+                ["Reps", reps, setReps, 1, repsFieldId],
+                [`Weight (${unit})`, weight, setWeight, weightStep, weightFieldId],
+              ] as [string, string, (v: string | ((prev: string) => string)) => void, number, string][]
+            ).map(([label, val, setter, step, fieldId]) => (
               <div key={label}>
-                <p className="text-[11px] text-muted-foreground mb-1.5">{label}</p>
+                <label htmlFor={fieldId} className="block text-[11px] text-muted-foreground mb-1.5">{label}</label>
                 <div className="stepper">
                   <button
                     className="stepper-btn"
+                    aria-label={`Decrease ${label}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       // An empty/invalid field parses to NaN, which would
@@ -220,6 +224,7 @@ export function ExerciseCard({
                     <Minus size={16} strokeWidth={2} />
                   </button>
                   <input
+                    id={fieldId}
                     className="stepper-input"
                     value={val}
                     onChange={(e) => setter(e.target.value)}
@@ -227,6 +232,7 @@ export function ExerciseCard({
                   />
                   <button
                     className="stepper-btn"
+                    aria-label={`Increase ${label}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       setter((v) => {

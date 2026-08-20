@@ -240,6 +240,14 @@
   transform: rotate(180deg);
 }
 
+/* Shared focus state for TEXT_INPUT_STYLE/PAGE_INPUT_STYLE consumers — those
+   style objects set outline: none inline with no compensating indicator, so
+   keyboard focus was previously invisible on every input using them. */
+.field-input:focus {
+  --field-border-color: hsl(var(--primary));
+  outline: none;
+}
+
 /* Auth Input */
 .auth-input:focus {
   border-color: hsl(var(--primary));

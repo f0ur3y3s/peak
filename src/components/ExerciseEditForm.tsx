@@ -20,6 +20,8 @@ export function ExerciseEditForm({
   onCancel,
 }: ExerciseEditFormProps) {
   const titleId = useId();
+  const nameId = useId();
+  const muscleId = useId();
   const [name, setName] = useState(initialName);
   const [muscle, setMuscle] = useState(initialMuscle);
 
@@ -27,11 +29,13 @@ export function ExerciseEditForm({
 
   return (
     <Modal onClose={onCancel} labelledBy={titleId}>
-        <p id={titleId} className="font-semibold text-[17px] mb-4">{title}</p>
+        <h2 id={titleId} className="font-semibold text-[17px] mb-4">{title}</h2>
         <div className="flex flex-col gap-2.5 mb-5">
           <div>
-            <p className="text-[12px] text-muted-foreground mb-1.5">Name</p>
+            <label htmlFor={nameId} className="block text-[12px] text-muted-foreground mb-1.5">Name</label>
             <input
+              id={nameId}
+              className="field-input"
               style={TEXT_INPUT_STYLE}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -39,8 +43,8 @@ export function ExerciseEditForm({
             />
           </div>
           <div>
-            <p className="text-[12px] text-muted-foreground mb-1.5">Muscle group</p>
-            <MuscleSelect value={muscle} onChange={setMuscle} />
+            <label htmlFor={muscleId} className="block text-[12px] text-muted-foreground mb-1.5">Muscle group</label>
+            <MuscleSelect id={muscleId} value={muscle} onChange={setMuscle} />
           </div>
         </div>
         <div className="flex gap-2.5">

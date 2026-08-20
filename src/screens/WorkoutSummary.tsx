@@ -24,7 +24,7 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
           Workout Complete
           <PartyPopper size={16} strokeWidth={2} />
         </p>
-        <p className="font-title text-2xl uppercase tracking-wide">{session.templateName}</p>
+        <h1 className="font-title text-2xl uppercase tracking-wide m-0">{session.templateName}</h1>
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">

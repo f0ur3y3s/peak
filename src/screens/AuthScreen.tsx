@@ -97,7 +97,7 @@ export function AuthScreen() {
     >
       {/* Wordmark */}
       <div style={{ textAlign: "center", marginBottom: 40 }}>
-        <p
+        <h1
           className="font-title"
           style={{
             fontSize: 42,
@@ -109,7 +109,7 @@ export function AuthScreen() {
           }}
         >
           PEAK
-        </p>
+        </h1>
         <p
           style={{
             fontFamily: "'DM Mono', monospace",
@@ -139,6 +139,7 @@ export function AuthScreen() {
             <input
               type="email"
               placeholder="Email"
+              aria-label="Email"
               autoComplete="email"
               required
               disabled={codeSent}
@@ -175,6 +176,7 @@ export function AuthScreen() {
                   type="text"
                   autoComplete="one-time-code"
                   placeholder="OTP"
+                  aria-label="One-time code"
                   required
                   autoFocus
                   value={code}
@@ -203,6 +205,7 @@ export function AuthScreen() {
             <input
               type="text"
               placeholder="Name"
+              aria-label="Name"
               autoComplete="name"
               required
               value={requestName}
@@ -224,6 +227,7 @@ export function AuthScreen() {
             <input
               type="email"
               placeholder="Email"
+              aria-label="Email"
               autoComplete="email"
               required
               value={requestEmail}
@@ -244,6 +248,7 @@ export function AuthScreen() {
             />
             <textarea
               placeholder="Why do you want access?"
+              aria-label="Why do you want access?"
               value={requestMessage}
               onChange={e => { setRequestMessage(e.target.value); setRequestError(null); setRequestSent(false); }}
               className="auth-input"

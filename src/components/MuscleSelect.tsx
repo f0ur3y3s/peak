@@ -6,9 +6,13 @@ interface MuscleSelectProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Pass when a caller renders its own visible <label htmlFor={id}> for this
+   * field — otherwise it falls back to an aria-label so it's never
+   * unlabeled. */
+  id?: string;
 }
 
-export function MuscleSelect({ value, onChange, placeholder }: MuscleSelectProps) {
+export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectProps) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,8 +37,11 @@ export function MuscleSelect({ value, onChange, placeholder }: MuscleSelectProps
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
       <input
+        id={id}
+        className="field-input"
         style={TEXT_INPUT_STYLE}
         placeholder={placeholder ?? "Search muscle group"}
+        aria-label={id ? undefined : placeholder ?? "Search muscle group"}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);

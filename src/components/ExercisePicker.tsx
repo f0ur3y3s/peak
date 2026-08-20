@@ -26,6 +26,7 @@ export function ExercisePicker({
   onCancel,
 }: ExercisePickerProps) {
   const titleId = useId();
+  const creatingMuscleId = useId();
   const [library, setLibrary] = useState<LibraryExercise[]>([]);
   const [filter, setFilter] = useState("");
   const [creatingMuscle, setCreatingMuscle] = useState("");
@@ -82,10 +83,12 @@ export function ExercisePicker({
 
   return (
     <Modal onClose={onCancel} labelledBy={titleId}>
-        <p id={titleId} className="font-semibold text-[17px] mb-3">Add exercise</p>
+        <h2 id={titleId} className="font-semibold text-[17px] mb-3">Add exercise</h2>
         <input
+          className="field-input"
           style={{ ...TEXT_INPUT_STYLE, marginBottom: 12 }}
           placeholder="Search or create exercise"
+          aria-label="Search or create exercise"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           autoFocus
@@ -132,10 +135,10 @@ export function ExercisePicker({
 
         {canCreate && (
           <div className="mb-4">
-            <p className="text-[11px] text-muted-foreground mb-1.5">
+            <label htmlFor={creatingMuscleId} className="block text-[11px] text-muted-foreground mb-1.5">
               Create "{filter.trim()}" — muscle group
-            </p>
-            <MuscleSelect value={creatingMuscle} onChange={setCreatingMuscle} />
+            </label>
+            <MuscleSelect id={creatingMuscleId} value={creatingMuscle} onChange={setCreatingMuscle} />
           </div>
         )}
 
