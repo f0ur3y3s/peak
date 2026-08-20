@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/EmptyState";
 import {
   getWorkoutSessions,
   groupSessionsByExercise,
@@ -337,15 +338,13 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
   if (focusExercise ? !grouped[focusExercise]?.length : EXERCISES.length === 0) {
     return (
       <div style={{ padding: 16 }}>
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-muted-foreground text-sm">
-              {focusExercise
-                ? `No logged history yet for ${focusExercise}`
-                : "Log a workout to see your progress"}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          message={
+            focusExercise
+              ? `No logged history yet for ${focusExercise}.`
+              : "Log a workout to see your progress."
+          }
+        />
       </div>
     );
   }

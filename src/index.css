@@ -34,6 +34,12 @@
     --input: 0 0% 14%;
     --ring: 72 100% 64%;
     --radius: 0.75rem;
+    /* Achievement/completion accent — kept distinct from --primary so a PR
+       badge or "all sets complete" state doesn't share a hue with the
+       primary CTA / active-nav-tab / "you're here" meaning. --primary stays
+       reserved for actions and navigation. */
+    --success: 42 90% 58%;
+    --success-foreground: 0 0% 0%;
     /* Total on-screen height of .nav-bar: the 60px tab row plus whatever
        safe-area inset it pads out by on devices with a home indicator.
        Anything that needs to sit above the nav bar (scroll padding, the
@@ -132,7 +138,7 @@
 }
 
 .card-complete {
-  border-color: hsl(var(--primary) / 0.25);
+  border-color: hsl(var(--success) / 0.3);
 }
 
 /* Log-set form — reuses the slide-up keyframe already defined in

@@ -19,6 +19,7 @@ import { SortableRow, type DragHandleProps } from "@/components/SortableRow";
 import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
 import { ExercisePicker } from "@/components/ExercisePicker";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
@@ -277,7 +278,7 @@ export function TemplateDetail({
                       }}
                       aria-label={`Move ${ex.name} up`}
                     >
-                      <ChevronUp size={14} strokeWidth={2} />
+                      <ChevronUp size={16} strokeWidth={2} />
                     </button>
                     <button
                       onClick={(e) => {
@@ -299,7 +300,7 @@ export function TemplateDetail({
                       }}
                       aria-label={`Move ${ex.name} down`}
                     >
-                      <ChevronDown size={14} strokeWidth={2} />
+                      <ChevronDown size={16} strokeWidth={2} />
                     </button>
                   </div>
                 )}
@@ -316,7 +317,7 @@ export function TemplateDetail({
                   {ex.muscle}
                 </Badge>
                 <span className="font-mono text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                  <Clock size={12} strokeWidth={2} />
+                  <Clock size={16} strokeWidth={2} />
                   {fmtTime(ex.restSeconds)}
                 </span>
               </div>
@@ -413,8 +414,17 @@ export function TemplateDetail({
       )}
 
       {exercises.length === 0 && !editMode ? (
-        <div className="px-5 pt-10 text-center">
-          <p className="text-muted-foreground text-sm">No exercises yet — tap + Add exercise</p>
+        <div className="px-5">
+          <EmptyState
+            message="No exercises in this template yet."
+            action={{
+              label: "Add exercise",
+              onClick: () => {
+                setEditMode(true);
+                setPickingExercise(true);
+              },
+            }}
+          />
         </div>
       ) : (
         <>
@@ -486,7 +496,7 @@ export function TemplateDetail({
             "Done editing"
           ) : (
             <>
-              <Pencil size={14} strokeWidth={2} />
+              <Pencil size={16} strokeWidth={2} />
               Edit template
             </>
           )}

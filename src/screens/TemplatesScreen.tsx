@@ -175,7 +175,7 @@ export function TemplatesScreen({
                             }}
                             aria-label={`Move ${t.name} up`}
                           >
-                            <ChevronUp size={14} strokeWidth={2} />
+                            <ChevronUp size={16} strokeWidth={2} />
                           </button>
                           <button
                             onClick={(e) => {
@@ -197,7 +197,7 @@ export function TemplatesScreen({
                             }}
                             aria-label={`Move ${t.name} down`}
                           >
-                            <ChevronDown size={14} strokeWidth={2} />
+                            <ChevronDown size={16} strokeWidth={2} />
                           </button>
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>

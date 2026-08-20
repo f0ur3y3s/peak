@@ -6,6 +6,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseEditForm } from "@/components/ExerciseEditForm";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
 import { MUSCLE_GROUPS, fuzzyMatch, groupForMuscle } from "@/lib/muscles";
 import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
@@ -121,13 +122,15 @@ export function ExercisesScreen() {
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
         {library.length === 0 ? (
-          <div className="pt-10 text-center">
-            <p className="text-muted-foreground text-sm">No exercises yet — tap + to add one</p>
-          </div>
+          <EmptyState
+            message="No exercises in your library yet."
+            action={{ label: "Add exercise", onClick: () => setCreating(true) }}
+          />
         ) : sections.length === 0 ? (
-          <div className="pt-10 text-center">
-            <p className="text-muted-foreground text-sm">No exercises match "{search}"</p>
-          </div>
+          <EmptyState
+            message={`No exercises match "${search}".`}
+            action={{ label: "Clear search", onClick: () => setSearch(""), variant: "outline" }}
+          />
         ) : (
           sections.map(({ group, exercises }) => (
             <div key={group} className="flex flex-col gap-2.5">

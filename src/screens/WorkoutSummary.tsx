@@ -22,7 +22,7 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
       <div className="text-center">
         <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
           Workout Complete
-          <PartyPopper size={13} strokeWidth={2} />
+          <PartyPopper size={16} strokeWidth={2} />
         </p>
         <p className="font-title text-2xl uppercase tracking-wide">{session.templateName}</p>
       </div>
@@ -71,8 +71,8 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
                     style={{
                       fontSize: 9,
                       padding: "1px 6px",
-                      background: "hsl(var(--primary) / 0.15)",
-                      color: "hsl(var(--primary))",
+                      background: "hsl(var(--success) / 0.18)",
+                      color: "hsl(var(--success))",
                       letterSpacing: "0.08em",
                     }}
                   >

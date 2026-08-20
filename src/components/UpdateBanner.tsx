@@ -31,7 +31,7 @@ export function UpdateBanner() {
         boxShadow: "0 4px 16px hsl(0 0% 0% / 0.4)",
       }}
     >
-      <RefreshCw size={13} strokeWidth={2.5} />
+      <RefreshCw size={16} strokeWidth={2.5} />
       Update available — tap to refresh
     </button>
   );

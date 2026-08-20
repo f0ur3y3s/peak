@@ -34,11 +34,11 @@ export function NavBar({ active, onNav }: NavBarProps) {
                   justifyContent: "center",
                 }}
               >
-                <t.icon size={18} strokeWidth={2} color="hsl(var(--primary-foreground))" />
+                <t.icon size={20} strokeWidth={2} color="hsl(var(--primary-foreground))" />
               </div>
             ) : (
               <t.icon
-                size={19}
+                size={20}
                 strokeWidth={2}
                 color={active === t.id ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
               />

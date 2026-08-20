@@ -122,7 +122,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
               className="bg-transparent border-none text-muted-foreground cursor-pointer text-lg px-1"
               aria-label="Close timer"
             >
-              <X size={18} strokeWidth={2} />
+              <X size={20} strokeWidth={2} />
             </button>
           </div>
         ) : (
@@ -173,7 +173,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                     onClick={() => setRemaining((r) => Math.max(0, Math.min(600, r + d)))}
                     className="font-mono text-[13px] min-w-[76px] gap-1"
                   >
-                    {d < 0 ? <Minus size={13} strokeWidth={2} /> : <Plus size={13} strokeWidth={2} />}
+                    {d < 0 ? <Minus size={16} strokeWidth={2} /> : <Plus size={16} strokeWidth={2} />}
                     {Math.abs(d)}s
                   </Button>
                 ))}
@@ -189,7 +189,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                 {done ? (
                   <>
                     Back to workout
-                    <ArrowRight size={13} strokeWidth={2} />
+                    <ArrowRight size={16} strokeWidth={2} />
                   </>
                 ) : (
                   "skip"

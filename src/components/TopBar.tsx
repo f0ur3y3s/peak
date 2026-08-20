@@ -31,7 +31,7 @@ export function TopBar({ title, sub, onBack, right, breadcrumb }: TopBarProps) {
             style={{ width: 44, height: 44, marginLeft: -11 }}
             aria-label="Go back"
           >
-            <ChevronLeft size={22} strokeWidth={2} />
+            <ChevronLeft size={24} strokeWidth={2} />
           </button>
         )}
         <div>
@@ -53,7 +53,12 @@ export function TopBar({ title, sub, onBack, right, breadcrumb }: TopBarProps) {
               ))}
             </div>
           )}
-          <p className="font-title text-lg uppercase tracking-wide text-foreground">{title}</p>
+          {/* The stencil display face (font-title) is reserved for genuine
+              brand/hero moments (the PEAK wordmark, the workout-summary
+              hero) — it loses its cut-out legibility at small, repeated
+              sizes, so every screen's navigational heading uses a bold
+              sans instead. */}
+          <p className="font-sans font-bold text-lg tracking-tight text-foreground">{title}</p>
           {sub && (
             <p className="font-mono text-[11px] text-muted-foreground mt-px">{sub}</p>
           )}

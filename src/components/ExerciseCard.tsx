@@ -96,7 +96,7 @@ export function ExerciseCard({
                   cursor: "pointer",
                 }}
               >
-                <Clock size={12} strokeWidth={2} />
+                <Clock size={16} strokeWidth={2} />
                 {fmtTime(ex.restSeconds)}
               </button>
             </div>
@@ -257,8 +257,8 @@ export function ExerciseCard({
 
       {done && !addingExtra && (
         <div className="px-4 pb-3.5 pt-1.5 flex items-center justify-between gap-2">
-          <p className="font-mono text-xs inline-flex items-center gap-1" style={{ color: "hsl(var(--primary))" }}>
-            <Check size={14} strokeWidth={2} />
+          <p className="font-mono text-xs inline-flex items-center gap-1" style={{ color: "hsl(var(--success))" }}>
+            <Check size={16} strokeWidth={2} />
             All sets complete
           </p>
           {isActive && (
@@ -279,7 +279,7 @@ export function ExerciseCard({
                 textDecoration: "underline",
               }}
             >
-              <Plus size={13} strokeWidth={2} />
+              <Plus size={16} strokeWidth={2} />
               Add set
             </button>
           )}

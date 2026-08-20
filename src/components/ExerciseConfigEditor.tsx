@@ -86,7 +86,7 @@ export function ExerciseConfigEditor({
         <div className="flex flex-col gap-4 mb-5">
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Layers size={15} strokeWidth={2} />
+              <Layers size={16} strokeWidth={2} />
               Sets
             </p>
             <Stepper
@@ -98,7 +98,7 @@ export function ExerciseConfigEditor({
 
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Repeat size={15} strokeWidth={2} />
+              <Repeat size={16} strokeWidth={2} />
               Reps
             </p>
             <div className="grid grid-cols-2 gap-2.5">
@@ -128,7 +128,7 @@ export function ExerciseConfigEditor({
 
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Dumbbell size={15} strokeWidth={2} />
+              <Dumbbell size={16} strokeWidth={2} />
               Weight ({unit})
             </p>
             <Stepper
@@ -140,7 +140,7 @@ export function ExerciseConfigEditor({
 
           <div>
             <p className={SECTION_LABEL_STYLE}>
-              <Clock size={15} strokeWidth={2} />
+              <Clock size={16} strokeWidth={2} />
               Rest (sec)
             </p>
             <Stepper

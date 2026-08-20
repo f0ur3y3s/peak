@@ -76,8 +76,8 @@ export function HistoryScreen() {
                           style={{
                             fontSize: 9,
                             padding: "1px 6px",
-                            background: "hsl(var(--primary) / 0.15)",
-                            color: "hsl(var(--primary))",
+                            background: "hsl(var(--success) / 0.18)",
+                            color: "hsl(var(--success))",
                             letterSpacing: "0.08em",
                           }}
                         >
