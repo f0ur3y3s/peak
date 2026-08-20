@@ -8,10 +8,14 @@ import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 
 interface WorkoutSummaryProps {
   session: WorkoutSession;
+  /** Template changes Finish made silently (raised set targets, newly-added
+   * exercises) — Finish has no confirmation step, so these are surfaced
+   * here instead of disappearing with no trace. */
+  templateUpdates?: string[];
   onDone: () => void;
 }
 
-export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
+export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSummaryProps) {
   const { unit } = useWeightUnit();
   const durationSeconds = Math.round((session.finishedAt - session.startedAt) / 1000);
   const totalVolume = sessionVolume(session);
@@ -82,6 +86,23 @@ export function WorkoutSummary({ session, onDone }: WorkoutSummaryProps) {
               </Card>
             ))}
           </div>
+        </div>
+      )}
+
+      {templateUpdates && templateUpdates.length > 0 && (
+        <div>
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2.5">
+            Template Updated
+          </p>
+          <Card>
+            <CardContent style={{ padding: "12px 14px" }} className="flex flex-col gap-1.5">
+              {templateUpdates.map((line, i) => (
+                <p key={i} className="text-[13px] text-muted-foreground">
+                  {line}
+                </p>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       )}
 
