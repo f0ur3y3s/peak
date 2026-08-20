@@ -163,7 +163,9 @@
   background: none;
   border: none;
   color: hsl(var(--muted-foreground));
-  padding: 10px 14px;
+  /* 14px top/bottom + the 16px icon = 44px, matching the touch-target
+     guideline (previously 10px top/bottom → ~36-40px). */
+  padding: 14px 14px;
   cursor: pointer;
   font-size: 18px;
   font-family: "DM Mono", monospace;
