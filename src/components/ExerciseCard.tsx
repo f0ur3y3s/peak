@@ -105,10 +105,11 @@ export function ExerciseCard({
             <p
               className="font-mono text-[22px] font-medium"
               style={{
-                color:
-                  done || isActive
-                    ? "hsl(var(--primary))"
-                    : "hsl(var(--muted-foreground))",
+                color: done
+                  ? "hsl(var(--success))"
+                  : isActive
+                  ? "hsl(var(--primary))"
+                  : "hsl(var(--muted-foreground))",
               }}
             >
               {ex.logged.length}
