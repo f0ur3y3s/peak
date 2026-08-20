@@ -6,3 +6,4 @@ dist/
 **/superpowers/
 
 supabase/.temp/
+.impeccable/live/
