@@ -43,6 +43,9 @@ export default function App() {
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [viewingExerciseName, setViewingExerciseName] = useState<string | null>(null);
   const [viewingTemplateName, setViewingTemplateName] = useState<string | null>(null);
+  // Drives NavBar's "workout in progress" indicator — otherwise nothing
+  // signals a session is running once you leave the Workout tab.
+  const [hasActiveDraft, setHasActiveDraft] = useState(false);
   const resolvedUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +72,7 @@ export default function App() {
     resolvedUserId.current = userKey;
 
     getActiveWorkoutDraft().then((draft) => {
+      setHasActiveDraft(!!draft);
       if (draft) {
         setActiveTemplateId(draft.templateId);
         setScreen("workout");
@@ -114,6 +118,7 @@ export default function App() {
       setScreen("exercises");
     } else {
       const draft = await getActiveWorkoutDraft();
+      setHasActiveDraft(!!draft);
       if (draft) {
         setActiveTemplateId(draft.templateId);
         setScreen("workout");
@@ -147,6 +152,7 @@ export default function App() {
           <TemplateDetail
             templateId={activeTemplateId}
             onStart={() => {
+              setHasActiveDraft(true);
               setScreen("workout");
               setNav("workout");
             }}
@@ -162,14 +168,21 @@ export default function App() {
           <ActiveWorkout
             templateId={activeTemplateId}
             onBack={() => {
+              // Re-check rather than assume: a real draft is only persisted
+              // once a set is logged (see ActiveWorkout's handleLog), so
+              // backing out beforehand must clear the indicator instead of
+              // leaving it lit for a draft that was never actually saved.
+              getActiveWorkoutDraft().then((draft) => setHasActiveDraft(!!draft));
               setScreen("template");
               setNav("templates");
             }}
             onFinish={() => {
+              setHasActiveDraft(false);
               setScreen("history");
               setNav("history");
             }}
             onDiscard={() => {
+              setHasActiveDraft(false);
               setScreen("template");
               setNav("templates");
             }}
@@ -202,7 +215,7 @@ export default function App() {
           />
         )}
       </div>
-      <NavBar active={nav} onNav={handleNav} />
+      <NavBar active={nav} onNav={handleNav} hasActiveDraft={hasActiveDraft} />
     </div>
     </WeightUnitProvider>
   );
