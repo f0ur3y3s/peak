@@ -45,6 +45,11 @@ export function TemplatesScreen({
 
   useEffect(() => {
     getTemplates().then(setTemplates);
+    // Deliberately unbounded — this builds "last performed" per template by
+    // taking the first (most recent) session matching each template as it
+    // walks newest-first. A limit here could hide a rarely-used template's
+    // real last-performed date behind an incorrect "Never" if that session
+    // fell outside the limited window.
     getWorkoutSessions().then((sessions) => {
       const map = new Map<string, number>();
       for (const s of sessions) {

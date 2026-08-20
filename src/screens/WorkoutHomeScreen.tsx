@@ -36,7 +36,12 @@ export function WorkoutHomeScreen({ onBrowseTemplates, onSelectTemplate }: Worko
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([getWorkoutSessions(), getLastUsedTemplateId()]).then(([sessions, templateId]) => {
+    // 50 comfortably bounds "sessions this week" (no real user logs more than
+    // a handful of workouts in a trailing 7-day window) while avoiding an
+    // unbounded read of a long-tenured user's entire history just to render
+    // this dashboard. TemplatesScreen and HistoryScreen/HistoryAnalytics
+    // intentionally keep unbounded reads — see their own comments.
+    Promise.all([getWorkoutSessions(50), getLastUsedTemplateId()]).then(([sessions, templateId]) => {
       if (cancelled) return;
       setLastSession(sessions[0] ?? null);
       const weekAgo = Date.now() - WEEK_MS;

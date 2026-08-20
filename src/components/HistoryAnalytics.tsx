@@ -308,6 +308,8 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
   });
 
   useEffect(() => {
+    // Deliberately unbounded — the "All" date range and the exercise trend
+    // line both need the complete history, not a recent slice of it.
     getWorkoutSessions().then(setSessions);
   }, []);
 

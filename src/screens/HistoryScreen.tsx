@@ -15,6 +15,8 @@ export function HistoryScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Deliberately unbounded — this screen's whole purpose is the full
+    // workout history log.
     getWorkoutSessions()
       .then(setSessions)
       .catch(() => {
