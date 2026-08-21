@@ -24,7 +24,7 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
   return (
     <div className="px-5 pt-10 pb-10 flex flex-col gap-6">
       <div className="text-center">
-        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
+        <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
           Workout Complete
           <PartyPopper size={16} strokeWidth={2} />
         </p>
@@ -37,7 +37,7 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
             <p className="font-mono text-lg" style={{ color: "hsl(var(--primary))" }}>
               {fmtTime(durationSeconds)}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-px">Duration</p>
+            <p className="text-caption text-muted-foreground mt-px">Duration</p>
           </CardContent>
         </Card>
         <Card>
@@ -45,7 +45,7 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
             <p className="font-mono text-lg" style={{ color: "hsl(var(--primary))" }}>
               {Number(fmtWeight(totalVolume, unit)).toLocaleString()}{unit}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-px">Volume</p>
+            <p className="text-caption text-muted-foreground mt-px">Volume</p>
           </CardContent>
         </Card>
         <Card>
@@ -53,14 +53,14 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
             <p className="font-mono text-lg" style={{ color: "hsl(var(--primary))" }}>
               {totalSets}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-px">Sets</p>
+            <p className="text-caption text-muted-foreground mt-px">Sets</p>
           </CardContent>
         </Card>
       </div>
 
       {session.prs.length > 0 && (
         <div>
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2.5">
+          <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2.5">
             Personal Records
           </p>
           <div className="flex flex-col gap-2">
@@ -72,8 +72,8 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
                 >
                   <span className="text-sm font-medium">{name}</span>
                   <Badge
+                    className="text-label"
                     style={{
-                      fontSize: 9,
                       padding: "1px 6px",
                       background: "hsl(var(--success) / 0.18)",
                       color: "hsl(var(--success))",
@@ -91,13 +91,13 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
 
       {templateUpdates && templateUpdates.length > 0 && (
         <div>
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2.5">
+          <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2.5">
             Template Updated
           </p>
           <Card>
             <CardContent style={{ padding: "12px 14px" }} className="flex flex-col gap-1.5">
               {templateUpdates.map((line, i) => (
-                <p key={i} className="text-[13px] text-muted-foreground">
+                <p key={i} className="text-subtext text-muted-foreground">
                   {line}
                 </p>
               ))}
@@ -106,7 +106,7 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
         </div>
       )}
 
-      <Button className="w-full font-semibold text-[15px] tracking-tight" onClick={onDone}>
+      <Button className="w-full font-semibold text-title tracking-tight" onClick={onDone}>
         Done
       </Button>
     </div>

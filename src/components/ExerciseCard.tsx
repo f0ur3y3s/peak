@@ -67,18 +67,18 @@ export function ExerciseCard({
       <CardHeader style={{ padding: "14px 16px 8px" }}>
         <div className="flex justify-between items-start">
           <div>
-            <p className="font-semibold text-[15px] mb-1">{ex.name}</p>
+            <p className="font-semibold text-title mb-1">{ex.name}</p>
             <div className="flex gap-1.5 items-center">
               <Badge
                 variant="secondary"
+                className="text-label"
                 style={{
-                  fontSize: 10,
                   padding: "1px 7px",
                 }}
               >
                 {ex.muscle}
               </Badge>
-              <span className="font-mono text-[11px] text-muted-foreground">
+              <span className="font-mono text-caption text-muted-foreground">
                 {ex.targetSets}×{ex.repsMin}–{ex.repsMax} @ {fmtWeight(ex.targetWeight, unit)}{unit}
               </span>
               <button
@@ -86,7 +86,7 @@ export function ExerciseCard({
                   e.stopPropagation();
                   setEditingRest((v) => !v);
                 }}
-                className="font-mono text-[11px]"
+                className="font-mono text-caption"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -106,7 +106,7 @@ export function ExerciseCard({
           </div>
           <div className="text-right">
             <p
-              className="font-mono text-[22px] font-medium"
+              className="font-mono text-stat font-medium"
               style={{
                 color: done
                   ? "hsl(var(--success))"
@@ -118,7 +118,7 @@ export function ExerciseCard({
               {ex.logged.length}
               <span className="text-sm text-muted-foreground">/{effectiveTarget}</span>
             </p>
-            <p className="text-[10px] text-muted-foreground">sets</p>
+            <p className="text-label text-muted-foreground">sets</p>
           </div>
         </div>
       </CardHeader>
@@ -148,7 +148,7 @@ export function ExerciseCard({
       {/* Previous session chips */}
       {ex.last && (
         <div className="flex gap-1.5 items-center flex-wrap px-4 pb-2.5">
-          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+          <span className="font-mono text-label text-muted-foreground uppercase tracking-wider">
             prev
           </span>
           {ex.last.map((s, i) => (
@@ -169,7 +169,7 @@ export function ExerciseCard({
               className="grid gap-2 items-center py-1.5 border-b border-border"
               style={{ gridTemplateColumns: "20px 1fr 1fr 44px" }}
             >
-              <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
+              <span className="font-mono text-caption text-muted-foreground">{i + 1}</span>
               <span className="font-mono text-sm">{s.reps} reps</span>
               <span className="font-mono text-sm">{fmtWeight(s.weight, unit)} {unit}</span>
               <IconButton
@@ -194,7 +194,7 @@ export function ExerciseCard({
           className="log-form mx-4 mb-3.5 mt-2.5 rounded-[10px] border border-border"
           style={{ padding: 14, background: "hsl(var(--background))" }}
         >
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-3">
+          <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-3">
             Set {ex.logged.length + 1}{done ? " (extra)" : ""}
           </p>
           <div className="grid grid-cols-2 gap-2.5 mb-3">
@@ -205,7 +205,7 @@ export function ExerciseCard({
               ] as [string, string, (v: string | ((prev: string) => string)) => void, number, string][]
             ).map(([label, val, setter, step, fieldId]) => (
               <div key={label}>
-                <label htmlFor={fieldId} className="block text-[11px] text-muted-foreground mb-1.5">{label}</label>
+                <label htmlFor={fieldId} className="block text-caption text-muted-foreground mb-1.5">{label}</label>
                 <div className="stepper">
                   <button
                     className="stepper-btn"
@@ -248,7 +248,7 @@ export function ExerciseCard({
             ))}
           </div>
           <Button
-            className="w-full font-semibold text-[15px] tracking-tight"
+            className="w-full font-semibold text-title tracking-tight"
             disabled={!canLog}
             onClick={(e) => {
               e.stopPropagation();

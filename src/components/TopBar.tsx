@@ -40,11 +40,11 @@ export function TopBar({ title, sub, onBack, right, breadcrumb }: TopBarProps) {
               {breadcrumb.map((crumb, i) => (
                 <React.Fragment key={i}>
                   {i > 0 && (
-                    <span className="font-mono text-[10px] text-muted-foreground">/</span>
+                    <span className="font-mono text-label text-muted-foreground">/</span>
                   )}
                   <button
                     onClick={crumb.onClick}
-                    className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-transparent border-none cursor-pointer p-0"
+                    className="font-mono text-label uppercase tracking-wider text-muted-foreground bg-transparent border-none cursor-pointer p-0"
                     style={{ textDecoration: "underline", textUnderlineOffset: 2 }}
                   >
                     {crumb.label}
@@ -60,7 +60,7 @@ export function TopBar({ title, sub, onBack, right, breadcrumb }: TopBarProps) {
               sans instead. */}
           <h1 className="font-sans font-bold text-lg tracking-tight text-foreground m-0">{title}</h1>
           {sub && (
-            <p className="font-mono text-[11px] text-muted-foreground mt-px">{sub}</p>
+            <p className="font-mono text-caption text-muted-foreground mt-px">{sub}</p>
           )}
         </div>
       </div>

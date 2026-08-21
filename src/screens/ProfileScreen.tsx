@@ -46,16 +46,16 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
       <div className="px-5 pt-4 flex flex-col gap-4">
         <Card>
           <CardContent style={{ padding: "16px 20px" }}>
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1.5">
+            <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-1.5">
               Signed in as
             </p>
-            <p className="text-[15px] font-medium">{email ?? "—"}</p>
+            <p className="text-title font-medium">{email ?? "—"}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent style={{ padding: "16px 20px" }}>
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
+            <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2">
               Weight unit
             </p>
             <div className="flex border border-border rounded-lg overflow-hidden">
@@ -63,7 +63,7 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
                 <Button
                   key={u}
                   variant={unit === u ? "default" : "ghost"}
-                  className="flex-1 rounded-none uppercase font-mono text-[13px]"
+                  className="flex-1 rounded-none uppercase font-mono text-subtext"
                   onClick={() => setUnit(u)}
                 >
                   {u}
@@ -77,16 +77,16 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
           <CardContent style={{ padding: "16px 20px" }} className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
+                <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-1">
                   Sync
                 </p>
-                <p className="text-[13px] text-muted-foreground">
+                <p className="text-subtext text-muted-foreground">
                   {lastSyncedAt ? `Last synced ${fmtSyncedAt(lastSyncedAt)}` : "Never synced"}
                 </p>
               </div>
               <Button
                 variant="outline"
-                className="font-mono text-[13px]"
+                className="font-mono text-subtext"
                 onClick={handleSyncNow}
                 disabled={syncing}
               >
@@ -95,7 +95,7 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
             </div>
             {syncError && (
               <p
-                className="font-mono text-[11px]"
+                className="font-mono text-caption"
                 style={{ color: "hsl(var(--destructive))", margin: 0 }}
               >
                 {syncError}

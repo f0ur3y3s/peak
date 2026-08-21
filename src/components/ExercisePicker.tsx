@@ -83,7 +83,7 @@ export function ExercisePicker({
 
   return (
     <Modal onClose={onCancel} labelledBy={titleId}>
-        <h2 id={titleId} className="font-semibold text-[17px] mb-3">Add exercise</h2>
+        <h2 id={titleId} className="font-semibold text-lg mb-3">Add exercise</h2>
         <input
           className="field-input"
           style={{ ...TEXT_INPUT_STYLE, marginBottom: 12 }}
@@ -96,7 +96,7 @@ export function ExercisePicker({
 
         {actionError && (
           <p
-            className="font-mono text-[11px] mb-2"
+            className="font-mono text-caption mb-2"
             style={{ color: "hsl(var(--destructive))" }}
           >
             {actionError}
@@ -110,10 +110,11 @@ export function ExercisePicker({
           {filtered.map((ex) => (
             <div key={ex.id} className="exercise-picker-row">
               <button className="exercise-picker-row-main" onClick={() => onPick(ex)}>
-                <span className="text-[14px]">{ex.name}</span>
+                <span className="text-body">{ex.name}</span>
                 <Badge
                   variant="secondary"
-                  style={{ fontSize: 10, padding: "1px 7px" }}
+                  className="text-label"
+                  style={{ padding: "1px 7px" }}
                 >
                   {ex.muscle}
                 </Badge>
@@ -129,13 +130,13 @@ export function ExercisePicker({
             </div>
           ))}
           {filtered.length === 0 && !canCreate && (
-            <p className="text-[13px] text-muted-foreground italic">No exercises found</p>
+            <p className="text-subtext text-muted-foreground italic">No exercises found</p>
           )}
         </div>
 
         {canCreate && (
           <div className="mb-4">
-            <label htmlFor={creatingMuscleId} className="block text-[11px] text-muted-foreground mb-1.5">
+            <label htmlFor={creatingMuscleId} className="block text-caption text-muted-foreground mb-1.5">
               Create "{filter.trim()}" — muscle group
             </label>
             <MuscleSelect id={creatingMuscleId} value={creatingMuscle} onChange={setCreatingMuscle} />

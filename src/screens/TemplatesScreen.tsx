@@ -208,12 +208,12 @@ export function TemplatesScreen({
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="flex justify-between items-center">
                             <div>
-                              <p className="font-semibold text-[15px]">{t.name}</p>
-                              <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                              <p className="font-semibold text-title">{t.name}</p>
+                              <p className="font-mono text-caption text-muted-foreground mt-0.5">
                                 {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
                               </p>
                             </div>
-                            <p className="font-mono text-[11px] text-muted-foreground">
+                            <p className="font-mono text-caption text-muted-foreground">
                               {lastTs ? fmtRelativeDate(lastTs) : "Never"}
                             </p>
                           </div>
@@ -223,7 +223,8 @@ export function TemplatesScreen({
                                 <Badge
                                   key={group}
                                   variant="secondary"
-                                  style={{ fontSize: 10, padding: "1px 7px" }}
+                                  className="text-label"
+                                  style={{ padding: "1px 7px" }}
                                 >
                                   {group}
                                 </Badge>
@@ -254,7 +255,7 @@ export function TemplatesScreen({
               />
               {createError && (
                 <p
-                  className="font-mono text-[11px]"
+                  className="font-mono text-caption"
                   style={{ color: "hsl(var(--destructive))", margin: 0 }}
                 >
                   {createError}

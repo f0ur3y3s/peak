@@ -306,17 +306,17 @@ export function TemplateDetail({
                 )}
               </>
             ) : (
-              <span className="font-mono text-[10px] text-muted-foreground min-w-[20px]">
+              <span className="font-mono text-label text-muted-foreground min-w-[20px]">
                 {String(index + 1).padStart(2, "0")}
               </span>
             )}
             <div>
-              <p className="font-semibold text-[15px]">{ex.name}</p>
+              <p className="font-semibold text-title">{ex.name}</p>
               <div className="flex gap-1.5 items-center mt-1">
-                <Badge variant="secondary" style={{ fontSize: 10, padding: "1px 7px" }}>
+                <Badge variant="secondary" className="text-label" style={{ padding: "1px 7px" }}>
                   {ex.muscle}
                 </Badge>
-                <span className="font-mono text-[11px] text-muted-foreground inline-flex items-center gap-1">
+                <span className="font-mono text-caption text-muted-foreground inline-flex items-center gap-1">
                   <Clock size={16} strokeWidth={2} />
                   {fmtTime(ex.restSeconds)}
                 </span>
@@ -328,7 +328,7 @@ export function TemplateDetail({
               <p className="font-mono text-sm">
                 {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
               </p>
-              <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+              <p className="font-mono text-caption text-muted-foreground mt-0.5">
                 @ {fmtWeight(ex.targetWeight, unit)} {unit}
               </p>
             </div>
@@ -351,7 +351,7 @@ export function TemplateDetail({
       <CardContent style={{ padding: "12px 16px" }}>
         {ex.last ? (
           <>
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1.5">
+            <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-1.5">
               Last session
             </p>
             <div className="flex gap-1.5 flex-wrap">
@@ -363,7 +363,7 @@ export function TemplateDetail({
             </div>
           </>
         ) : (
-          <p className="font-mono text-[11px] text-muted-foreground italic">No previous data</p>
+          <p className="font-mono text-caption text-muted-foreground italic">No previous data</p>
         )}
       </CardContent>
     </Card>
@@ -393,7 +393,7 @@ export function TemplateDetail({
 
       {actionError && (
         <p
-          className="font-mono text-[11px] px-5 pt-1"
+          className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >
           {actionError}
@@ -443,7 +443,7 @@ export function TemplateDetail({
                   ).map(([v, l]) => (
                     <div key={l}>
                       <p className="font-mono text-2xl font-medium">{v}</p>
-                      <p className="text-[11px] text-muted-foreground mt-px">{l}</p>
+                      <p className="text-caption text-muted-foreground mt-px">{l}</p>
                     </div>
                   ))}
                 </CardContent>

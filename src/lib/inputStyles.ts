@@ -13,6 +13,9 @@ export const TEXT_INPUT_STYLE: CSSProperties = {
   padding: "10px 12px",
   color: "hsl(var(--foreground))",
   fontFamily: "'DM Mono', monospace",
+  // Matches tailwind.config.js's `body` font-size role (0.875rem) — kept as
+  // a literal here rather than a Tailwind class because this is a shared
+  // style object (not a className) applied via style={TEXT_INPUT_STYLE}.
   fontSize: 14,
   outline: "none",
   width: "100%",

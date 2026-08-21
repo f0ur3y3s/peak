@@ -22,8 +22,8 @@ export function ConfirmDialog({
   const titleId = useId();
   return (
     <Modal onClose={onCancel} labelledBy={titleId}>
-      <h2 id={titleId} className="font-semibold text-[17px] mb-2">{title}</h2>
-      <p className="text-[13px] text-muted-foreground mb-5">{message}</p>
+      <h2 id={titleId} className="font-semibold text-lg mb-2">{title}</h2>
+      <p className="text-subtext text-muted-foreground mb-5">{message}</p>
       <div className="flex gap-2.5">
         <Button variant="outline" className="flex-1" onClick={onCancel}>
           Cancel

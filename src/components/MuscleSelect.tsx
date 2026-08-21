@@ -107,7 +107,7 @@ export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectP
           {filteredGroups.map((g) => (
             <div key={g.group}>
               <p
-                className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider"
+                className="font-mono text-label text-muted-foreground uppercase tracking-wider"
                 style={{ padding: "6px 12px 2px", margin: 0 }}
               >
                 {g.group}
@@ -120,7 +120,7 @@ export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectP
                     onChange(m);
                     setOpen(false);
                   }}
-                  className="text-[14px]"
+                  className="text-body"
                   style={{
                     display: "block",
                     width: "100%",

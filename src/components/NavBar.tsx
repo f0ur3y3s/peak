@@ -69,7 +69,7 @@ export function NavBar({ active, onNav, hasActiveDraft }: NavBarProps) {
               />
             )}
             <span
-              className="font-mono text-[10px] uppercase tracking-wider"
+              className="font-mono text-label uppercase tracking-wider"
               style={{
                 color:
                   active === t.id

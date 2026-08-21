@@ -29,10 +29,10 @@ export function ExerciseEditForm({
 
   return (
     <Modal onClose={onCancel} labelledBy={titleId}>
-        <h2 id={titleId} className="font-semibold text-[17px] mb-4">{title}</h2>
+        <h2 id={titleId} className="font-semibold text-lg mb-4">{title}</h2>
         <div className="flex flex-col gap-2.5 mb-5">
           <div>
-            <label htmlFor={nameId} className="block text-[12px] text-muted-foreground mb-1.5">Name</label>
+            <label htmlFor={nameId} className="block text-caption text-muted-foreground mb-1.5">Name</label>
             <input
               id={nameId}
               className="field-input"
@@ -43,7 +43,7 @@ export function ExerciseEditForm({
             />
           </div>
           <div>
-            <label htmlFor={muscleId} className="block text-[12px] text-muted-foreground mb-1.5">Muscle group</label>
+            <label htmlFor={muscleId} className="block text-caption text-muted-foreground mb-1.5">Muscle group</label>
             <MuscleSelect id={muscleId} value={muscle} onChange={setMuscle} />
           </div>
         </div>

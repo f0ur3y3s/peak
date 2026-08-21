@@ -98,9 +98,8 @@ export function AuthScreen() {
       {/* Wordmark */}
       <div style={{ textAlign: "center", marginBottom: 40 }}>
         <h1
-          className="font-title"
+          className="font-title text-wordmark"
           style={{
-            fontSize: 42,
             fontWeight: 400,
             color: "hsl(var(--primary))",
             letterSpacing: "0.2em",
@@ -111,9 +110,9 @@ export function AuthScreen() {
           PEAK
         </h1>
         <p
+          className="text-caption"
           style={{
             fontFamily: "'DM Mono', monospace",
-            fontSize: 11,
             color: "hsl(var(--muted-foreground))",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
@@ -145,7 +144,7 @@ export function AuthScreen() {
               disabled={codeSent}
               value={email}
               onChange={e => { setEmail(e.target.value); setError(null); }}
-              className="auth-input"
+              className="auth-input text-body"
               style={{
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -153,7 +152,6 @@ export function AuthScreen() {
                 padding: "12px 14px",
                 color: "hsl(var(--foreground))",
                 fontFamily: "'DM Mono', monospace",
-                fontSize: 14,
                 outline: "none",
                 width: "100%",
                 boxSizing: "border-box",
@@ -163,9 +161,9 @@ export function AuthScreen() {
             {codeSent && (
               <>
                 <p
+                  className="text-caption"
                   style={{
                     fontFamily: "'DM Mono', monospace",
-                    fontSize: 12,
                     color: "hsl(var(--muted-foreground))",
                     margin: 0,
                   }}
@@ -181,7 +179,7 @@ export function AuthScreen() {
                   autoFocus
                   value={code}
                   onChange={e => { setCode(e.target.value); setError(null); }}
-                  className="auth-input"
+                  className="auth-input text-lg"
                   style={{
                     background: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
@@ -189,7 +187,6 @@ export function AuthScreen() {
                     padding: "12px 14px",
                     color: "hsl(var(--foreground))",
                     fontFamily: "'DM Mono', monospace",
-                    fontSize: 18,
                     letterSpacing: "0.3em",
                     textAlign: "center",
                     outline: "none",
@@ -210,7 +207,7 @@ export function AuthScreen() {
               required
               value={requestName}
               onChange={e => { setRequestName(e.target.value); setRequestError(null); setRequestSent(false); }}
-              className="auth-input"
+              className="auth-input text-body"
               style={{
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -218,7 +215,6 @@ export function AuthScreen() {
                 padding: "12px 14px",
                 color: "hsl(var(--foreground))",
                 fontFamily: "'DM Mono', monospace",
-                fontSize: 14,
                 outline: "none",
                 width: "100%",
                 boxSizing: "border-box",
@@ -232,7 +228,7 @@ export function AuthScreen() {
               required
               value={requestEmail}
               onChange={e => { setRequestEmail(e.target.value); setRequestError(null); setRequestSent(false); }}
-              className="auth-input"
+              className="auth-input text-body"
               style={{
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -240,7 +236,6 @@ export function AuthScreen() {
                 padding: "12px 14px",
                 color: "hsl(var(--foreground))",
                 fontFamily: "'DM Mono', monospace",
-                fontSize: 14,
                 outline: "none",
                 width: "100%",
                 boxSizing: "border-box",
@@ -251,7 +246,7 @@ export function AuthScreen() {
               aria-label="Why do you want access?"
               value={requestMessage}
               onChange={e => { setRequestMessage(e.target.value); setRequestError(null); setRequestSent(false); }}
-              className="auth-input"
+              className="auth-input text-body"
               rows={4}
               style={{
                 background: "hsl(var(--card))",
@@ -260,7 +255,6 @@ export function AuthScreen() {
                 padding: "12px 14px",
                 color: "hsl(var(--foreground))",
                 fontFamily: "'DM Mono', monospace",
-                fontSize: 14,
                 outline: "none",
                 width: "100%",
                 boxSizing: "border-box",
@@ -272,9 +266,9 @@ export function AuthScreen() {
 
         {mode === "login" && error && (
           <p
+            className="text-caption"
             style={{
               fontFamily: "'DM Mono', monospace",
-              fontSize: 12,
               color: "hsl(var(--destructive))",
               margin: 0,
             }}
@@ -285,9 +279,9 @@ export function AuthScreen() {
 
         {mode === "request" && requestError && (
           <p
+            className="text-caption"
             style={{
               fontFamily: "'DM Mono', monospace",
-              fontSize: 12,
               color: "hsl(var(--destructive))",
               margin: 0,
             }}
@@ -298,9 +292,9 @@ export function AuthScreen() {
 
         {mode === "request" && requestSent && (
           <p
+            className="text-caption"
             style={{
               fontFamily: "'DM Mono', monospace",
-              fontSize: 12,
               color: "hsl(var(--primary))",
               margin: 0,
             }}
@@ -312,6 +306,7 @@ export function AuthScreen() {
         <button
           type="submit"
           disabled={mode === "login" ? (codeSent ? verifying : loading) : requestLoading}
+          className="text-subtext"
           style={{
             marginTop: 4,
             background: "hsl(var(--primary))",
@@ -320,7 +315,6 @@ export function AuthScreen() {
             borderRadius: 10,
             padding: "13px 0",
             fontFamily: "'DM Mono', monospace",
-            fontSize: 13,
             fontWeight: 500,
             letterSpacing: "0.06em",
             cursor: (mode === "login" ? (codeSent ? verifying : loading) : requestLoading) ? "not-allowed" : "pointer",
@@ -343,13 +337,13 @@ export function AuthScreen() {
               setCode("");
               setError(null);
             }}
+            className="text-caption"
             style={{
               background: "none",
               border: "none",
               color: "hsl(var(--muted-foreground))",
               cursor: "pointer",
               fontFamily: "'DM Mono', monospace",
-              fontSize: 12,
               letterSpacing: "0.04em",
               padding: "6px 0 0",
               textDecoration: "underline",
@@ -370,13 +364,13 @@ export function AuthScreen() {
             setRequestError(null);
             setRequestSent(false);
           }}
+          className="text-caption"
           style={{
             background: "none",
             border: "none",
             color: "hsl(var(--muted-foreground))",
             cursor: "pointer",
             fontFamily: "'DM Mono', monospace",
-            fontSize: 12,
             letterSpacing: "0.04em",
             padding: "6px 0 0",
             textDecoration: "underline",

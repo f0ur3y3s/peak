@@ -51,7 +51,7 @@ function Stepper({ value, onChange, onStep, id, label }: StepperProps) {
   );
 }
 
-const SECTION_LABEL_STYLE = "text-[13px] font-medium text-foreground mb-2 inline-flex items-center gap-2";
+const SECTION_LABEL_STYLE = "text-subtext font-medium text-foreground mb-2 inline-flex items-center gap-2";
 
 export function ExerciseConfigEditor({
   exerciseName,
@@ -90,7 +90,7 @@ export function ExerciseConfigEditor({
 
   return (
     <Modal onClose={onCancel} labelledBy={titleId}>
-        <h2 id={titleId} className="font-semibold text-[17px] mb-4">{exerciseName}</h2>
+        <h2 id={titleId} className="font-semibold text-lg mb-4">{exerciseName}</h2>
 
         <div className="flex flex-col gap-4 mb-5">
           <div>
@@ -114,7 +114,7 @@ export function ExerciseConfigEditor({
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label htmlFor={repsMinId} className="block text-[12px] text-muted-foreground mb-1.5">Min</label>
+                <label htmlFor={repsMinId} className="block text-caption text-muted-foreground mb-1.5">Min</label>
                 <Stepper
                   id={repsMinId}
                   label="min reps"
@@ -124,7 +124,7 @@ export function ExerciseConfigEditor({
                 />
               </div>
               <div>
-                <label htmlFor={repsMaxId} className="block text-[12px] text-muted-foreground mb-1.5">Max</label>
+                <label htmlFor={repsMaxId} className="block text-caption text-muted-foreground mb-1.5">Max</label>
                 <Stepper
                   id={repsMaxId}
                   label="max reps"
@@ -135,7 +135,7 @@ export function ExerciseConfigEditor({
               </div>
             </div>
             {!repsValid && (
-              <p className="font-mono text-[12px] mt-1.5" style={{ color: "hsl(var(--destructive))" }}>
+              <p className="font-mono text-caption mt-1.5" style={{ color: "hsl(var(--destructive))" }}>
                 Min reps can't be greater than max.
               </p>
             )}

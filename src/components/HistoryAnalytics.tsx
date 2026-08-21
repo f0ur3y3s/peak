@@ -121,7 +121,7 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
           y={(CHART_H + PAD.t + PAD.b) / 2}
           textAnchor="middle"
           fill="hsl(var(--muted-foreground))"
-          fontSize={12}
+          className="text-caption"
           fontFamily={mono}
         >
           No data for this range
@@ -166,7 +166,7 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
           y={y + 4}
           textAnchor="end"
           fill="hsl(var(--muted-foreground))"
-          fontSize={9}
+          className="text-label"
           fontFamily={mono}
         >
           {Math.round(v)}
@@ -186,7 +186,7 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
         y={PAD.t + CHART_H + 20}
         textAnchor="middle"
         fill="hsl(var(--muted-foreground))"
-        fontSize={9}
+        className="text-label"
         fontFamily={mono}
       >
         {fmtShortDate(pt.t)}
@@ -382,14 +382,14 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
       {/* Exercise selector */}
       {!focusExercise && (
         <>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+          <p className="font-mono text-label uppercase tracking-widest text-muted-foreground mb-2">
             Exercise
           </p>
           <div style={{ position: "relative" }} className="mb-3.5">
             <select
               value={selEx}
               onChange={(e) => setSelEx(e.target.value)}
-              className="font-mono text-[13px]"
+              className="font-mono text-subtext"
               style={{
                 appearance: "none",
                 WebkitAppearance: "none",
@@ -427,7 +427,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
       )}
 
       {/* Date range */}
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+      <p className="font-mono text-label uppercase tracking-widest text-muted-foreground mb-2">
         Date range
       </p>
       <div className="flex flex-wrap gap-1.5 mb-3.5">
@@ -436,7 +436,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
             key={r.label}
             variant={selRange.label === r.label ? "default" : "outline"}
             size="sm"
-            className="font-mono text-[11px] rounded-full h-auto py-1"
+            className="font-mono text-caption rounded-full h-auto py-1"
             onClick={() => setSelRange(r)}
           >
             {r.label}
@@ -450,7 +450,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
           <Button
             key={m}
             variant={metric === m ? "secondary" : "ghost"}
-            className="flex-1 rounded-none font-mono text-[11px]"
+            className="flex-1 rounded-none font-mono text-caption"
             onClick={() => setMetric(m)}
           >
             {m === "weight" ? `Peak weight (${weightUnit})` : `Total volume (${weightUnit})`}
@@ -480,7 +480,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               <p className="font-mono text-sm font-medium" style={{ color }}>
                 {value}
               </p>
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mt-1">
+              <p className="font-mono text-label text-muted-foreground uppercase tracking-wider mt-1">
                 {label}
               </p>
             </CardContent>
@@ -508,10 +508,10 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               zIndex: 10,
             }}
           >
-            <p className="text-[15px] font-medium" style={{ color: "hsl(var(--primary))" }}>
+            <p className="text-title font-medium" style={{ color: "hsl(var(--primary))" }}>
               {tooltip.value} {metricUnitLabel}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{tooltip.date}</p>
+            <p className="text-label text-muted-foreground mt-0.5">{tooltip.date}</p>
           </div>
         )}
       </div>
@@ -527,7 +527,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               background: "hsl(var(--primary))",
             }}
           />
-          <span className="font-mono text-[10px] text-muted-foreground">session</span>
+          <span className="font-mono text-label text-muted-foreground">session</span>
         </div>
         <div className="flex items-center gap-1.5">
           <svg width={22} height={8}>
@@ -542,7 +542,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               opacity={0.8}
             />
           </svg>
-          <span className="font-mono text-[10px] text-muted-foreground">trend</span>
+          <span className="font-mono text-label text-muted-foreground">trend</span>
         </div>
       </div>
     </div>

@@ -131,9 +131,9 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
           >
             <div className="drag-handle" style={{ margin: 0 }} />
             <div className="flex items-center gap-2.5 flex-1 justify-center">
-              <span className="text-muted-foreground text-[13px]">{exerciseName}</span>
+              <span className="text-muted-foreground text-subtext">{exerciseName}</span>
               <span
-                className="font-mono text-[22px] font-medium tracking-tight"
+                className="font-mono text-stat font-medium tracking-tight"
                 style={{ color: timerColor }}
               >
                 {fmtTime(remaining)}
@@ -162,18 +162,17 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
               style={{ paddingBottom: "calc(2.25rem + env(safe-area-inset-bottom, 0px))" }}
             >
               {/* Context */}
-              <p className="font-mono text-[11px] text-muted-foreground tracking-widest uppercase mb-1">
+              <p className="font-mono text-caption text-muted-foreground tracking-widest uppercase mb-1">
                 {exerciseName}
               </p>
-              <p className="text-[13px] text-muted-foreground mb-9">
+              <p className="text-subtext text-muted-foreground mb-9">
                 {done ? "Time to lift" : nextSet}
               </p>
 
               {/* Big countdown */}
               <p
-                className="font-mono font-medium tracking-tighter leading-none mb-8"
+                className="font-mono font-medium tracking-tighter leading-none mb-8 text-countdown"
                 style={{
-                  fontSize: 88,
                   color: timerColor,
                   transition: "color 0.3s",
                 }}
@@ -193,7 +192,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                     key={d}
                     variant="outline"
                     onClick={() => setRemaining((r) => Math.max(0, Math.min(600, r + d)))}
-                    className="font-mono text-[13px] min-w-[76px] gap-1"
+                    className="font-mono text-subtext min-w-[76px] gap-1"
                   >
                     {d < 0 ? <Minus size={16} strokeWidth={2} /> : <Plus size={16} strokeWidth={2} />}
                     {Math.abs(d)}s

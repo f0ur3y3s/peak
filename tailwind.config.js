@@ -49,6 +49,34 @@ export default {
         mono: ["DM Mono", "monospace"],
         sans: ["Inter", "system-ui", "sans-serif"],
       },
+      // Named, rem-based type roles — replaces the app's former text-[Npx]
+      // arbitrary values. Named for the job each size does (not the pixel
+      // value it happens to be), and deliberately does not touch Tailwind's
+      // own xs/sm/base/lg/xl/2xl keys, which shadcn primitives (Badge,
+      // Button) and a handful of screens already rely on unmodified.
+      // `heading` (modal/dialog titles, and — via the built-in `lg` key —
+      // TopBar's page h1) intentionally has no entry here: it reuses
+      // Tailwind's existing 1.125rem `lg` instead of adding a near-duplicate.
+      fontSize: {
+        // Micro uppercase section/eyebrow labels, and small tag/badge text
+        // (achievement pills, muscle-group chips) — same size, distinguished
+        // from each other by weight/tracking/case, not by size.
+        label: ["0.625rem", { lineHeight: "1.2" }],
+        // Metadata, timestamps, and status/error captions.
+        caption: ["0.6875rem", { lineHeight: "1.4" }],
+        // Secondary/supporting prose, field-group labels, button labels.
+        subtext: ["0.8125rem", { lineHeight: "1.4" }],
+        // Interactive list-row text and form input text.
+        body: ["0.875rem", { lineHeight: "1.4" }],
+        // Row/card titles (paired with font-semibold at call sites).
+        title: ["0.9375rem", { lineHeight: "1.3" }],
+        // Compact big numerals — active-set counter, collapsed rest timer.
+        stat: ["1.375rem", { lineHeight: "1.1" }],
+        // Brand hero wordmark (AuthScreen) — single use by design.
+        wordmark: ["2.625rem", { lineHeight: "1" }],
+        // Full-screen rest-timer countdown — single use by design.
+        countdown: ["5.5rem", { lineHeight: "1" }],
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

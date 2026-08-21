@@ -93,10 +93,10 @@ export function WorkoutHomeScreen({ onBrowseTemplates, onSelectTemplate }: Worko
               className="flex items-center justify-between gap-3"
             >
               <div style={{ minWidth: 0 }}>
-                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1">
+                <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-1">
                   Quick start
                 </p>
-                <p className="font-semibold text-[16px] truncate">{quickStart.name}</p>
+                <p className="font-semibold text-title truncate">{quickStart.name}</p>
               </div>
               <Button
                 className="font-semibold flex-shrink-0"
@@ -112,17 +112,17 @@ export function WorkoutHomeScreen({ onBrowseTemplates, onSelectTemplate }: Worko
         )}
 
         <div>
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
+          <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2">
             Last workout
           </p>
           <Card>
             <CardContent style={{ padding: "16px 18px" }}>
               <div className="flex gap-2 items-center mb-1">
-                <p className="font-semibold text-[15px]">{lastSession.templateName}</p>
+                <p className="font-semibold text-title">{lastSession.templateName}</p>
                 {lastSession.prs.length > 0 && (
                   <Badge
+                    className="text-label"
                     style={{
-                      fontSize: 9,
                       padding: "1px 6px",
                       background: "hsl(var(--success) / 0.18)",
                       color: "hsl(var(--success))",
@@ -133,7 +133,7 @@ export function WorkoutHomeScreen({ onBrowseTemplates, onSelectTemplate }: Worko
                   </Badge>
                 )}
               </div>
-              <p className="font-mono text-[11px] text-muted-foreground mb-3.5">
+              <p className="font-mono text-caption text-muted-foreground mb-3.5">
                 {fmtRelativeDate(lastSession.startedAt)} · {durationMin}m
               </p>
               <div className="flex gap-7">
@@ -141,15 +141,15 @@ export function WorkoutHomeScreen({ onBrowseTemplates, onSelectTemplate }: Worko
                   <p className="font-mono text-lg font-medium">
                     {Number(fmtWeight(volume, unit)).toLocaleString()} {unit}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-px">Volume</p>
+                  <p className="text-caption text-muted-foreground mt-px">Volume</p>
                 </div>
                 <div>
                   <p className="font-mono text-lg font-medium">{setCount}</p>
-                  <p className="text-[11px] text-muted-foreground mt-px">Sets</p>
+                  <p className="text-caption text-muted-foreground mt-px">Sets</p>
                 </div>
                 <div>
                   <p className="font-mono text-lg font-medium">{sessionsThisWeek}</p>
-                  <p className="text-[11px] text-muted-foreground mt-px">This week</p>
+                  <p className="text-caption text-muted-foreground mt-px">This week</p>
                 </div>
               </div>
             </CardContent>

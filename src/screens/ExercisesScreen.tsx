@@ -104,7 +104,7 @@ export function ExercisesScreen() {
 
       {actionError && (
         <p
-          className="font-mono text-[11px] px-5 pt-1"
+          className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >
           {actionError}
@@ -136,7 +136,7 @@ export function ExercisesScreen() {
         ) : (
           sections.map(({ group, exercises }) => (
             <div key={group} className="flex flex-col gap-2.5">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+              <p className="font-mono text-label text-muted-foreground uppercase tracking-widest">
                 {group}
               </p>
               {exercises.map((ex) => (
@@ -146,10 +146,11 @@ export function ExercisesScreen() {
                     className="flex justify-between items-center"
                   >
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-[15px]">{ex.name}</p>
+                      <p className="font-semibold text-title">{ex.name}</p>
                       <Badge
                         variant="secondary"
-                        style={{ fontSize: 10, padding: "1px 7px" }}
+                        className="text-label"
+                        style={{ padding: "1px 7px" }}
                       >
                         {ex.muscle}
                       </Badge>

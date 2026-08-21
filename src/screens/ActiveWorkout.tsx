@@ -337,13 +337,13 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <button
                 onClick={() => setConfirmingDiscard(true)}
+                className="text-caption"
                 style={{
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                   color: "hsl(var(--muted-foreground))",
                   fontFamily: "'DM Mono', monospace",
-                  fontSize: 11,
                   letterSpacing: "0.05em",
                   padding: "4px 8px",
                 }}
@@ -352,7 +352,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
               </button>
               <Button
                 variant="outline"
-                className="text-[13px] text-muted-foreground"
+                className="text-subtext text-muted-foreground"
                 onClick={handleFinish}
                 disabled={isFinishing}
               >
@@ -364,7 +364,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {loadError && (
           <p
-            className="font-mono text-[11px] px-5 pt-1"
+            className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
             {loadError}
@@ -373,7 +373,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {finishError && (
           <p
-            className="font-mono text-[11px] px-5 pt-1"
+            className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
             {finishError}
@@ -382,7 +382,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {draftError && (
           <p
-            className="font-mono text-[11px] px-5 pt-1"
+            className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
             {draftError}
