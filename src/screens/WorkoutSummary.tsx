@@ -20,13 +20,22 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
   const durationSeconds = Math.round((session.finishedAt - session.startedAt) / 1000);
   const totalVolume = sessionVolume(session);
   const totalSets = sessionSetCount(session);
+  const hasPRs = session.prs.length > 0;
 
   return (
     <div className="px-5 pt-10 pb-10 flex flex-col gap-6">
       <div className="text-center">
-        <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
+        {/* This is the one screen where all the PR-tracking machinery pays
+            off — give it real presence instead of the same flat treatment
+            every other screen gets, and differentiate a PR session further
+            with the same amber `--success` token used for PRs everywhere
+            else in the app (History, Workout Home), not a new color. */}
+        <p
+          className="font-mono text-caption uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5"
+          style={{ color: hasPRs ? "hsl(var(--success))" : "hsl(var(--primary))" }}
+        >
           Workout Complete
-          <PartyPopper size={16} strokeWidth={2} />
+          <PartyPopper size={18} strokeWidth={2} />
         </p>
         <h1 className="font-title text-2xl uppercase tracking-wide m-0">{session.templateName}</h1>
       </div>
@@ -58,16 +67,25 @@ export function WorkoutSummary({ session, templateUpdates, onDone }: WorkoutSumm
         </Card>
       </div>
 
-      {session.prs.length > 0 && (
+      {hasPRs && (
         <div>
-          <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2.5">
+          <p
+            className="font-mono text-label uppercase tracking-widest mb-2.5"
+            style={{ color: "hsl(var(--success))" }}
+          >
             Personal Records
           </p>
-          <div className="flex flex-col gap-2">
+          <div
+            className="flex flex-col gap-2 p-2 rounded-lg"
+            style={{
+              background: "hsl(var(--success) / 0.06)",
+              border: "1px solid hsl(var(--success) / 0.3)",
+            }}
+          >
             {session.prs.map((name) => (
-              <Card key={name}>
+              <Card key={name} style={{ background: "transparent", border: "none" }}>
                 <CardContent
-                  style={{ padding: "10px 14px" }}
+                  style={{ padding: "10px 12px" }}
                   className="flex justify-between items-center"
                 >
                   <span className="text-sm font-medium">{name}</span>
