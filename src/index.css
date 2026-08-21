@@ -40,6 +40,14 @@
        reserved for actions and navigation. */
     --success: 42 90% 58%;
     --success-foreground: 0 0% 0%;
+    /* Dimmer than --primary (55% vs 64% L, 80% vs 100% S) — legible as text
+       sitting on --primary's own translucent tint (.set-chip's background),
+       where full-brightness --primary would be too close to its own tint. */
+    --primary-muted: 72 80% 55%;
+    /* One step lighter than --background, one step darker than --card — the
+       timer sheet's own surface, distinct from both the page behind it and
+       the cards floating on it. */
+    --surface-sunken: 0 0% 8%;
     /* Total on-screen height of .nav-bar: the 60px tab row plus whatever
        safe-area inset it pads out by on devices with a home indicator.
        Anything that needs to sit above the nav bar (scroll padding, the
@@ -100,7 +108,7 @@
 }
 
 .timer-sheet-inner {
-  background: hsl(0 0% 8%);
+  background: hsl(var(--surface-sunken));
   border-top: 1px solid hsl(var(--border));
   border-radius: 20px 20px 0 0;
   overflow: hidden;
@@ -124,7 +132,7 @@
   padding: 3px 9px;
   border-radius: 6px;
   background: hsl(var(--primary) / 0.1);
-  color: hsl(72 80% 55%);
+  color: hsl(var(--primary-muted));
   border: 1px solid hsl(var(--primary) / 0.2);
 }
 
