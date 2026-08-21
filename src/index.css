@@ -273,6 +273,10 @@
   outline: none;
 }
 
+.field-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
 /* Auth Input */
 .auth-input:focus {
   border-color: hsl(var(--primary));
