@@ -213,12 +213,16 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     try {
       const loggedExercises = exercisesRef.current.filter((ex) => ex.logged.length > 0);
 
-      const prs: string[] = [];
-      for (const ex of loggedExercises) {
-        const previousBest = await getPR(ex.name);
-        const bestThisSession = Math.max(...ex.logged.map((s) => s.weight));
-        if (bestThisSession > previousBest) prs.push(ex.name);
-      }
+      // Each getPR() is an independent read — run them concurrently rather
+      // than one at a time, since a workout can log several exercises.
+      const prChecks = await Promise.all(
+        loggedExercises.map(async (ex) => {
+          const previousBest = await getPR(ex.name);
+          const bestThisSession = Math.max(...ex.logged.map((s) => s.weight));
+          return bestThisSession > previousBest ? ex.name : null;
+        })
+      );
+      const prs = prChecks.filter((name): name is string => name !== null);
 
       const built: WorkoutSession = {
         id: crypto.randomUUID(),
