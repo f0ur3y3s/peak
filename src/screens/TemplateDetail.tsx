@@ -66,6 +66,7 @@ export function TemplateDetail({
   const [pickingExercise, setPickingExercise] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletingExercise, setDeletingExercise] = useState<{ id: string; name: string } | null>(null);
   const autoEditApplied = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -337,7 +338,7 @@ export function TemplateDetail({
                 variant="destructive"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteExercise(ex.id);
+                  setDeletingExercise({ id: ex.id, name: ex.name });
                 }}
                 aria-label="Delete exercise"
               >
@@ -543,6 +544,19 @@ export function TemplateDetail({
             handleDeleteTemplate();
           }}
           onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+
+      {deletingExercise && (
+        <ConfirmDialog
+          title="Remove exercise"
+          message={`Remove "${deletingExercise.name}" from this template? This cannot be undone.`}
+          confirmLabel="Remove"
+          onConfirm={() => {
+            handleDeleteExercise(deletingExercise.id);
+            setDeletingExercise(null);
+          }}
+          onCancel={() => setDeletingExercise(null)}
         />
       )}
     </div>
