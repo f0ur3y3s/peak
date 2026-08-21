@@ -266,7 +266,7 @@ export function TemplateDetail({
                   <GripVertical size={16} strokeWidth={2} />
                 </button>
                 {reorder && (
-                  <div className="flex flex-col" style={{ marginLeft: -8, marginRight: 2 }}>
+                  <div className="flex flex-col gap-0.5" style={{ marginLeft: -8, marginRight: 2 }}>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -276,8 +276,8 @@ export function TemplateDetail({
                       style={{
                         background: "none",
                         border: "none",
-                        width: 28,
-                        height: 24,
+                        width: 32,
+                        height: 30,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -298,8 +298,8 @@ export function TemplateDetail({
                       style={{
                         background: "none",
                         border: "none",
-                        width: 28,
-                        height: 24,
+                        width: 32,
+                        height: 30,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",

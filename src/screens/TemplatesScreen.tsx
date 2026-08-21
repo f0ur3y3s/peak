@@ -167,7 +167,7 @@ export function TemplatesScreen({
                             >
                               <GripVertical size={16} strokeWidth={2} />
                             </button>
-                            <div className="flex flex-col" style={{ marginLeft: -8, marginRight: 6, flexShrink: 0 }}>
+                            <div className="flex flex-col gap-0.5" style={{ marginLeft: -8, marginRight: 6, flexShrink: 0 }}>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -177,8 +177,8 @@ export function TemplatesScreen({
                                 style={{
                                   background: "none",
                                   border: "none",
-                                  width: 28,
-                                  height: 24,
+                                  width: 32,
+                                  height: 30,
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
@@ -199,8 +199,8 @@ export function TemplatesScreen({
                                 style={{
                                   background: "none",
                                   border: "none",
-                                  width: 28,
-                                  height: 24,
+                                  width: 32,
+                                  height: 30,
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
