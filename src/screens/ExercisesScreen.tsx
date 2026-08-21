@@ -85,7 +85,10 @@ export function ExercisesScreen() {
         title="Exercise Library"
         right={
           <button
-            onClick={() => setCreating(true)}
+            onClick={() => {
+              setActionError(null);
+              setCreating(true);
+            }}
             style={{
               background: "none",
               border: "none",
@@ -126,7 +129,13 @@ export function ExercisesScreen() {
         {library.length === 0 ? (
           <EmptyState
             message="No exercises in your library yet."
-            action={{ label: "Add exercise", onClick: () => setCreating(true) }}
+            action={{
+              label: "Add exercise",
+              onClick: () => {
+                setActionError(null);
+                setCreating(true);
+              },
+            }}
           />
         ) : sections.length === 0 ? (
           <EmptyState
@@ -140,7 +149,14 @@ export function ExercisesScreen() {
                 {group}
               </p>
               {exercises.map((ex) => (
-                <Card key={ex.id} onClick={() => setEditingExercise(ex)} className="cursor-pointer">
+                <Card
+                  key={ex.id}
+                  onClick={() => {
+                    setActionError(null);
+                    setEditingExercise(ex);
+                  }}
+                  className="cursor-pointer"
+                >
                   <CardContent
                     style={{ padding: "14px 16px" }}
                     className="flex justify-between items-center"
@@ -159,6 +175,10 @@ export function ExercisesScreen() {
                       variant="destructive"
                       onClick={(e) => {
                         e.stopPropagation();
+                        // Otherwise a previous action's error (e.g. "used in
+                        // templates") stays on screen — unrelated to this
+                        // row — until this new action happens to fail too.
+                        setActionError(null);
                         setDeletingExercise(ex);
                       }}
                       aria-label={`Delete ${ex.name}`}
