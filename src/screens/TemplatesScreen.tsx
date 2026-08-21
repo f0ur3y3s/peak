@@ -138,73 +138,83 @@ export function TemplatesScreen({
                       className="cursor-pointer transition-colors"
                     >
                       <CardContent style={{ padding: "14px 16px" }} className="flex items-center gap-1">
-                        <button
-                          {...handleProps}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "grab",
-                            color: "hsl(var(--muted-foreground))",
-                            width: 44,
-                            height: 44,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            marginLeft: -12,
-                            touchAction: "none",
-                          }}
-                          aria-label="Drag to reorder"
-                        >
-                          <GripVertical size={16} strokeWidth={2} />
-                        </button>
-                        <div className="flex flex-col" style={{ marginLeft: -8, marginRight: 6, flexShrink: 0 }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveTemplate(t.id, -1);
-                            }}
-                            disabled={i === 0}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              width: 28,
-                              height: 24,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "hsl(var(--muted-foreground))",
-                              cursor: i === 0 ? "default" : "pointer",
-                              opacity: i === 0 ? 0.3 : 1,
-                            }}
-                            aria-label={`Move ${t.name} up`}
-                          >
-                            <ChevronUp size={16} strokeWidth={2} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveTemplate(t.id, 1);
-                            }}
-                            disabled={i === templates.length - 1}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              width: 28,
-                              height: 24,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "hsl(var(--muted-foreground))",
-                              cursor: i === templates.length - 1 ? "default" : "pointer",
-                              opacity: i === templates.length - 1 ? 0.3 : 1,
-                            }}
-                            aria-label={`Move ${t.name} down`}
-                          >
-                            <ChevronDown size={16} strokeWidth={2} />
-                          </button>
-                        </div>
+                        {/* Reorder controls (drag handle + chevrons) are dead
+                            weight with nothing to reorder against — hidden
+                            below 2 templates rather than competing with the
+                            row's one useful action (opening the template)
+                            for thumb space in the common single-template
+                            state. */}
+                        {templates.length > 1 && (
+                          <>
+                            <button
+                              {...handleProps}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "grab",
+                                color: "hsl(var(--muted-foreground))",
+                                width: 44,
+                                height: 44,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                marginLeft: -12,
+                                touchAction: "none",
+                              }}
+                              aria-label="Drag to reorder"
+                            >
+                              <GripVertical size={16} strokeWidth={2} />
+                            </button>
+                            <div className="flex flex-col" style={{ marginLeft: -8, marginRight: 6, flexShrink: 0 }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveTemplate(t.id, -1);
+                                }}
+                                disabled={i === 0}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  width: 28,
+                                  height: 24,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "hsl(var(--muted-foreground))",
+                                  cursor: i === 0 ? "default" : "pointer",
+                                  opacity: i === 0 ? 0.3 : 1,
+                                }}
+                                aria-label={`Move ${t.name} up`}
+                              >
+                                <ChevronUp size={16} strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveTemplate(t.id, 1);
+                                }}
+                                disabled={i === templates.length - 1}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  width: 28,
+                                  height: 24,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "hsl(var(--muted-foreground))",
+                                  cursor: i === templates.length - 1 ? "default" : "pointer",
+                                  opacity: i === templates.length - 1 ? 0.3 : 1,
+                                }}
+                                aria-label={`Move ${t.name} down`}
+                              >
+                                <ChevronDown size={16} strokeWidth={2} />
+                              </button>
+                            </div>
+                          </>
+                        )}
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="flex justify-between items-center">
                             <div>
