@@ -295,27 +295,26 @@
   overflow-y: auto;
 }
 
+/* A single clickable row — was two nested elements (an outer bordered/filled
+   div plus an inner transparent button) back when the row also carried a
+   separate delete IconButton; now that the whole row is one button, both
+   sets of styles (the framing and the flex/padding) live on one class.
+   Splitting them the old way and applying both classes to one element would
+   have a source-order conflict on background/border between the two rules. */
 .exercise-picker-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 8px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-}
-
-.exercise-picker-row-main {
-  flex: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  width: 100%;
   padding: 10px 12px;
-  background: none;
-  border: none;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
   cursor: pointer;
   text-align: left;
 }
 
-.exercise-picker-row-main:hover {
+.exercise-picker-row:hover {
   color: hsl(var(--primary));
 }
