@@ -67,6 +67,11 @@ export function TemplateDetail({
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletingExercise, setDeletingExercise] = useState<{ id: string; name: string } | null>(null);
+  // Drives "Start" -> "Resume" on this screen's action button — otherwise
+  // the only signal that a draft is waiting is the nav-bar dot on a
+  // different tab, and the user has to trust "Start" won't blow away
+  // their in-progress sets.
+  const [hasActiveDraft, setHasActiveDraft] = useState(false);
   const autoEditApplied = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -78,6 +83,9 @@ export function TemplateDetail({
   useEffect(() => {
     reload();
     autoEditApplied.current = false;
+    getActiveWorkoutDraft().then((draft) =>
+      setHasActiveDraft(!!draft && draft.templateId === templateId)
+    );
   }, [templateId]);
 
   useEffect(() => {
@@ -385,7 +393,7 @@ export function TemplateDetail({
                 disabled={exercises.length === 0}
                 className="font-semibold tracking-tight"
               >
-                Start
+                {hasActiveDraft ? "Resume" : "Start"}
               </Button>
             )}
           </div>
