@@ -62,6 +62,21 @@
     @apply border-border;
   }
 
+  /* Baseline keyboard-focus ring for every plain interactive element — many
+     of this app's buttons are hand-rolled (icon-only steppers, reorder
+     controls, row buttons) rather than the shadcn Button/Badge components,
+     which already carry their own focus-visible ring. Without this they
+     fell back to whatever outline the browser happens to draw by default,
+     inconsistent with the themed rings used elsewhere. Uses outline (not
+     box-shadow) so it layers cleanly on top of any component that already
+     defines its own ring via box-shadow, instead of fighting it. */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", system-ui, sans-serif;

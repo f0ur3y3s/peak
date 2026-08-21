@@ -128,6 +128,7 @@ export function ExerciseCard({
           <div className="stepper" style={{ width: "100%" }}>
             <button
               className="stepper-btn"
+              aria-label="Decrease rest time"
               onClick={() => onUpdateRest(ex.id, Math.max(0, ex.restSeconds - 15))}
             >
               <Minus size={16} strokeWidth={2} />
@@ -137,6 +138,7 @@ export function ExerciseCard({
             </span>
             <button
               className="stepper-btn"
+              aria-label="Increase rest time"
               onClick={() => onUpdateRest(ex.id, ex.restSeconds + 15)}
             >
               <Plus size={16} strokeWidth={2} />
