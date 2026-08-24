@@ -1,127 +1,109 @@
 # Handoff — Peak redesign, `redesign/phased` branch
 
-Written 2026-08-20 for a fresh Claude Code session picking this up. The previous
-session ended abruptly (user had to go) with the working tree clean and
-everything committed — there is no in-flight/uncommitted work to recover.
+Updated 2026-08-24. Superseded almost entirely since the 2026-08-20 version of
+this file — a second Claude Code session picked it up, finished everything
+listed as remaining, ran a *second* full `/impeccable` audit+critique cycle
+against its own work, and fixed everything that surfaced there too. This
+version reflects the branch as it stands now: **clean and ready for a PR into
+`restart`**, not mid-work.
 
-## What this branch is
+If you're a fresh session reading this: read `SETUP.md` first for how to get
+a working environment, then come back here.
 
-A full UI review + implementation pass on **Peak**, a mobile-first workout-tracker
-PWA (React + Tailwind + shadcn-style components, dark theme, lime/chartreuse
-accent). Branch `redesign/phased` off `restart`. Sequence so far:
+## Status: ready for review, not more audit rounds
 
-1. A code-grounded UI audit (published as an Artifact, not in this repo) covering
-   every screen/component, organized into phases: P0 (correctness/broken CSS,
-   contrast, modal a11y, drag-reorder alternative), P1 (color system, typography,
-   empty states, icon sizes), P2 (Workout Home dashboard rebuild, breadcrumb fix,
-   elevation decision).
-2. `/impeccable audit` + `/impeccable critique` (dual sub-agent design review +
-   detector/browser evidence) run against the resulting app — see
-   `.impeccable/critique/2026-08-20T18-43-30Z__localhost.md` for the full
-   persisted critique (score: 31/40).
-3. Working through both reports' combined recommended actions, phase by phase,
-   each phase: implemented → verified with `tsc -b` + `vite build` → verified
-   **live in-browser** (this matters, see below) → code-reviewed via the
-   `code-review` skill (medium effort) as a background fork → issues found by
-   review fixed → committed.
+`tsc -b` and `vite build` both pass clean at HEAD (verified 2026-08-24). Working
+tree clean, nothing uncommitted. 27 commits ahead of `restart`.
 
-## How to actually see the app running
+Two full audit→fix cycles have now run against this app:
 
-The app is normally gated behind Supabase auth. For local dev without a real
-Supabase project:
+1. **2026-08-20**: code-level manual audit (P0/P1/P2 phases) + first
+   `/impeccable audit`+`critique` (scored 31/40) → fixed.
+2. **2026-08-21**: second `/impeccable critique` run fresh against the result
+   (scored 25/40 — see `.impeccable/critique/2026-08-21T02-47-10Z__localhost.md`,
+   its own "Reading the score drop" section explains why a lower score on a
+   fresh pass isn't a regression) → all 5 priority issues it found were fixed,
+   plus an additional QA sweep caught a few more bugs (History chart
+   trend/axis math, a stale error banner, parallelized DB reads).
 
-- `.env` (gitignored, not committed) needs:
-  ```
-  VITE_SUPABASE_URL=https://placeholder.supabase.co
-  VITE_SUPABASE_ANON_KEY=placeholder-anon-key
-  VITE_LOCAL_PREVIEW=1
-  ```
-- `VITE_LOCAL_PREVIEW=1` triggers `LOCAL_PREVIEW` in `src/App.tsx`, which skips
-  `AuthScreen` in dev builds only (`import.meta.env.DEV` gated — zero effect on
-  prod). All real data (templates, exercises, sessions, history) lives in
-  IndexedDB via `src/lib/db.ts` — only auth and cross-device sync need Supabase.
-- **Vite only reads `.env` at server startup** — if you change it, restart
-  `npm run dev`, don't rely on HMR.
-- A fresh IndexedDB seeds itself with a "Push Day A" template (Bench Press /
-  Incline DB Press / Tricep Pushdown) automatically (see `lib/db.ts`'s
-  `upgrade()` — seeds on `oldVersion < 2` && not a v1 migration).
-- There was a stray "fdsa" template (0 exercises) in the local test data from
-  earlier manual poking — harmless, local-only, not code; delete it via the UI
-  if it bothers you, or ignore it.
+**Recommendation: don't kick off a third open-ended critique round.** Every
+fresh pass will keep finding *something* — that's inherent to the method, not
+a sign the app is still broken. At this point the marginal value is in human
+review and shipping, not another automated pass. If you do want one more
+targeted check, make it human-directed (a specific screen or flow someone
+actually flagged), not another blind `/impeccable critique`.
 
-**Known environment quirk from this session:** another concurrent Claude Code
-session (or the user, in another window) was actively running its own
-`npm run dev` and editing this same repo/browser profile during parts of this
-work. Its edits and this session's converged cleanly (verified via `git diff`
-after each notification), but check `git log`/`git status` for anything
-unexpected before assuming a clean baseline. Also, the shared browser tab's
-viewport size drifted unpredictably across screenshots (851px vs 878px wide)
-during live verification — not a bug in the app, just automation-environment
-noise; `resize_window` to a true phone size did not reliably take effect
-either.
+One thing I (this session) personally verified live and can vouch for: the
+second critique's report flagged an **unconfirmed** anomaly — a set appearing
+already-logged (`1/10 sets`) immediately after tapping Start, which
+Assessment B itself couldn't reproduce and called possibly an environment
+artifact. I re-checked it fresh (clean reload, fresh workout start) on
+2026-08-24 and it does not reproduce — `0/N sets` on every exercise
+immediately after Start, every time. Treat it as noise, not a bug.
 
-## Commits on this branch (oldest → newest)
+## What's actually in this branch (all done)
 
-```
-218fc5e fix(P0): restore broken exercise-card state, fix contrast, add a11y to modals + drag reorder
-b93d28b feat(P1): split achievement color from action color, de-emphasize stencil face, unify empty states, tokenize icon sizes
-3eb4e64 feat(P2): dashboard-ify Workout Home, fix breadcrumb refetch, commit to a flat card system
-0da9171 chore: allow running locally without a Supabase project
-0baa570 fix: complete the P1 achievement-color split on ExerciseCard's set counter   (bug caught live, not by review)
-0122605 fix(a11y): add form labels/focus indicators, semantic headings, and a live region for the rest timer
-803b5d4 chore: persist impeccable audit+critique snapshot
-5b03844 chore: don't track impeccable's transient live-server state
-e098cc9 fix: surface Finish's silent template mutation, fix Discard's copy mismatch
-8793d1f fix(a11y): raise touch targets — Button default height, stepper buttons, reorder chevrons
-e854699 perf: bound WorkoutHomeScreen's session query, document why the other 4 stay unbounded
-977a1ee feat: add a workout-in-progress indicator to the nav bar   (*)
-```
+**From the first pass (P0/P1/P2 manual audit + first `/impeccable` cycle):**
+- Restored dead `.card-active`/`.card-complete` CSS (the active-workout
+  screen's core state indicator was silently broken)
+- Fixed `--muted-foreground` contrast (~3.3:1 → ~6.3:1)
+- Shared accessible `Modal` primitive (focus trap, Escape, stacking) used by
+  all dialogs
+- Drag-reorder gets a button-based non-pointer alternative (WCAG 2.5.7)
+- Split `--success` (achievement) from `--primary` (action) — PR badges,
+  "all sets complete," etc.
+- Stencil display font reserved for hero moments only; TopBar/modal titles
+  are real headings now
+- Shared `EmptyState` component
+- Workout Home rebuilt from one sentence into a real dashboard
+  (quick-start + last-session recap)
+- Form labels + focus indicators added everywhere they were missing
+- `aria-live` region on the rest timer
+- Finish's silent template mutation now surfaces on the Summary screen
+  ("Template Updated"); Discard's confirm button says "Discard" not "Delete"
+- Touch targets raised to 44px (Button default, steppers, reorder chevrons)
+- Nav-bar dot indicating a workout is in progress
+- Local dev without Supabase (`VITE_LOCAL_PREVIEW=1` — see `SETUP.md`)
 
-(*) `977a1ee` is the **only commit not run through the `code-review` skill** —
-the user asked to wrap up before that pass could run. It was verified with
-`tsc -b` and thorough live in-browser testing (including an edge case fixed
-mid-session — see the commit message), but hasn't had a second-pair-of-eyes
-review pass like every other commit here. **Recommend running
-`/code-review` (medium effort, or just review `App.tsx`/`NavBar.tsx`'s diff
-in that commit) before considering this branch fully done.**
+**From the second pass (fresh `/impeccable critique` + fixes):**
+- Muscle-group listbox scrolls itself instead of the whole modal
+- `.set-chip`/`.timer-sheet-inner` routed through named tokens
+- Arbitrary `text-[Npx]` values migrated to a named rem-based type scale
+- Edit Template's exercise-delete now confirms (was the one delete in the
+  app with no confirmation — trained-then-punished users used to the
+  confirm-gated pattern elsewhere)
+- Workout Complete gives a PR session real visual presence (was previously
+  identical whether or not a PR happened, despite being the app's peak
+  retention moment)
+- Delete-from-library affordance removed from the Add-Exercise picker
+  (task-context bleed — deleting from the global library doesn't belong in
+  an "add to this template" flow)
+- "Start" becomes "Resume" (with elapsed time) when a draft already exists
+  for that template
+- Reorder controls (drag handle + chevrons) hidden on TemplatesScreen when
+  there's only one template — dead weight competing for thumb space
+- Pinch-zoom re-enabled, global focus ring added, rest-time stepper labeled
+- Reorder-chevron touch targets grown further, spacing added between them
+- `.field-input` placeholder color routed through a theme token
+- Per-exercise DB reads parallelized (was sequential)
+- History chart trend-line/axis math bugs fixed
+- Stale action-error banner now clears when starting a new library action
 
-## What's done vs. what's left
+## Recommended next steps
 
-From the code-level Audit's 6 recommended actions:
-- [x] P1 harden — input focus indicators + form label associations
-- [x] P2 harden — semantic headings (TopBar/modals → h1/h2)
-- [x] P2 adapt — Button default height 40px→44px
-- [x] P2 optimize — bound `getWorkoutSessions()` (only where safe — see `e854699`'s message for why 4 of 5 call sites were deliberately left unbounded)
-- [ ] **P2 polish — replace two raw hex/hsl values with named tokens**: `index.css`'s `.set-chip { color: hsl(72 80% 55%) }` and `.timer-sheet-inner { background: hsl(0 0% 8%) }` still bypass the token system. Not started.
-- [ ] **P3 typeset — migrate arbitrary `text-[Npx]` utilities to a rem-based scale**: pervasive (nearly every screen). Not started — this is the broadest, lowest-priority remaining item; consider scoping it down (e.g. add custom rem-equivalent Tailwind size tokens for 10px/11px/13px rather than a wholesale sweep) rather than touching every occurrence.
+1. **Open a PR from `redesign/phased` into `restart`** and get human eyes on
+   it — this is the actual next step, not more automated passes.
+2. If a human reviewer flags something specific, fix that directly rather
+   than re-running a full critique.
+3. After merge, delete this file and `SETUP.md` (or fold the still-useful
+   parts — the `.env`/`VITE_LOCAL_PREVIEW` setup — into a real README) so
+   they don't linger as stale docs the way the first version of this file
+   briefly did.
 
-From the `/impeccable critique`'s 6 priority issues:
-- [x] P1 — rest-timer `aria-live` region
-- [x] P1 — Finish/Discard confirmation asymmetry + copy mismatch
-- [x] P2 — workout-in-progress nav indicator (needs the review pass noted above)
-- [x] P2 — reorder chevron touch-target size
-- [ ] **P3 — muscle-group picker listbox shows only ~1.5 of 18 options before scrolling**. `src/components/MuscleSelect.tsx`'s dropdown (`maxHeight: 220` in the inline style around line 50) is too short. Not started — straightforward, just bump the max-height (or restructure as a taller sheet) so ~5-6 rows are visible before scroll kicks in.
+## Verification pattern used throughout (worth keeping for future work)
 
-## Recommended next steps, in order
-
-1. Run `/code-review` over `977a1ee` (nav indicator) to close that gap.
-2. `MuscleSelect` listbox height (P3, quick, isolated).
-3. `.set-chip`/`.timer-sheet-inner` token cleanup (P2, quick, isolated, in `index.css`).
-4. Decide scope for the rem-based text-scale migration (P3) — this is the one
-   item worth a deliberate scoping conversation rather than just diving in,
-   given its breadth.
-5. After all of the above, consider re-running `/impeccable audit` and
-   `/impeccable critique` to confirm the scores actually moved, per the
-   skill's own suggested closing step.
-
-## Verification pattern used throughout (keep using it)
-
-For each phase: implement → `npx tsc -b` → `npx vite build` (then `rm -rf dist`,
-it's gitignored) → live-verify in the browser via the `mcp__claude-in-chrome__*`
-tools against `http://localhost:5173` (load them first via `ToolSearch` if
-deferred) → `Skill(code-review, args: "medium")` as a background fork → fix
-what it finds → commit. This caught real bugs three separate times this
-session (an inert CSS-cascade fix, a template-update race with a failed save,
-a missing rest-duration entry) that would not have been caught by type-checking
-or code reading alone — worth keeping as the standard for the rest of this
-work.
+For each change: implement → `npx tsc -b` → `npx vite build` (then `rm -rf
+dist`, gitignored) → live-verify in the browser via `mcp__claude-in-chrome__*`
+against `http://localhost:5173` → `Skill(code-review, args: "medium")` as a
+background fork → fix what it finds → commit. This caught several real bugs
+across both sessions that type-checking alone would have missed.
