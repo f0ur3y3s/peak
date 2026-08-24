@@ -1,15 +1,13 @@
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useId, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   getExerciseLibrary,
   saveLibraryExercise,
-  deleteLibraryExercise,
   type LibraryExercise,
 } from "@/lib/db";
 import { MuscleSelect } from "@/components/MuscleSelect";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Modal } from "@/components/Modal";
 import { TEXT_INPUT_STYLE, normalizeMuscle } from "@/lib/inputStyles";
 
 interface ExercisePickerProps {
@@ -23,11 +21,12 @@ export function ExercisePicker({
   onPick,
   onCancel,
 }: ExercisePickerProps) {
+  const titleId = useId();
+  const creatingMuscleId = useId();
   const [library, setLibrary] = useState<LibraryExercise[]>([]);
   const [filter, setFilter] = useState("");
   const [creatingMuscle, setCreatingMuscle] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
-  const [deletingExercise, setDeletingExercise] = useState<LibraryExercise | null>(null);
 
   const reload = () => getExerciseLibrary().then(setLibrary);
 
@@ -61,29 +60,14 @@ export function ExercisePicker({
     onPick(newExercise);
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    setActionError(null);
-    try {
-      const result = await deleteLibraryExercise(id);
-      if (result.ok) {
-        reload();
-      } else {
-        setActionError(
-          `"${name}" is used in ${result.usedIn.join(", ")} — remove it from those templates first.`
-        );
-      }
-    } catch {
-      setActionError("Couldn't delete exercise — try again.");
-    }
-  };
-
   return (
-    <div className="config-editor-overlay">
-      <div className="config-editor-panel">
-        <p className="font-semibold text-[17px] mb-3">Add exercise</p>
+    <Modal onClose={onCancel} labelledBy={titleId}>
+        <h2 id={titleId} className="font-semibold text-lg mb-3">Add exercise</h2>
         <input
+          className="field-input"
           style={{ ...TEXT_INPUT_STYLE, marginBottom: 12 }}
           placeholder="Search or create exercise"
+          aria-label="Search or create exercise"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           autoFocus
@@ -91,7 +75,7 @@ export function ExercisePicker({
 
         {actionError && (
           <p
-            className="font-mono text-[11px] mb-2"
+            className="font-mono text-caption mb-2"
             style={{ color: "hsl(var(--destructive))" }}
           >
             {actionError}
@@ -103,49 +87,32 @@ export function ExercisePicker({
           style={{ maxHeight: 240, overflowY: "auto" }}
         >
           {filtered.map((ex) => (
-            <div key={ex.id} className="exercise-picker-row">
-              <button className="exercise-picker-row-main" onClick={() => onPick(ex)}>
-                <span className="text-[14px]">{ex.name}</span>
-                <Badge
-                  variant="secondary"
-                  style={{ fontSize: 10, padding: "1px 7px" }}
-                >
-                  {ex.muscle}
-                </Badge>
-              </button>
-              <button
-                onClick={() => setDeletingExercise(ex)}
-                style={{
-                  background: "hsl(var(--destructive) / 0.1)",
-                  border: "1px solid hsl(var(--destructive) / 0.3)",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  color: "hsl(var(--destructive))",
-                  width: 36,
-                  height: 36,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginRight: 6,
-                }}
-                aria-label={`Delete ${ex.name}`}
+            <button
+              key={ex.id}
+              className="exercise-picker-row"
+              onClick={() => onPick(ex)}
+            >
+              <span className="text-body">{ex.name}</span>
+              <Badge
+                variant="secondary"
+                className="text-label"
+                style={{ padding: "1px 7px" }}
               >
-                <X size={16} strokeWidth={2} />
-              </button>
-            </div>
+                {ex.muscle}
+              </Badge>
+            </button>
           ))}
           {filtered.length === 0 && !canCreate && (
-            <p className="text-[13px] text-muted-foreground italic">No exercises found</p>
+            <p className="text-subtext text-muted-foreground italic">No exercises found</p>
           )}
         </div>
 
         {canCreate && (
           <div className="mb-4">
-            <p className="text-[11px] text-muted-foreground mb-1.5">
+            <label htmlFor={creatingMuscleId} className="block text-caption text-muted-foreground mb-1.5">
               Create "{filter.trim()}" — muscle group
-            </p>
-            <MuscleSelect value={creatingMuscle} onChange={setCreatingMuscle} />
+            </label>
+            <MuscleSelect id={creatingMuscleId} value={creatingMuscle} onChange={setCreatingMuscle} />
           </div>
         )}
 
@@ -159,20 +126,7 @@ export function ExercisePicker({
             </Button>
           )}
         </div>
-      </div>
 
-      {deletingExercise && (
-        <ConfirmDialog
-          title="Delete exercise"
-          message={`Delete "${deletingExercise.name}"?`}
-          onConfirm={() => {
-            const ex = deletingExercise;
-            setDeletingExercise(null);
-            handleDelete(ex.id, ex.name);
-          }}
-          onCancel={() => setDeletingExercise(null)}
-        />
-      )}
-    </div>
+    </Modal>
   );
 }

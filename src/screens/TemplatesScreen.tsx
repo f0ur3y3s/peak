@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { GripVertical } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -45,6 +45,11 @@ export function TemplatesScreen({
 
   useEffect(() => {
     getTemplates().then(setTemplates);
+    // Deliberately unbounded — this builds "last performed" per template by
+    // taking the first (most recent) session matching each template as it
+    // walks newest-first. A limit here could hide a rarely-used template's
+    // real last-performed date behind an incorrect "Never" if that session
+    // fell outside the limited window.
     getWorkoutSessions().then((sessions) => {
       const map = new Map<string, number>();
       for (const s of sessions) {
@@ -96,6 +101,18 @@ export function TemplatesScreen({
     reorderTemplates(reordered.map((t) => t.id));
   };
 
+  // Button-based reorder alternative alongside the drag handle — dragging
+  // alone has no single-pointer/keyboard equivalent, which WCAG 2.2 SC 2.5.7
+  // (Dragging Movements) requires.
+  const moveTemplate = (id: string, direction: -1 | 1) => {
+    const idx = templates.findIndex((t) => t.id === id);
+    const newIndex = idx + direction;
+    if (idx === -1 || newIndex < 0 || newIndex >= templates.length) return;
+    const reordered = arrayMove(templates, idx, newIndex);
+    setTemplates(reordered);
+    reorderTemplates(reordered.map((t) => t.id));
+  };
+
   return (
     <div>
       <TopBar title="Templates" />
@@ -103,7 +120,7 @@ export function TemplatesScreen({
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={templates.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-            {templates.map((t) => {
+            {templates.map((t, i) => {
               const lastTs = lastPerformed.get(t.id) ?? lastPerformed.get(`name:${t.name}`);
               const muscleGroups = [
                 ...new Set(
@@ -120,34 +137,93 @@ export function TemplatesScreen({
                       onClick={() => onSelectTemplate(t.id)}
                       className="cursor-pointer transition-colors"
                     >
-                      <CardContent style={{ padding: "14px 16px" }} className="flex items-center gap-3">
-                        <button
-                          {...handleProps}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "grab",
-                            color: "hsl(var(--muted-foreground))",
-                            padding: 0,
-                            display: "flex",
-                            alignItems: "center",
-                            flexShrink: 0,
-                            touchAction: "none",
-                          }}
-                          aria-label="Drag to reorder"
-                        >
-                          <GripVertical size={16} strokeWidth={2} />
-                        </button>
+                      <CardContent style={{ padding: "14px 16px" }} className="flex items-center gap-1">
+                        {/* Reorder controls (drag handle + chevrons) are dead
+                            weight with nothing to reorder against — hidden
+                            below 2 templates rather than competing with the
+                            row's one useful action (opening the template)
+                            for thumb space in the common single-template
+                            state. */}
+                        {templates.length > 1 && (
+                          <>
+                            <button
+                              {...handleProps}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "grab",
+                                color: "hsl(var(--muted-foreground))",
+                                width: 44,
+                                height: 44,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                marginLeft: -12,
+                                touchAction: "none",
+                              }}
+                              aria-label="Drag to reorder"
+                            >
+                              <GripVertical size={16} strokeWidth={2} />
+                            </button>
+                            <div className="flex flex-col gap-0.5" style={{ marginLeft: -8, marginRight: 6, flexShrink: 0 }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveTemplate(t.id, -1);
+                                }}
+                                disabled={i === 0}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  width: 32,
+                                  height: 30,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "hsl(var(--muted-foreground))",
+                                  cursor: i === 0 ? "default" : "pointer",
+                                  opacity: i === 0 ? 0.3 : 1,
+                                }}
+                                aria-label={`Move ${t.name} up`}
+                              >
+                                <ChevronUp size={16} strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveTemplate(t.id, 1);
+                                }}
+                                disabled={i === templates.length - 1}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  width: 32,
+                                  height: 30,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "hsl(var(--muted-foreground))",
+                                  cursor: i === templates.length - 1 ? "default" : "pointer",
+                                  opacity: i === templates.length - 1 ? 0.3 : 1,
+                                }}
+                                aria-label={`Move ${t.name} down`}
+                              >
+                                <ChevronDown size={16} strokeWidth={2} />
+                              </button>
+                            </div>
+                          </>
+                        )}
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="flex justify-between items-center">
                             <div>
-                              <p className="font-semibold text-[15px]">{t.name}</p>
-                              <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                              <p className="font-semibold text-title">{t.name}</p>
+                              <p className="font-mono text-caption text-muted-foreground mt-0.5">
                                 {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
                               </p>
                             </div>
-                            <p className="font-mono text-[11px] text-muted-foreground">
+                            <p className="font-mono text-caption text-muted-foreground">
                               {lastTs ? fmtRelativeDate(lastTs) : "Never"}
                             </p>
                           </div>
@@ -157,7 +233,8 @@ export function TemplatesScreen({
                                 <Badge
                                   key={group}
                                   variant="secondary"
-                                  style={{ fontSize: 10, padding: "1px 7px" }}
+                                  className="text-label"
+                                  style={{ padding: "1px 7px" }}
                                 >
                                   {group}
                                 </Badge>
@@ -178,15 +255,17 @@ export function TemplatesScreen({
           <Card>
             <CardContent style={{ padding: 14 }} className="flex flex-col gap-2.5">
               <input
+                className="field-input"
                 style={PAGE_INPUT_STYLE}
                 placeholder="Template name"
+                aria-label="Template name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 autoFocus
               />
               {createError && (
                 <p
-                  className="font-mono text-[11px]"
+                  className="font-mono text-caption"
                   style={{ color: "hsl(var(--destructive))", margin: 0 }}
                 >
                   {createError}

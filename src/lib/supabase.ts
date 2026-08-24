@@ -1,9 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  // createClient throws synchronously on an empty/undefined URL, and this
+  // module is imported at the top of main.tsx before React ever renders —
+  // so a missing .env doesn't fail gracefully, it white-screens the entire
+  // app with nothing in the DOM and only a console error to explain why.
+  // A placeholder client instead lets the app boot; every real Supabase
+  // call on it just fails at request time (network error) instead of
+  // crashing at import time. See .env.example.
+  console.warn(
+    "VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set — auth and cloud sync are disabled. See .env.example."
+  );
+}
+
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-anon-key"
+);
 
 // iOS suspends a backgrounded PWA's JS timers, including the one that
 // drives Supabase's scheduled token refresh. If that timer's refresh

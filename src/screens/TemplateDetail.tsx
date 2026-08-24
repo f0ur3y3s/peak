@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Clock, GripVertical, Pencil, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, GripVertical, Pencil, Plus, X } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -13,11 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { IconButton } from "@/components/ui/icon-button";
 import { TopBar } from "@/components/TopBar";
 import { SortableRow, type DragHandleProps } from "@/components/SortableRow";
 import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
 import { ExercisePicker } from "@/components/ExercisePicker";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
@@ -37,7 +39,7 @@ interface TemplateDetailProps {
   templateId: string;
   onStart: () => void;
   onBack: () => void;
-  onViewExerciseHistory: (exerciseName: string) => void;
+  onViewExerciseHistory: (exerciseName: string, templateName: string) => void;
 }
 
 const DEFAULT_CONFIG: ExerciseConfigValues = {
@@ -64,6 +66,12 @@ export function TemplateDetail({
   const [pickingExercise, setPickingExercise] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletingExercise, setDeletingExercise] = useState<{ id: string; name: string } | null>(null);
+  // Drives "Start" -> "Resume" on this screen's action button — otherwise
+  // the only signal that a draft is waiting is the nav-bar dot on a
+  // different tab, and the user has to trust "Start" won't blow away
+  // their in-progress sets.
+  const [hasActiveDraft, setHasActiveDraft] = useState(false);
   const autoEditApplied = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -75,6 +83,9 @@ export function TemplateDetail({
   useEffect(() => {
     reload();
     autoEditApplied.current = false;
+    getActiveWorkoutDraft().then((draft) =>
+      setHasActiveDraft(!!draft && draft.templateId === templateId)
+    );
   }, [templateId]);
 
   useEffect(() => {
@@ -137,6 +148,16 @@ export function TemplateDetail({
     const oldIndex = exercises.findIndex((ex) => ex.id === active.id);
     const newIndex = exercises.findIndex((ex) => ex.id === over.id);
     handleReorderExercises(arrayMove(exercises, oldIndex, newIndex));
+  };
+
+  // Button-based reorder alternative alongside the drag handle — dragging
+  // alone has no single-pointer/keyboard equivalent, which WCAG 2.2 SC 2.5.7
+  // (Dragging Movements) requires.
+  const moveExercise = (id: string, direction: -1 | 1) => {
+    const idx = exercises.findIndex((ex) => ex.id === id);
+    const newIndex = idx + direction;
+    if (idx === -1 || newIndex < 0 || newIndex >= exercises.length) return;
+    handleReorderExercises(arrayMove(exercises, idx, newIndex));
   };
 
   const handleDeleteExercise = async (exerciseId: string) => {
@@ -203,50 +224,109 @@ export function TemplateDetail({
     ? template.exercises.find((e) => e.exerciseId === editingExisting.exerciseId)
     : undefined;
 
-  const renderExerciseCard = (ex: Exercise, index: number, handleProps?: DragHandleProps) => (
+  const renderExerciseCard = (
+    ex: Exercise,
+    index: number,
+    handleProps?: DragHandleProps,
+    reorder?: { onMoveUp: () => void; onMoveDown: () => void; canMoveUp: boolean; canMoveDown: boolean }
+  ) => (
     <Card
       key={ex.id}
       onClick={() =>
         editMode
           ? setEditingExisting({ exerciseId: ex.id, name: ex.name })
-          : onViewExerciseHistory(ex.name)
+          : onViewExerciseHistory(ex.name, template.name)
       }
       style={{ cursor: "pointer" }}
     >
       <CardHeader style={{ padding: "14px 16px 10px" }}>
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {handleProps ? (
-              <button
-                {...handleProps}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "grab",
-                  color: "hsl(var(--muted-foreground))",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  touchAction: "none",
-                }}
-                aria-label="Drag to reorder"
-              >
-                <GripVertical size={16} strokeWidth={2} />
-              </button>
+              <>
+                <button
+                  {...handleProps}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "grab",
+                    color: "hsl(var(--muted-foreground))",
+                    width: 44,
+                    height: 44,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginLeft: -12,
+                    touchAction: "none",
+                  }}
+                  aria-label="Drag to reorder"
+                >
+                  <GripVertical size={16} strokeWidth={2} />
+                </button>
+                {reorder && (
+                  <div className="flex flex-col gap-0.5" style={{ marginLeft: -8, marginRight: 2 }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        reorder.onMoveUp();
+                      }}
+                      disabled={!reorder.canMoveUp}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        width: 32,
+                        height: 30,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "hsl(var(--muted-foreground))",
+                        cursor: reorder.canMoveUp ? "pointer" : "default",
+                        opacity: reorder.canMoveUp ? 1 : 0.3,
+                      }}
+                      aria-label={`Move ${ex.name} up`}
+                    >
+                      <ChevronUp size={16} strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        reorder.onMoveDown();
+                      }}
+                      disabled={!reorder.canMoveDown}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        width: 32,
+                        height: 30,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "hsl(var(--muted-foreground))",
+                        cursor: reorder.canMoveDown ? "pointer" : "default",
+                        opacity: reorder.canMoveDown ? 1 : 0.3,
+                      }}
+                      aria-label={`Move ${ex.name} down`}
+                    >
+                      <ChevronDown size={16} strokeWidth={2} />
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
-              <span className="font-mono text-[10px] text-muted-foreground min-w-[20px]">
+              <span className="font-mono text-label text-muted-foreground min-w-[20px]">
                 {String(index + 1).padStart(2, "0")}
               </span>
             )}
             <div>
-              <p className="font-semibold text-[15px]">{ex.name}</p>
+              <p className="font-semibold text-title">{ex.name}</p>
               <div className="flex gap-1.5 items-center mt-1">
-                <Badge variant="secondary" style={{ fontSize: 10, padding: "1px 7px" }}>
+                <Badge variant="secondary" className="text-label" style={{ padding: "1px 7px" }}>
                   {ex.muscle}
                 </Badge>
-                <span className="font-mono text-[11px] text-muted-foreground inline-flex items-center gap-1">
-                  <Clock size={12} strokeWidth={2} />
+                <span className="font-mono text-caption text-muted-foreground inline-flex items-center gap-1">
+                  <Clock size={16} strokeWidth={2} />
                   {fmtTime(ex.restSeconds)}
                 </span>
               </div>
@@ -257,33 +337,21 @@ export function TemplateDetail({
               <p className="font-mono text-sm">
                 {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
               </p>
-              <p className="font-mono text-[11px] text-muted-foreground mt-0.5">
+              <p className="font-mono text-caption text-muted-foreground mt-0.5">
                 @ {fmtWeight(ex.targetWeight, unit)} {unit}
               </p>
             </div>
             {editMode && (
-              <button
+              <IconButton
+                variant="destructive"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteExercise(ex.id);
-                }}
-                style={{
-                  background: "hsl(var(--destructive) / 0.1)",
-                  border: "1px solid hsl(var(--destructive) / 0.3)",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  color: "hsl(var(--destructive))",
-                  width: 36,
-                  height: 36,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                  setDeletingExercise({ id: ex.id, name: ex.name });
                 }}
                 aria-label="Delete exercise"
               >
                 <X size={16} strokeWidth={2} />
-              </button>
+              </IconButton>
             )}
           </div>
         </div>
@@ -292,7 +360,7 @@ export function TemplateDetail({
       <CardContent style={{ padding: "12px 16px" }}>
         {ex.last ? (
           <>
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-1.5">
+            <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-1.5">
               Last session
             </p>
             <div className="flex gap-1.5 flex-wrap">
@@ -304,7 +372,7 @@ export function TemplateDetail({
             </div>
           </>
         ) : (
-          <p className="font-mono text-[11px] text-muted-foreground italic">No previous data</p>
+          <p className="font-mono text-caption text-muted-foreground italic">No previous data</p>
         )}
       </CardContent>
     </Card>
@@ -325,7 +393,7 @@ export function TemplateDetail({
                 disabled={exercises.length === 0}
                 className="font-semibold tracking-tight"
               >
-                Start
+                {hasActiveDraft ? "Resume" : "Start"}
               </Button>
             )}
           </div>
@@ -334,7 +402,7 @@ export function TemplateDetail({
 
       {actionError && (
         <p
-          className="font-mono text-[11px] px-5 pt-1"
+          className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >
           {actionError}
@@ -344,8 +412,10 @@ export function TemplateDetail({
       {editMode && (
         <div className="px-5 pt-3 flex flex-col gap-2.5">
           <input
+            className="field-input"
             style={PAGE_INPUT_STYLE}
             defaultValue={template.name}
+            aria-label="Template name"
             onBlur={(e) => handleRename(e.target.value)}
           />
           <Button variant="destructive" className="w-full" onClick={() => setConfirmingDelete(true)}>
@@ -355,8 +425,17 @@ export function TemplateDetail({
       )}
 
       {exercises.length === 0 && !editMode ? (
-        <div className="px-5 pt-10 text-center">
-          <p className="text-muted-foreground text-sm">No exercises yet — tap + Add exercise</p>
+        <div className="px-5">
+          <EmptyState
+            message="No exercises in this template yet."
+            action={{
+              label: "Add exercise",
+              onClick: () => {
+                setEditMode(true);
+                setPickingExercise(true);
+              },
+            }}
+          />
         </div>
       ) : (
         <>
@@ -373,7 +452,7 @@ export function TemplateDetail({
                   ).map(([v, l]) => (
                     <div key={l}>
                       <p className="font-mono text-2xl font-medium">{v}</p>
-                      <p className="text-[11px] text-muted-foreground mt-px">{l}</p>
+                      <p className="text-caption text-muted-foreground mt-px">{l}</p>
                     </div>
                   ))}
                 </CardContent>
@@ -385,9 +464,16 @@ export function TemplateDetail({
             {editMode ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndExercises}>
                 <SortableContext items={exercises.map((ex) => ex.id)} strategy={verticalListSortingStrategy}>
-                  {exercises.map((ex) => (
+                  {exercises.map((ex, i) => (
                     <SortableRow key={ex.id} id={ex.id}>
-                      {(handleProps) => renderExerciseCard(ex, 0, handleProps)}
+                      {(handleProps) =>
+                        renderExerciseCard(ex, i, handleProps, {
+                          onMoveUp: () => moveExercise(ex.id, -1),
+                          onMoveDown: () => moveExercise(ex.id, 1),
+                          canMoveUp: i > 0,
+                          canMoveDown: i < exercises.length - 1,
+                        })
+                      }
                     </SortableRow>
                   ))}
                 </SortableContext>
@@ -421,7 +507,7 @@ export function TemplateDetail({
             "Done editing"
           ) : (
             <>
-              <Pencil size={14} strokeWidth={2} />
+              <Pencil size={16} strokeWidth={2} />
               Edit template
             </>
           )}
@@ -466,6 +552,19 @@ export function TemplateDetail({
             handleDeleteTemplate();
           }}
           onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+
+      {deletingExercise && (
+        <ConfirmDialog
+          title="Remove exercise"
+          message={`Remove "${deletingExercise.name}" from this template? This cannot be undone.`}
+          confirmLabel="Remove"
+          onConfirm={() => {
+            handleDeleteExercise(deletingExercise.id);
+            setDeletingExercise(null);
+          }}
+          onCancel={() => setDeletingExercise(null)}
         />
       )}
     </div>

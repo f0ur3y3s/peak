@@ -44,6 +44,21 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
     return () => clearInterval(iv);
   }, [timer]);
 
+  // Screen-reader announcement — the visual countdown updates every second,
+  // but announcing every second would drown a screen-reader user in noise.
+  // Only announce at a handful of meaningful checkpoints instead.
+  const [announcement, setAnnouncement] = useState("");
+  const lastAnnouncedRef = useRef<number | null>(null);
+  useEffect(() => {
+    lastAnnouncedRef.current = null;
+  }, [timer]);
+  useEffect(() => {
+    const milestones = [60, 30, 15, 10, 5, 4, 3, 2, 1, 0];
+    if (!milestones.includes(remaining) || lastAnnouncedRef.current === remaining) return;
+    lastAnnouncedRef.current = remaining;
+    setAnnouncement(remaining === 0 ? "Rest complete — time to lift" : `${remaining} seconds left`);
+  }, [remaining]);
+
   const pct = (remaining / totalSeconds) * 100;
   const danger = remaining <= 10 && remaining > 0;
   const done = remaining === 0;
@@ -92,6 +107,13 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
           : "bottom 0.3s cubic-bezier(.32,.72,0,1), transform 0.3s cubic-bezier(.32,.72,0,1)",
       }}
     >
+      {/* Visually hidden — announces the rest countdown at a handful of
+          checkpoints instead of the visual per-second tick, which would
+          otherwise be silent to (if throttled) or overwhelming for (if not)
+          a screen-reader user. */}
+      <span aria-live="polite" role="status" className="sr-only">
+        {announcement}
+      </span>
       <div
         className="timer-sheet-inner"
         style={{
@@ -109,9 +131,9 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
           >
             <div className="drag-handle" style={{ margin: 0 }} />
             <div className="flex items-center gap-2.5 flex-1 justify-center">
-              <span className="text-muted-foreground text-[13px]">{exerciseName}</span>
+              <span className="text-muted-foreground text-subtext">{exerciseName}</span>
               <span
-                className="font-mono text-[22px] font-medium tracking-tight"
+                className="font-mono text-stat font-medium tracking-tight"
                 style={{ color: timerColor }}
               >
                 {fmtTime(remaining)}
@@ -122,7 +144,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
               className="bg-transparent border-none text-muted-foreground cursor-pointer text-lg px-1"
               aria-label="Close timer"
             >
-              <X size={18} strokeWidth={2} />
+              <X size={20} strokeWidth={2} />
             </button>
           </div>
         ) : (
@@ -140,18 +162,17 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
               style={{ paddingBottom: "calc(2.25rem + env(safe-area-inset-bottom, 0px))" }}
             >
               {/* Context */}
-              <p className="font-mono text-[11px] text-muted-foreground tracking-widest uppercase mb-1">
+              <p className="font-mono text-caption text-muted-foreground tracking-widest uppercase mb-1">
                 {exerciseName}
               </p>
-              <p className="text-[13px] text-muted-foreground mb-9">
+              <p className="text-subtext text-muted-foreground mb-9">
                 {done ? "Time to lift" : nextSet}
               </p>
 
               {/* Big countdown */}
               <p
-                className="font-mono font-medium tracking-tighter leading-none mb-8"
+                className="font-mono font-medium tracking-tighter leading-none mb-8 text-countdown"
                 style={{
-                  fontSize: 88,
                   color: timerColor,
                   transition: "color 0.3s",
                 }}
@@ -171,9 +192,9 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                     key={d}
                     variant="outline"
                     onClick={() => setRemaining((r) => Math.max(0, Math.min(600, r + d)))}
-                    className="font-mono text-[13px] min-w-[76px] gap-1"
+                    className="font-mono text-subtext min-w-[76px] gap-1"
                   >
-                    {d < 0 ? <Minus size={13} strokeWidth={2} /> : <Plus size={13} strokeWidth={2} />}
+                    {d < 0 ? <Minus size={16} strokeWidth={2} /> : <Plus size={16} strokeWidth={2} />}
                     {Math.abs(d)}s
                   </Button>
                 ))}
@@ -189,7 +210,7 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                 {done ? (
                   <>
                     Back to workout
-                    <ArrowRight size={13} strokeWidth={2} />
+                    <ArrowRight size={16} strokeWidth={2} />
                   </>
                 ) : (
                   "skip"

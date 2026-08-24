@@ -1,11 +1,17 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+// Deliberately flat — no resting shadow. shadcn's default shadow-sm reads as
+// near-invisible against this app's dark card/background pairing anyway, so
+// rather than half-apply an elevation system, the explicit rule is: cards
+// are flat at rest, and the only elevated surface in the app is a row being
+// dragged (see SortableRow's lift + shadow), which stays meaningful precisely
+// because nothing else competes with it.
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("rounded-xl border border-border bg-card text-card-foreground shadow-sm", className)}
+      className={cn("rounded-xl border border-border bg-card text-card-foreground", className)}
       {...props}
     />
   )

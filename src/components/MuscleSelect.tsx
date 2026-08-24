@@ -1,17 +1,33 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { MUSCLE_GROUPS, fuzzyMatch } from "@/lib/muscles";
 import { TEXT_INPUT_STYLE } from "@/lib/inputStyles";
+
+const DROPDOWN_MARGIN = 8;
+const DROPDOWN_MAX_HEIGHT = 320;
 
 interface MuscleSelectProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Pass when a caller renders its own visible <label htmlFor={id}> for this
+   * field — otherwise it falls back to an aria-label so it's never
+   * unlabeled. */
+  id?: string;
 }
 
-export function MuscleSelect({ value, onChange, placeholder }: MuscleSelectProps) {
+export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectProps) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
+  // Positioned in fixed coordinates (recomputed from the input's own rect)
+  // rather than absolute-inside-the-input, because MuscleSelect is always
+  // used inside .config-editor-panel, which is overflow-y:auto — an
+  // absolutely positioned dropdown taller than the panel's own intrinsic
+  // height gets counted in the panel's scrollHeight, so opening it scrolls
+  // the whole modal (title, name field, everything) instead of just the
+  // listbox. Fixed positioning escapes that containing block entirely.
+  const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setQuery(value), [value]);
 
@@ -25,6 +41,32 @@ export function MuscleSelect({ value, onChange, placeholder }: MuscleSelectProps
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const spaceBelow = window.innerHeight - rect.bottom - DROPDOWN_MARGIN;
+      setDropdownStyle({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.max(120, Math.min(DROPDOWN_MAX_HEIGHT, spaceBelow)),
+      });
+    };
+
+    updatePosition();
+    // Capture phase so scrolling any nested container (e.g. the modal
+    // panel itself) repositions the dropdown too, not just window scroll.
+    window.addEventListener("resize", updatePosition);
+    document.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      document.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
   const filteredGroups = MUSCLE_GROUPS.map((g) => ({
     group: g.group,
     muscles: g.muscles.filter((m) => fuzzyMatch(query, m) || fuzzyMatch(query, g.group)),
@@ -33,8 +75,12 @@ export function MuscleSelect({ value, onChange, placeholder }: MuscleSelectProps
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
       <input
+        ref={inputRef}
+        id={id}
+        className="field-input"
         style={TEXT_INPUT_STYLE}
         placeholder={placeholder ?? "Search muscle group"}
+        aria-label={id ? undefined : placeholder ?? "Search muscle group"}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -43,25 +89,25 @@ export function MuscleSelect({ value, onChange, placeholder }: MuscleSelectProps
         }}
         onFocus={() => setOpen(true)}
       />
-      {open && filteredGroups.length > 0 && (
+      {open && filteredGroups.length > 0 && dropdownStyle && (
         <div
           style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            right: 0,
+            position: "fixed",
+            top: dropdownStyle.top,
+            left: dropdownStyle.left,
+            width: dropdownStyle.width,
             background: "hsl(var(--card))",
             border: "1px solid hsl(var(--border))",
             borderRadius: 10,
-            maxHeight: 220,
+            maxHeight: dropdownStyle.maxHeight,
             overflowY: "auto",
-            zIndex: 20,
+            zIndex: 70,
           }}
         >
           {filteredGroups.map((g) => (
             <div key={g.group}>
               <p
-                className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider"
+                className="font-mono text-label text-muted-foreground uppercase tracking-wider"
                 style={{ padding: "6px 12px 2px", margin: 0 }}
               >
                 {g.group}
@@ -74,7 +120,7 @@ export function MuscleSelect({ value, onChange, placeholder }: MuscleSelectProps
                     onChange(m);
                     setOpen(false);
                   }}
-                  className="text-[14px]"
+                  className="text-body"
                   style={{
                     display: "block",
                     width: "100%",

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, Clock, Minus, Plus, X } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { IconButton } from "@/components/ui/icon-button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
@@ -26,6 +27,9 @@ export function ExerciseCard({
   onUpdateRest,
 }: ExerciseCardProps) {
   const { unit } = useWeightUnit();
+  const logFormIdBase = useId();
+  const repsFieldId = `${logFormIdBase}-reps`;
+  const weightFieldId = `${logFormIdBase}-weight`;
   const lastIdx = ex.logged.length;
   const defaultReps = String(ex.last?.[lastIdx]?.r ?? ex.repsMin);
   const defaultWeight = String(toDisplayWeight(ex.last?.[lastIdx]?.w ?? ex.targetWeight, unit));
@@ -63,18 +67,18 @@ export function ExerciseCard({
       <CardHeader style={{ padding: "14px 16px 8px" }}>
         <div className="flex justify-between items-start">
           <div>
-            <p className="font-semibold text-[15px] mb-1">{ex.name}</p>
+            <p className="font-semibold text-title mb-1">{ex.name}</p>
             <div className="flex gap-1.5 items-center">
               <Badge
                 variant="secondary"
+                className="text-label"
                 style={{
-                  fontSize: 10,
                   padding: "1px 7px",
                 }}
               >
                 {ex.muscle}
               </Badge>
-              <span className="font-mono text-[11px] text-muted-foreground">
+              <span className="font-mono text-caption text-muted-foreground">
                 {ex.targetSets}×{ex.repsMin}–{ex.repsMax} @ {fmtWeight(ex.targetWeight, unit)}{unit}
               </span>
               <button
@@ -82,7 +86,7 @@ export function ExerciseCard({
                   e.stopPropagation();
                   setEditingRest((v) => !v);
                 }}
-                className="font-mono text-[11px]"
+                className="font-mono text-caption"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -95,25 +99,26 @@ export function ExerciseCard({
                   cursor: "pointer",
                 }}
               >
-                <Clock size={12} strokeWidth={2} />
+                <Clock size={16} strokeWidth={2} />
                 {fmtTime(ex.restSeconds)}
               </button>
             </div>
           </div>
           <div className="text-right">
             <p
-              className="font-mono text-[22px] font-medium"
+              className="font-mono text-stat font-medium"
               style={{
-                color:
-                  done || isActive
-                    ? "hsl(var(--primary))"
-                    : "hsl(var(--muted-foreground))",
+                color: done
+                  ? "hsl(var(--success))"
+                  : isActive
+                  ? "hsl(var(--primary))"
+                  : "hsl(var(--muted-foreground))",
               }}
             >
               {ex.logged.length}
               <span className="text-sm text-muted-foreground">/{effectiveTarget}</span>
             </p>
-            <p className="text-[10px] text-muted-foreground">sets</p>
+            <p className="text-label text-muted-foreground">sets</p>
           </div>
         </div>
       </CardHeader>
@@ -123,6 +128,7 @@ export function ExerciseCard({
           <div className="stepper" style={{ width: "100%" }}>
             <button
               className="stepper-btn"
+              aria-label="Decrease rest time"
               onClick={() => onUpdateRest(ex.id, Math.max(0, ex.restSeconds - 15))}
             >
               <Minus size={16} strokeWidth={2} />
@@ -132,6 +138,7 @@ export function ExerciseCard({
             </span>
             <button
               className="stepper-btn"
+              aria-label="Increase rest time"
               onClick={() => onUpdateRest(ex.id, ex.restSeconds + 15)}
             >
               <Plus size={16} strokeWidth={2} />
@@ -143,7 +150,7 @@ export function ExerciseCard({
       {/* Previous session chips */}
       {ex.last && (
         <div className="flex gap-1.5 items-center flex-wrap px-4 pb-2.5">
-          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+          <span className="font-mono text-label text-muted-foreground uppercase tracking-wider">
             prev
           </span>
           {ex.last.map((s, i) => (
@@ -162,33 +169,22 @@ export function ExerciseCard({
             <div
               key={s.id}
               className="grid gap-2 items-center py-1.5 border-b border-border"
-              style={{ gridTemplateColumns: "20px 1fr 1fr 40px" }}
+              style={{ gridTemplateColumns: "20px 1fr 1fr 44px" }}
             >
-              <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
+              <span className="font-mono text-caption text-muted-foreground">{i + 1}</span>
               <span className="font-mono text-sm">{s.reps} reps</span>
               <span className="font-mono text-sm">{fmtWeight(s.weight, unit)} {unit}</span>
-              <button
+              <IconButton
+                variant="destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   setDeletingSet({ id: s.id, index: i, reps: s.reps, weight: s.weight });
                 }}
-                style={{
-                  background: "hsl(var(--destructive) / 0.1)",
-                  border: "1px solid hsl(var(--destructive) / 0.3)",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  color: "hsl(var(--destructive))",
-                  width: 36,
-                  height: 36,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  justifySelf: "end",
-                }}
+                style={{ justifySelf: "end" }}
                 aria-label="Delete set"
               >
                 <X size={16} strokeWidth={2} />
-              </button>
+              </IconButton>
             </div>
           ))}
         </div>
@@ -200,21 +196,22 @@ export function ExerciseCard({
           className="log-form mx-4 mb-3.5 mt-2.5 rounded-[10px] border border-border"
           style={{ padding: 14, background: "hsl(var(--background))" }}
         >
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-3">
+          <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-3">
             Set {ex.logged.length + 1}{done ? " (extra)" : ""}
           </p>
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             {(
               [
-                ["Reps", reps, setReps, 1],
-                [`Weight (${unit})`, weight, setWeight, weightStep],
-              ] as [string, string, (v: string | ((prev: string) => string)) => void, number][]
-            ).map(([label, val, setter, step]) => (
+                ["Reps", reps, setReps, 1, repsFieldId],
+                [`Weight (${unit})`, weight, setWeight, weightStep, weightFieldId],
+              ] as [string, string, (v: string | ((prev: string) => string)) => void, number, string][]
+            ).map(([label, val, setter, step, fieldId]) => (
               <div key={label}>
-                <p className="text-[11px] text-muted-foreground mb-1.5">{label}</p>
+                <label htmlFor={fieldId} className="block text-caption text-muted-foreground mb-1.5">{label}</label>
                 <div className="stepper">
                   <button
                     className="stepper-btn"
+                    aria-label={`Decrease ${label}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       // An empty/invalid field parses to NaN, which would
@@ -229,6 +226,7 @@ export function ExerciseCard({
                     <Minus size={16} strokeWidth={2} />
                   </button>
                   <input
+                    id={fieldId}
                     className="stepper-input"
                     value={val}
                     onChange={(e) => setter(e.target.value)}
@@ -236,6 +234,7 @@ export function ExerciseCard({
                   />
                   <button
                     className="stepper-btn"
+                    aria-label={`Increase ${label}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       setter((v) => {
@@ -251,7 +250,7 @@ export function ExerciseCard({
             ))}
           </div>
           <Button
-            className="w-full font-semibold text-[15px] tracking-tight"
+            className="w-full font-semibold text-title tracking-tight"
             disabled={!canLog}
             onClick={(e) => {
               e.stopPropagation();
@@ -267,8 +266,8 @@ export function ExerciseCard({
 
       {done && !addingExtra && (
         <div className="px-4 pb-3.5 pt-1.5 flex items-center justify-between gap-2">
-          <p className="font-mono text-xs inline-flex items-center gap-1" style={{ color: "hsl(var(--primary))" }}>
-            <Check size={14} strokeWidth={2} />
+          <p className="font-mono text-xs inline-flex items-center gap-1" style={{ color: "hsl(var(--success))" }}>
+            <Check size={16} strokeWidth={2} />
             All sets complete
           </p>
           {isActive && (
@@ -289,7 +288,7 @@ export function ExerciseCard({
                 textDecoration: "underline",
               }}
             >
-              <Plus size={13} strokeWidth={2} />
+              <Plus size={16} strokeWidth={2} />
               Add set
             </button>
           )}

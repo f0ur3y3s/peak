@@ -258,6 +258,8 @@ async function clearTombstoneFor(store: SyncTombstone["store"], id: string): Pro
 
 export async function lastSetsFor(exerciseName: string): Promise<{ r: number; w: number }[] | null> {
   const db = await getDB();
+  // Deliberately unbounded — walking newest-first from a limited page could
+  // miss a rarely-performed exercise's actual last session entirely.
   const sessions = await db.getAllFromIndex("workout_sessions", "startedAt");
   for (let i = sessions.length - 1; i >= 0; i--) {
     const match = sessions[i].exercises.find((e) => e.name === exerciseName);
@@ -348,29 +350,38 @@ export async function getExercises(templateId: string): Promise<Exercise[]> {
   const library = await db.getAll("exercise_library");
   const libraryById = new Map(library.map((l) => [l.id, l]));
 
-  const result: Exercise[] = [];
   const sorted = [...template.exercises].sort((a, b) => a.order - b.order);
-  for (const cfg of sorted) {
-    const lib = libraryById.get(cfg.exerciseId);
-    if (!lib) continue;
-    result.push({
-      id: cfg.exerciseId,
-      name: lib.name,
-      muscle: lib.muscle,
-      targetSets: cfg.targetSets,
-      repsMin: cfg.repsMin,
-      repsMax: cfg.repsMax,
-      targetWeight: cfg.targetWeight,
-      restSeconds: cfg.restSeconds,
-      last: await lastSetsFor(lib.name),
-      logged: [],
-    });
-  }
+  // Each lastSetsFor() is an independent read — run them concurrently
+  // rather than one at a time, since Promise.all preserves the input
+  // order regardless of resolution order.
+  const result = await Promise.all(
+    sorted.flatMap((cfg) => {
+      const lib = libraryById.get(cfg.exerciseId);
+      if (!lib) return [];
+      return [
+        lastSetsFor(lib.name).then((last): Exercise => ({
+          id: cfg.exerciseId,
+          name: lib.name,
+          muscle: lib.muscle,
+          targetSets: cfg.targetSets,
+          repsMin: cfg.repsMin,
+          repsMax: cfg.repsMax,
+          targetWeight: cfg.targetWeight,
+          restSeconds: cfg.restSeconds,
+          last,
+          logged: [],
+        })),
+      ];
+    })
+  );
   return result;
 }
 
 export async function getLastUsedTemplateId(): Promise<string | null> {
   const db = await getDB();
+  // Deliberately unbounded — walking newest-first from a limited page could
+  // miss the actual most recent session for a rarely-used template and fall
+  // through to the wrong (or no) last-used result.
   const sessions = await db.getAllFromIndex("workout_sessions", "startedAt");
   const templates = await db.getAll("templates");
   for (let i = sessions.length - 1; i >= 0; i--) {
@@ -460,6 +471,8 @@ export function groupSessionsByExercise(
 
 export async function getPR(exerciseName: string): Promise<number> {
   const db = await getDB();
+  // Deliberately unbounded — a real all-time PR by definition can't be
+  // found by scanning only a recent window of sessions.
   const sessions = await db.getAll("workout_sessions");
   let best = 0;
   for (const session of sessions) {

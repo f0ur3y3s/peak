@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/EmptyState";
 import {
   getWorkoutSessions,
   groupSessionsByExercise,
@@ -82,6 +83,18 @@ function fmtShortDate(ts: number) {
   return new Date(ts).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 }
 
+// Finds the fewest decimal places (0-2) at which every value in a small
+// tick set formats to a distinct label — a narrow value range (e.g. two
+// sessions a kg apart) would otherwise round several ticks to the same
+// integer and print duplicate labels down the axis.
+function tickPrecision(values: number[]): number {
+  for (let decimals = 0; decimals <= 2; decimals++) {
+    const labels = values.map((v) => v.toFixed(decimals));
+    if (new Set(labels).size === labels.length) return decimals;
+  }
+  return 2;
+}
+
 // SVG Chart
 
 const PAD = { t: 14, r: 16, b: 38, l: 46 };
@@ -120,7 +133,7 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
           y={(CHART_H + PAD.t + PAD.b) / 2}
           textAnchor="middle"
           fill="hsl(var(--muted-foreground))"
-          fontSize={12}
+          className="text-caption"
           fontFamily={mono}
         >
           No data for this range
@@ -147,8 +160,9 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
   const reg = linReg(pts, getVal);
 
   const yTicks = 4;
-  const yTickEls = Array.from({ length: yTicks + 1 }, (_, i) => {
-    const v = vLo + (i / yTicks) * (vHi - vLo);
+  const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => vLo + (i / yTicks) * (vHi - vLo));
+  const yPrecision = tickPrecision(yTickValues);
+  const yTickEls = yTickValues.map((v, i) => {
     const y = ty(v);
     return (
       <g key={i}>
@@ -165,33 +179,42 @@ function Chart({ pts, getVal, onHover }: ChartProps) {
           y={y + 4}
           textAnchor="end"
           fill="hsl(var(--muted-foreground))"
-          fontSize={9}
+          className="text-label"
           fontFamily={mono}
         >
-          {Math.round(v)}
+          {v.toFixed(yPrecision)}
         </text>
       </g>
     );
   });
 
+  // Skips a candidate tick whose label would duplicate the previous one —
+  // several sessions logged on the same day (or any two points close
+  // enough in time that day-precision formatting can't tell them apart)
+  // would otherwise print the identical date several times in a row.
   const xCount = Math.min(pts.length, 5);
-  const xTickEls = Array.from({ length: xCount }, (_, i) => {
+  const xTickEls: JSX.Element[] = [];
+  let lastXLabel: string | null = null;
+  for (let i = 0; i < xCount; i++) {
     const idx = Math.round((i / Math.max(xCount - 1, 1)) * (pts.length - 1));
     const pt = pts[idx];
-    return (
+    const label = fmtShortDate(pt.t);
+    if (label === lastXLabel) continue;
+    lastXLabel = label;
+    xTickEls.push(
       <text
         key={i}
         x={tx(pt.t)}
         y={PAD.t + CHART_H + 20}
         textAnchor="middle"
         fill="hsl(var(--muted-foreground))"
-        fontSize={9}
+        className="text-label"
         fontFamily={mono}
       >
-        {fmtShortDate(pt.t)}
+        {label}
       </text>
     );
-  });
+  }
 
   const handleDotEnter = (pt: ExerciseHistoryPoint) => {
     const svg = svgRef.current;
@@ -307,6 +330,8 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
   });
 
   useEffect(() => {
+    // Deliberately unbounded — the "All" date range and the exercise trend
+    // line both need the complete history, not a recent slice of it.
     getWorkoutSessions().then(setSessions);
   }, []);
 
@@ -337,15 +362,13 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
   if (focusExercise ? !grouped[focusExercise]?.length : EXERCISES.length === 0) {
     return (
       <div style={{ padding: 16 }}>
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-muted-foreground text-sm">
-              {focusExercise
-                ? `No logged history yet for ${focusExercise}`
-                : "Log a workout to see your progress"}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          message={
+            focusExercise
+              ? `No logged history yet for ${focusExercise}.`
+              : "Log a workout to see your progress."
+          }
+        />
       </div>
     );
   }
@@ -366,14 +389,15 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
 
   let trendDelta: number | null = null;
   if (reg && pts.length >= 2) {
-    if (selRange.days !== null) {
-      const span = selRange.days * MS_DAY;
-      trendDelta = Math.round(reg.predict(now) - reg.predict(now - span));
-    } else {
-      // "All" has no fixed day span — show the trend across the actual
-      // first-to-last data span instead of an arbitrary fixed window.
-      trendDelta = Math.round(reg.predict(pts[pts.length - 1].t) - reg.predict(pts[0].t));
-    }
+    // Always measure the trend across the actual first-to-last data span,
+    // never the selected range's full calendar length. Extrapolating a
+    // regression past the data it was fit on is unsound in general, and
+    // breaks badly in a very real case here: two sessions logged close
+    // together in time (e.g. same day) produce a near-vertical slope, and
+    // projecting that across a fixed 6-month/1-year window multiplies it
+    // into a nonsensical value — this is exactly what "All" already did
+    // correctly; every range now does the same.
+    trendDelta = Math.round(reg.predict(pts[pts.length - 1].t) - reg.predict(pts[0].t));
   }
 
   return (
@@ -381,14 +405,14 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
       {/* Exercise selector */}
       {!focusExercise && (
         <>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+          <p className="font-mono text-label uppercase tracking-widest text-muted-foreground mb-2">
             Exercise
           </p>
           <div style={{ position: "relative" }} className="mb-3.5">
             <select
               value={selEx}
               onChange={(e) => setSelEx(e.target.value)}
-              className="font-mono text-[13px]"
+              className="font-mono text-subtext"
               style={{
                 appearance: "none",
                 WebkitAppearance: "none",
@@ -426,7 +450,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
       )}
 
       {/* Date range */}
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+      <p className="font-mono text-label uppercase tracking-widest text-muted-foreground mb-2">
         Date range
       </p>
       <div className="flex flex-wrap gap-1.5 mb-3.5">
@@ -435,7 +459,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
             key={r.label}
             variant={selRange.label === r.label ? "default" : "outline"}
             size="sm"
-            className="font-mono text-[11px] rounded-full h-auto py-1"
+            className="font-mono text-caption rounded-full h-auto py-1"
             onClick={() => setSelRange(r)}
           >
             {r.label}
@@ -449,7 +473,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
           <Button
             key={m}
             variant={metric === m ? "secondary" : "ghost"}
-            className="flex-1 rounded-none font-mono text-[11px]"
+            className="flex-1 rounded-none font-mono text-caption"
             onClick={() => setMetric(m)}
           >
             {m === "weight" ? `Peak weight (${weightUnit})` : `Total volume (${weightUnit})`}
@@ -479,7 +503,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               <p className="font-mono text-sm font-medium" style={{ color }}>
                 {value}
               </p>
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mt-1">
+              <p className="font-mono text-label text-muted-foreground uppercase tracking-wider mt-1">
                 {label}
               </p>
             </CardContent>
@@ -507,10 +531,10 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               zIndex: 10,
             }}
           >
-            <p className="text-[15px] font-medium" style={{ color: "hsl(var(--primary))" }}>
+            <p className="text-title font-medium" style={{ color: "hsl(var(--primary))" }}>
               {tooltip.value} {metricUnitLabel}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{tooltip.date}</p>
+            <p className="text-label text-muted-foreground mt-0.5">{tooltip.date}</p>
           </div>
         )}
       </div>
@@ -526,7 +550,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               background: "hsl(var(--primary))",
             }}
           />
-          <span className="font-mono text-[10px] text-muted-foreground">session</span>
+          <span className="font-mono text-label text-muted-foreground">session</span>
         </div>
         <div className="flex items-center gap-1.5">
           <svg width={22} height={8}>
@@ -541,7 +565,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
               opacity={0.8}
             />
           </svg>
-          <span className="font-mono text-[10px] text-muted-foreground">trend</span>
+          <span className="font-mono text-label text-muted-foreground">trend</span>
         </div>
       </div>
     </div>

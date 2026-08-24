@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { IconButton } from "@/components/ui/icon-button";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseEditForm } from "@/components/ExerciseEditForm";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
 import { MUSCLE_GROUPS, fuzzyMatch, groupForMuscle } from "@/lib/muscles";
 import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
@@ -83,7 +85,10 @@ export function ExercisesScreen() {
         title="Exercise Library"
         right={
           <button
-            onClick={() => setCreating(true)}
+            onClick={() => {
+              setActionError(null);
+              setCreating(true);
+            }}
             style={{
               background: "none",
               border: "none",
@@ -102,7 +107,7 @@ export function ExercisesScreen() {
 
       {actionError && (
         <p
-          className="font-mono text-[11px] px-5 pt-1"
+          className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >
           {actionError}
@@ -111,8 +116,10 @@ export function ExercisesScreen() {
 
       <div className="px-5 pt-4">
         <input
+          className="field-input"
           style={PAGE_INPUT_STYLE}
           placeholder="Search exercises"
+          aria-label="Search exercises"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -120,56 +127,64 @@ export function ExercisesScreen() {
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-4">
         {library.length === 0 ? (
-          <div className="pt-10 text-center">
-            <p className="text-muted-foreground text-sm">No exercises yet — tap + to add one</p>
-          </div>
+          <EmptyState
+            message="No exercises in your library yet."
+            action={{
+              label: "Add exercise",
+              onClick: () => {
+                setActionError(null);
+                setCreating(true);
+              },
+            }}
+          />
         ) : sections.length === 0 ? (
-          <div className="pt-10 text-center">
-            <p className="text-muted-foreground text-sm">No exercises match "{search}"</p>
-          </div>
+          <EmptyState
+            message={`No exercises match "${search}".`}
+            action={{ label: "Clear search", onClick: () => setSearch(""), variant: "outline" }}
+          />
         ) : (
           sections.map(({ group, exercises }) => (
             <div key={group} className="flex flex-col gap-2.5">
-              <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+              <p className="font-mono text-label text-muted-foreground uppercase tracking-widest">
                 {group}
               </p>
               {exercises.map((ex) => (
-                <Card key={ex.id} onClick={() => setEditingExercise(ex)} className="cursor-pointer">
+                <Card
+                  key={ex.id}
+                  onClick={() => {
+                    setActionError(null);
+                    setEditingExercise(ex);
+                  }}
+                  className="cursor-pointer"
+                >
                   <CardContent
                     style={{ padding: "14px 16px" }}
                     className="flex justify-between items-center"
                   >
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-[15px]">{ex.name}</p>
+                      <p className="font-semibold text-title">{ex.name}</p>
                       <Badge
                         variant="secondary"
-                        style={{ fontSize: 10, padding: "1px 7px" }}
+                        className="text-label"
+                        style={{ padding: "1px 7px" }}
                       >
                         {ex.muscle}
                       </Badge>
                     </div>
-                    <button
+                    <IconButton
+                      variant="destructive"
                       onClick={(e) => {
                         e.stopPropagation();
+                        // Otherwise a previous action's error (e.g. "used in
+                        // templates") stays on screen — unrelated to this
+                        // row — until this new action happens to fail too.
+                        setActionError(null);
                         setDeletingExercise(ex);
-                      }}
-                      style={{
-                        background: "hsl(var(--destructive) / 0.1)",
-                        border: "1px solid hsl(var(--destructive) / 0.3)",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        color: "hsl(var(--destructive))",
-                        width: 36,
-                        height: 36,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
                       }}
                       aria-label={`Delete ${ex.name}`}
                     >
                       <X size={16} strokeWidth={2} />
-                    </button>
+                    </IconButton>
                   </CardContent>
                 </Card>
               ))}

@@ -9,6 +9,7 @@ export function UpdateBanner() {
   return (
     <button
       onClick={applySWUpdate}
+      className="text-caption"
       style={{
         position: "fixed",
         top: "calc(env(safe-area-inset-top, 0px) + 10px)",
@@ -25,13 +26,12 @@ export function UpdateBanner() {
         borderRadius: 999,
         padding: "9px 16px",
         fontFamily: "'DM Mono', monospace",
-        fontSize: 12,
         fontWeight: 600,
         cursor: "pointer",
         boxShadow: "0 4px 16px hsl(0 0% 0% / 0.4)",
       }}
     >
-      <RefreshCw size={13} strokeWidth={2.5} />
+      <RefreshCw size={16} strokeWidth={2.5} />
       Update available — tap to refresh
     </button>
   );

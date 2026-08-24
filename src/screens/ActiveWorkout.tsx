@@ -46,6 +46,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [session, setSession] = useState<WorkoutSession | null>(null);
+  const [templateUpdates, setTemplateUpdates] = useState<string[]>([]);
   const [finishError, setFinishError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -212,12 +213,16 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     try {
       const loggedExercises = exercisesRef.current.filter((ex) => ex.logged.length > 0);
 
-      const prs: string[] = [];
-      for (const ex of loggedExercises) {
-        const previousBest = await getPR(ex.name);
-        const bestThisSession = Math.max(...ex.logged.map((s) => s.weight));
-        if (bestThisSession > previousBest) prs.push(ex.name);
-      }
+      // Each getPR() is an independent read — run them concurrently rather
+      // than one at a time, since a workout can log several exercises.
+      const prChecks = await Promise.all(
+        loggedExercises.map(async (ex) => {
+          const previousBest = await getPR(ex.name);
+          const bestThisSession = Math.max(...ex.logged.map((s) => s.weight));
+          return bestThisSession > previousBest ? ex.name : null;
+        })
+      );
+      const prs = prChecks.filter((name): name is string => name !== null);
 
       const built: WorkoutSession = {
         id: crypto.randomUUID(),
@@ -238,45 +243,60 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
       // Sync any rest-duration or set-count changes made during this workout
       // back to the template, now that the workout is actually complete —
       // deferred rather than writing on every change so an abandoned/discarded
-      // workout never touches the template.
+      // workout never touches the template. This mutates the template with no
+      // confirmation prompt (Finish is the "casual, forward-moving" action),
+      // so any actual change is collected into templateUpdates and surfaced
+      // on the Summary screen instead — silent but not invisible.
+      const updates: string[] = [];
       try {
         const template = await getTemplate(templateId);
         if (template) {
           const existingIds = new Set(template.exercises.map((cfg) => cfg.exerciseId));
           const newConfigs = loggedExercises
             .filter((ex) => !existingIds.has(ex.id))
-            .map((ex, i) => ({
-              exerciseId: ex.id,
-              order: template.exercises.length + i,
-              targetSets: ex.logged.length,
-              repsMin: ex.repsMin,
-              repsMax: ex.repsMax,
-              targetWeight: ex.targetWeight,
-              restSeconds: ex.restSeconds,
-            }));
+            .map((ex, i) => {
+              updates.push(`Added ${ex.name} to the template`);
+              return {
+                exerciseId: ex.id,
+                order: template.exercises.length + i,
+                targetSets: ex.logged.length,
+                repsMin: ex.repsMin,
+                repsMax: ex.repsMax,
+                targetWeight: ex.targetWeight,
+                restSeconds: ex.restSeconds,
+              };
+            });
           const updatedTemplate = {
             ...template,
             exercises: [
               ...template.exercises.map((cfg) => {
                 const match = exercisesRef.current.find((ex) => ex.id === cfg.exerciseId);
                 if (!match) return cfg;
-                return {
-                  ...cfg,
-                  // Only raise the target when extra sets were logged beyond
-                  // the plan — logging fewer than planned (a lighter day,
-                  // cut short, etc.) must never silently lower the template's
-                  // default for future workouts.
-                  targetSets: Math.max(cfg.targetSets, match.logged.length),
-                  restSeconds: match.restSeconds,
-                };
+                // Only raise the target when extra sets were logged beyond
+                // the plan — logging fewer than planned (a lighter day,
+                // cut short, etc.) must never silently lower the template's
+                // default for future workouts.
+                const nextTargetSets = Math.max(cfg.targetSets, match.logged.length);
+                if (nextTargetSets > cfg.targetSets) {
+                  updates.push(`${match.name}: target raised from ${cfg.targetSets} to ${nextTargetSets} sets`);
+                }
+                if (match.restSeconds !== cfg.restSeconds) {
+                  updates.push(`${match.name}: rest changed to ${fmtTime(match.restSeconds)}`);
+                }
+                return { ...cfg, targetSets: nextTargetSets, restSeconds: match.restSeconds };
               }),
               ...newConfigs,
             ],
           };
           await saveTemplate(updatedTemplate);
+          // Only surfaced once the save above actually succeeds — otherwise
+          // Summary would claim changes that were never persisted.
+          setTemplateUpdates(updates);
         }
       } catch {
-        // best-effort; the workout session itself already saved successfully above
+        // best-effort; the workout session itself already saved successfully above.
+        // templateUpdates stays [] here since we don't know what, if anything,
+        // actually made it to disk.
       }
 
       // Best-effort: retry once before giving up. If the draft clear still fails,
@@ -301,7 +321,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   };
 
   if (session) {
-    return <WorkoutSummary session={session} onDone={onFinish} />;
+    return <WorkoutSummary session={session} templateUpdates={templateUpdates} onDone={onFinish} />;
   }
 
   const totalLogged = exercises.reduce((a, e) => a + e.logged.length, 0);
@@ -321,13 +341,13 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <button
                 onClick={() => setConfirmingDiscard(true)}
+                className="text-caption"
                 style={{
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                   color: "hsl(var(--muted-foreground))",
                   fontFamily: "'DM Mono', monospace",
-                  fontSize: 11,
                   letterSpacing: "0.05em",
                   padding: "4px 8px",
                 }}
@@ -336,7 +356,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
               </button>
               <Button
                 variant="outline"
-                className="text-[13px] text-muted-foreground"
+                className="text-subtext text-muted-foreground"
                 onClick={handleFinish}
                 disabled={isFinishing}
               >
@@ -348,7 +368,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {loadError && (
           <p
-            className="font-mono text-[11px] px-5 pt-1"
+            className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
             {loadError}
@@ -357,7 +377,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {finishError && (
           <p
-            className="font-mono text-[11px] px-5 pt-1"
+            className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
             {finishError}
@@ -366,7 +386,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {draftError && (
           <p
-            className="font-mono text-[11px] px-5 pt-1"
+            className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
             {draftError}
@@ -406,6 +426,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
         <ConfirmDialog
           title="Discard workout"
           message="Discard this workout? Your logged sets will be lost."
+          confirmLabel="Discard"
           onConfirm={() => {
             setConfirmingDiscard(false);
             handleDiscard();

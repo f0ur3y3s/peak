@@ -15,6 +15,8 @@ export function HistoryScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Deliberately unbounded — this screen's whole purpose is the full
+    // workout history log.
     getWorkoutSessions()
       .then(setSessions)
       .catch(() => {
@@ -28,7 +30,7 @@ export function HistoryScreen() {
 
       {loadError && (
         <p
-          className="font-mono text-[11px] px-5 pt-1"
+          className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >
           {loadError}
@@ -44,7 +46,7 @@ export function HistoryScreen() {
         {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          <span className="font-mono text-label uppercase tracking-widest text-muted-foreground">
             Workouts
           </span>
           <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
@@ -70,14 +72,14 @@ export function HistoryScreen() {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="flex gap-2 items-center mb-1">
-                      <p className="font-semibold text-[15px]">{session.templateName}</p>
+                      <p className="font-semibold text-title">{session.templateName}</p>
                       {hasPR && (
                         <Badge
+                          className="text-label"
                           style={{
-                            fontSize: 9,
                             padding: "1px 6px",
-                            background: "hsl(var(--primary) / 0.15)",
-                            color: "hsl(var(--primary))",
+                            background: "hsl(var(--success) / 0.18)",
+                            color: "hsl(var(--success))",
                             letterSpacing: "0.08em",
                           }}
                         >
@@ -85,7 +87,7 @@ export function HistoryScreen() {
                         </Badge>
                       )}
                     </div>
-                    <p className="font-mono text-[11px] text-muted-foreground">
+                    <p className="font-mono text-caption text-muted-foreground">
                       {fmtRelativeDate(session.startedAt)} · {durationMin}m
                     </p>
                   </div>
@@ -94,7 +96,7 @@ export function HistoryScreen() {
                       <p className="font-mono text-sm">
                         {Number(fmtWeight(volume, unit)).toLocaleString()} {unit}
                       </p>
-                      <p className="font-mono text-[11px] text-muted-foreground">
+                      <p className="font-mono text-caption text-muted-foreground">
                         {setCount} sets
                       </p>
                     </div>
@@ -110,7 +112,7 @@ export function HistoryScreen() {
                   <div className="mt-3.5 pt-3.5 border-t border-border">
                     {session.exercises.map((ex) => (
                       <div key={ex.name} className="mb-3">
-                        <p className="font-medium text-[13px] mb-1.5">{ex.name}</p>
+                        <p className="font-medium text-subtext mb-1.5">{ex.name}</p>
                         <div className="flex gap-1.5 flex-wrap">
                           {ex.sets.map((s, i) => (
                             <span key={i} className="set-chip">
