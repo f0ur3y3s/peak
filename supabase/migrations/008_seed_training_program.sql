@@ -5,8 +5,13 @@
 -- Requires 006_add_notes_columns.sql and 007_per_user_record_ids.sql — run
 -- both first.
 --
--- Run this in the Supabase SQL Editor, after replacing the email on the
--- SELECT below with the account to seed. Optional: the app seeds the same
+-- Run this in the Supabase SQL Editor. Set target_email below to the account
+-- you want seeded, or leave it null to seed EVERY account in the project.
+-- To check the exact address on an account:
+--
+--   select email from auth.users order by created_at;
+--
+-- Optional: the app seeds the same
 -- program client-side on first load (ensureProgramSeed() in src/lib/db.ts)
 -- and pushes it up on the next sync, so this file only matters if you want
 -- the rows present server-side before any device opens the app.
@@ -26,16 +31,23 @@
 
 do $$
 declare
-  target_user uuid;
+  -- The account to seed, by the email on its auth.users row.
+  -- Leave null to seed every account in this project.
+  target_email text := null;
   seeded_at constant timestamptz := now();
+  matched int;
 begin
-  select id into target_user from auth.users where email = 'you@example.com';
-  if target_user is null then
-    raise exception 'No auth.users row for that email — check the address above.';
+  select count(*) into matched
+  from auth.users u
+  where target_email is null or u.email = target_email;
+
+  if matched = 0 then
+    raise exception 'No auth.users row matches %  — run: select email from auth.users;', target_email;
   end if;
+  raise notice 'Seeding the training program for % account(s).', matched;
 
   insert into public.exercise_library (id, user_id, name, muscle, notes, updated_at)
-  select v.id, target_user, v.name, v.muscle, v.notes, seeded_at
+  select v.id, u.id, v.name, v.muscle, v.notes, seeded_at
   from (values
     ('ppl-v1-ex-barbell-bench-press', 'Barbell Bench Press', 'Chest', 'Add 2.5kg/side when all 4 sets hit 6 reps. Primary strength movement — log every session.'),
     ('ppl-v1-ex-incline-db-press', 'Incline Dumbbell Press', 'Upper Chest', 'Add 2kg DBs at top of range. Upper chest emphasis. RPE 8, 1–2 reps in reserve.'),
@@ -69,6 +81,8 @@ begin
     ('ppl-v1-ex-cable-curl', 'Cable Curl (Single-Arm, High Pulley)', 'Biceps', 'Long head cable variation — a different angle from the preacher curl.'),
     ('ppl-v1-ex-reverse-barbell-curl', 'Reverse Barbell Curl', 'Forearms', 'Forearm and brachialis — critical for arm thickness.')
   ) as v(id, name, muscle, notes)
+  cross join auth.users u
+  where target_email is null or u.email = target_email
   on conflict (user_id, id) do nothing;
 
   -- Rows seeded before notes existed get them filled in, but a note the user
@@ -107,12 +121,13 @@ begin
     ('ppl-v1-ex-preacher-curl', 'Preacher Curl', 'Biceps', 'Short head emphasis — good for peak and separation.'),
     ('ppl-v1-ex-cable-curl', 'Cable Curl (Single-Arm, High Pulley)', 'Biceps', 'Long head cable variation — a different angle from the preacher curl.'),
     ('ppl-v1-ex-reverse-barbell-curl', 'Reverse Barbell Curl', 'Forearms', 'Forearm and brachialis — critical for arm thickness.')
-  ) as v(id, name, muscle, notes)
-  where e.id = v.id and e.user_id = target_user
+  ) as v(id, name, muscle, notes), auth.users u
+  where e.id = v.id and e.user_id = u.id
+    and (target_email is null or u.email = target_email)
     and (e.notes is null or e.notes = '');
 
   insert into public.templates (id, user_id, name, exercises, position, notes, updated_at)
-  select v.id, target_user, v.name, v.exercises, v.position, v.notes, seeded_at
+  select v.id, u.id, v.name, v.exercises, v.position, v.notes, seeded_at
   from (values
     ('ppl-v1-push-a', 'Push A', '[{"exerciseId":"ppl-v1-ex-barbell-bench-press","order":0,"targetSets":4,"repsMin":5,"repsMax":6,"targetWeight":0,"restSeconds":210},{"exerciseId":"ppl-v1-ex-incline-db-press","order":1,"targetSets":3,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":150},{"exerciseId":"ppl-v1-ex-cable-lateral-raise","order":2,"targetSets":4,"repsMin":15,"repsMax":20,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-machine-chest-fly","order":3,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-overhead-tricep-ext","order":4,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-tricep-pushdown","order":5,"targetSets":3,"repsMin":15,"repsMax":20,"targetWeight":0,"restSeconds":60}]'::jsonb, 0, 'Chest / Shoulders / Triceps — strength bias: lower reps, heavier load, longer rest. Progressive overload every session; log every set. If you hit 4×6 at 100kg last week, aim for 4×6 at 102.5kg or 4×7 at 100kg today.'),
     ('ppl-v1-pull-a', 'Pull A', '[{"exerciseId":"ppl-v1-ex-weighted-pull-up","order":0,"targetSets":4,"repsMin":6,"repsMax":8,"targetWeight":0,"restSeconds":180},{"exerciseId":"ppl-v1-ex-barbell-row","order":1,"targetSets":4,"repsMin":6,"repsMax":8,"targetWeight":0,"restSeconds":180},{"exerciseId":"ppl-v1-ex-seated-cable-row","order":2,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-rear-delt-fly","order":3,"targetSets":4,"repsMin":15,"repsMax":20,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-incline-db-curl","order":4,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-hammer-curl","order":5,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":75}]'::jsonb, 1, 'Lats / Upper Back / Rear Delts / Biceps — hypertrophy bias. Heavy compounds first while fresh, then strict isolation. Never ego lift the rear delt work.'),
@@ -120,6 +135,8 @@ begin
     ('ppl-v1-push-b', 'Push B', '[{"exerciseId":"ppl-v1-ex-seated-db-shoulder-press","order":0,"targetSets":4,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":150},{"exerciseId":"ppl-v1-ex-db-lateral-raise","order":1,"targetSets":3,"repsMin":10,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-cable-chest-press","order":2,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-machine-shoulder-press","order":3,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-skull-crusher","order":4,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-dips","order":5,"targetSets":3,"repsMin":8,"repsMax":12,"targetWeight":0,"restSeconds":120}]'::jsonb, 3, 'Shoulders emphasis / Chest accessory / Triceps — volume bias: more sets, higher reps, pump work. Together with the A days this drives both myofibrillar and sarcoplasmic hypertrophy.'),
     ('ppl-v1-pull-b', 'Pull B', '[{"exerciseId":"ppl-v1-ex-single-arm-db-row","order":0,"targetSets":4,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-lat-pulldown","order":1,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-face-pull","order":2,"targetSets":4,"repsMin":15,"repsMax":20,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-preacher-curl","order":3,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-cable-curl","order":4,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-reverse-barbell-curl","order":5,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":60}]'::jsonb, 4, 'Lats emphasis / Rear Delts / Biceps peak / Forearms — volume bias. Face pulls are shoulder health: never skip them, never rush them.')
   ) as v(id, name, exercises, position, notes)
+  cross join auth.users u
+  where target_email is null or u.email = target_email
   on conflict (user_id, id) do nothing;
 
   update public.templates t
@@ -130,7 +147,8 @@ begin
     ('ppl-v1-legs', 'Legs', '[{"exerciseId":"ppl-v1-ex-leg-press","order":0,"targetSets":4,"repsMin":8,"repsMax":12,"targetWeight":0,"restSeconds":165},{"exerciseId":"ppl-v1-ex-romanian-deadlift","order":1,"targetSets":4,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":150},{"exerciseId":"ppl-v1-ex-bulgarian-split-squat","order":2,"targetSets":3,"repsMin":8,"repsMax":12,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-leg-extension","order":3,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-leg-curl","order":4,"targetSets":3,"repsMin":10,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-standing-calf-raise","order":5,"targetSets":4,"repsMin":10,"repsMax":15,"targetWeight":0,"restSeconds":60},{"exerciseId":"ppl-v1-ex-cable-crunch","order":6,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":60}]'::jsonb, 2, 'Quads / Hamstrings / Glutes / Calves / Core — no-squat variation. Leg press leads while you are fresh, RDLs second (highest systemic demand after it). Leg extensions fill the gap left by skipping squats.'),
     ('ppl-v1-push-b', 'Push B', '[{"exerciseId":"ppl-v1-ex-seated-db-shoulder-press","order":0,"targetSets":4,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":150},{"exerciseId":"ppl-v1-ex-db-lateral-raise","order":1,"targetSets":3,"repsMin":10,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-cable-chest-press","order":2,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-machine-shoulder-press","order":3,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-skull-crusher","order":4,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-dips","order":5,"targetSets":3,"repsMin":8,"repsMax":12,"targetWeight":0,"restSeconds":120}]'::jsonb, 3, 'Shoulders emphasis / Chest accessory / Triceps — volume bias: more sets, higher reps, pump work. Together with the A days this drives both myofibrillar and sarcoplasmic hypertrophy.'),
     ('ppl-v1-pull-b', 'Pull B', '[{"exerciseId":"ppl-v1-ex-single-arm-db-row","order":0,"targetSets":4,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-lat-pulldown","order":1,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-face-pull","order":2,"targetSets":4,"repsMin":15,"repsMax":20,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-preacher-curl","order":3,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-cable-curl","order":4,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-reverse-barbell-curl","order":5,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":60}]'::jsonb, 4, 'Lats emphasis / Rear Delts / Biceps peak / Forearms — volume bias. Face pulls are shoulder health: never skip them, never rush them.')
-  ) as v(id, name, exercises, position, notes)
-  where t.id = v.id and t.user_id = target_user
+  ) as v(id, name, exercises, position, notes), auth.users u
+  where t.id = v.id and t.user_id = u.id
+    and (target_email is null or u.email = target_email)
     and (t.notes is null or t.notes = '');
 end $$;
