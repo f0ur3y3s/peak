@@ -37,6 +37,17 @@ function iso(t: number): string {
   return new Date(t).toISOString();
 }
 
+/**
+ * Lets the clock move on by a whole millisecond.
+ *
+ * Last-write-wins compares timestamps, and the tombstone guard drops a delete
+ * that is not strictly newer than the row it targets. A test that saves and
+ * then deletes within the same millisecond — which happens easily against an
+ * in-memory server — makes that delete a legitimate no-op, and the test flaky
+ * for reasons that have nothing to do with the code under test.
+ */
+const tick = () => new Promise((resolve) => setTimeout(resolve, 2));
+
 function template(id: string, over: Partial<Template> = {}): Template {
   return {
     id,
@@ -219,7 +230,7 @@ describe("push watermark", () => {
     fakeState.beforeSelect = async (table) => {
       if (table !== "workout_sessions") return;
       fakeState.beforeSelect = null;
-      await new Promise((r) => setTimeout(r, 2));
+      await tick();
       await putTemplateRaw(template("written-mid-sync", { updatedAt: Date.now() }));
     };
 
@@ -279,6 +290,7 @@ describe("tombstones", () => {
   it("soft-deletes the remote row", async () => {
     await saveTemplate({ id: "t1", name: "Push A", exercises: [], order: 0 });
     await syncNow();
+    await tick();
     await deleteTemplate("t1");
 
     await syncNow();
@@ -290,6 +302,7 @@ describe("tombstones", () => {
   it("drops a delete that lost the race to a newer remote edit", async () => {
     await saveTemplate({ id: "t1", name: "Push A", exercises: [], order: 0 });
     await syncNow();
+    await tick();
     await deleteTemplate("t1");
     // Another device renamed it after this delete was recorded.
     fakeState.tables.templates[0].updated_at = iso(Date.now() + 60_000);
@@ -330,6 +343,7 @@ describe("deleting a finished workout", () => {
       prs: [],
     });
     await syncNow();
+    await tick();
     await deleteWorkoutSession("w1");
 
     await syncNow();
@@ -365,14 +379,13 @@ describe("deleting a finished workout", () => {
       prs: [],
     });
     await syncNow();
+    await tick();
     await deleteWorkoutSession("w1");
     fakeState.rejectUpdate = {
       table: "workout_sessions",
       error: { code: "42703", message: 'column "deleted_at" does not exist' },
     };
-    // A real millisecond, so this edit lands strictly after the previous
-    // pass's push watermark rather than inside the same tick as it.
-    await new Promise((r) => setTimeout(r, 2));
+    await tick();
     await saveTemplate({ id: "t1", name: "Pull A", exercises: [], order: 0 });
 
     expect(await syncNow()).toEqual({ ok: true });

@@ -16,7 +16,10 @@ export default defineConfig({
     // A file that genuinely needs a DOM can opt in per file with a
     // `// @vitest-environment jsdom` docblock.
     environment: "node",
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // supabase/ is included for the Edge Function's Web Push crypto, which is
+    // written against WebCrypto alone (no Deno APIs) precisely so it can be
+    // tested here rather than trusted because it deployed.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "supabase/**/*.test.ts"],
     // No implicit globals — each test file imports describe/it/expect from
     // "vitest", which keeps `tsc -b` happy without extra global type entries.
     globals: false,

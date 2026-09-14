@@ -12,6 +12,7 @@ import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
 import { primeRestAlert } from "@/lib/restAlert";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 import { useWakeLock } from "@/lib/useWakeLock";
+import { scheduleRestPush, cancelRestPush } from "@/lib/restPush";
 import {
   getExercises,
   getTemplate,
@@ -75,6 +76,38 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   // chalk on your hands, forty times a session. Held only while sets are
   // being logged: the summary that follows is read once and put away.
   useWakeLock(!session);
+
+  // The rest alert, for the case the page cannot serve: backgrounded, and on
+  // iOS frozen outright. Scheduled on the way out and cancelled on the way
+  // back, so a push only ever exists while nobody is watching the countdown —
+  // which is also what stops it arriving on top of the in-app alert.
+  //
+  // Keyed on the timer object, so re-backgrounding during a later rest
+  // reschedules for that rest's deadline rather than the first one's.
+  useEffect(() => {
+    if (!timer) return;
+    const endsAt = Date.now() + timer.seconds * 1000;
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        const left = endsAt - Date.now();
+        // Under a couple of seconds there is no point: the push cannot be
+        // scheduled, delivered and shown before the rest is already over.
+        if (left < 2_000) return;
+        scheduleRestPush(endsAt, "Rest complete", `Next set — ${timer.exerciseName}`);
+      } else {
+        cancelRestPush();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      // Closing the sheet, logging the next set, or leaving the workout all
+      // land here: whatever was pending is no longer wanted.
+      cancelRestPush();
+    };
+  }, [timer]);
   const [isFinishing, setIsFinishing] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [pickingExercise, setPickingExercise] = useState(false);

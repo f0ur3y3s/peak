@@ -14,6 +14,10 @@ export default defineConfig({
       // launch after install, not just after happening to load online once.
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2,ttf}"],
+        // The rest-timer push handler. generateSW owns the worker it writes,
+        // so the listeners come in through importScripts rather than by
+        // switching to injectManifest and hand-maintaining a precache worker.
+        importScripts: ["/push-sw.js"],
         // The type faces come from Google Fonts, which precaching cannot
         // reach — so an installed app opened offline for the first time fell
         // back to system fonts and lost the mono numerals the whole logging

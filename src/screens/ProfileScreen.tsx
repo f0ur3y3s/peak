@@ -13,6 +13,7 @@ import {
   requestRestNotifications,
   type RestAlertMode,
 } from "@/lib/restAlert";
+import { enableRestPush, disableRestPush, isRestPushConfigured } from "@/lib/restPush";
 
 function fmtSyncedAt(ts: number): string {
   const isToday = new Date(ts).toDateString() === new Date().toDateString();
@@ -32,6 +33,7 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [restAlert, setRestAlert] = useState<RestAlertMode>(getRestAlertMode);
   const [notifyDenied, setNotifyDenied] = useState(false);
+  const [pushReady, setPushReady] = useState(false);
 
   useEffect(() => {
     // The PUSH watermark, not the pull one. lastSyncedAt holds the timestamp
@@ -65,7 +67,10 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
   const handleRestAlert = async (mode: RestAlertMode) => {
     setRestAlert(mode);
     setRestAlertMode(mode);
-    if (mode === "off") return;
+    if (mode === "off") {
+      void disableRestPush();
+      return;
+    }
     // Both the audio unlock and the permission prompt have to ride a real
     // gesture, and this tap is one. Firing the alert immediately doubles as
     // the answer to "will I actually notice this in a gym?" — the only way to
@@ -74,6 +79,10 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
     const permission = await requestRestNotifications();
     setNotifyDenied(permission === "denied");
     fireRestAlert();
+    // Registers this device for push, which is the only channel that reaches
+    // it once the OS has frozen the page. Quietly does nothing where push is
+    // not configured or not permitted.
+    if (permission === "granted") setPushReady(await enableRestPush());
   };
 
   return (
@@ -136,7 +145,11 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
             <p className="text-caption text-muted-foreground mt-2" style={{ lineHeight: 1.45 }}>
               {notifyDenied
                 ? "Notifications are blocked, so the alert only reaches you with the app open. Allow them in your browser settings to be told with the screen off."
-                : "Plays when a rest period ends. Sound also vibrates; iPhones ignore vibration, and the mute switch silences sound."}
+                : pushReady
+                  ? "Plays when a rest period ends, and reaches this device even with the app closed and the screen off."
+                  : isRestPushConfigured()
+                    ? "Plays when a rest period ends. Turn it on again once signed in to also be alerted with the app closed."
+                    : "Plays when a rest period ends. Sound also vibrates; iPhones ignore vibration, and the mute switch silences sound."}
             </p>
           </CardContent>
         </Card>
