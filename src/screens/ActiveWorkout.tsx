@@ -9,6 +9,8 @@ import { ExercisePicker } from "@/components/ExercisePicker";
 import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
 import { WorkoutSummary } from "@/screens/WorkoutSummary";
 import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
+import { primeRestAlert } from "@/lib/restAlert";
+import { useWakeLock } from "@/lib/useWakeLock";
 import {
   getExercises,
   getTemplate,
@@ -60,6 +62,12 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   const restEdited = useRef<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
+
+  // A workout is minutes of standing still between ten-second bursts of
+  // typing, so the phone locks between every set — Face ID or a passcode with
+  // chalk on your hands, forty times a session. Held only while sets are
+  // being logged: the summary that follows is read once and put away.
+  useWakeLock(!session);
   const [isFinishing, setIsFinishing] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [pickingExercise, setPickingExercise] = useState(false);
@@ -130,6 +138,11 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   }, []);
 
   const handleLog = (exId: string, reps: number, weight: number) => {
+    // Every rest period begins here, and mobile browsers only let an
+    // AudioContext start inside a user gesture — so this tap is the only
+    // moment the rest alert can be made audible at all.
+    primeRestAlert();
+
     let restSeconds = 120;
     let exerciseName = "";
     let nextSet = "";

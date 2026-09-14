@@ -5,8 +5,15 @@ export type WeightUnit = "kg" | "lb";
 const STORAGE_KEY = "peak-weight-unit";
 const KG_PER_LB = 0.45359237;
 
+// localStorage throws outright — not returns null — in Safari with site data
+// blocked, and this runs during the provider's first render, which wrapped
+// the entire app. A stored preference is never worth a white screen.
 function readStoredUnit(): WeightUnit {
-  return window.localStorage.getItem(STORAGE_KEY) === "lb" ? "lb" : "kg";
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === "lb" ? "lb" : "kg";
+  } catch {
+    return "kg";
+  }
 }
 
 export function kgToLb(kg: number): number {
@@ -55,7 +62,11 @@ export function WeightUnitProvider({ children }: { children: ReactNode }) {
 
   const setUnit = (u: WeightUnit) => {
     setUnitState(u);
-    window.localStorage.setItem(STORAGE_KEY, u);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, u);
+    } catch {
+      // Applies for this session; it just will not be remembered.
+    }
   };
 
   return (

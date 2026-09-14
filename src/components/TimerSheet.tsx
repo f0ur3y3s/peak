@@ -3,6 +3,7 @@ import { ArrowRight, Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { fmtTime, type TimerState } from "@/lib/data";
+import { fireRestAlert } from "@/lib/restAlert";
 
 interface TimerSheetProps {
   timer: TimerState;
@@ -69,6 +70,29 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
     lastAnnouncedRef.current = remaining;
     setAnnouncement(remaining === 0 ? "Rest complete — time to lift" : `${remaining} seconds left`);
   }, [remaining]);
+
+  // The alert, fired once as the countdown crosses zero. Guarded by a ref
+  // rather than by `remaining === 0` alone: the tick runs four times a second
+  // and would otherwise re-fire the vibration and tone continuously for as
+  // long as the finished sheet stayed open.
+  //
+  // Re-arming is driven by `remaining` climbing back above zero and nothing
+  // else — which covers both a new rest period (the effect above pushes the
+  // deadline out) and a "+30s" tapped after the alert has already gone off.
+  // An earlier version re-armed in a second effect keyed on `timer`, which
+  // React's development double-invoke ran between the two halves of this one:
+  // arm, fire, arm again, fire again. Two buzzes per set, in dev only, which
+  // is exactly the kind of thing that ships.
+  const alertedRef = useRef(false);
+  useEffect(() => {
+    if (remaining > 0) {
+      alertedRef.current = false;
+      return;
+    }
+    if (alertedRef.current) return;
+    alertedRef.current = true;
+    fireRestAlert(exerciseName);
+  }, [remaining, exerciseName]);
 
   // Clamped: "+30" can push the remaining time past the original duration,
   // which drove the indicator outside its own overflow-hidden track and read
@@ -210,7 +234,13 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                     onClick={() =>
                       setEndsAt((prev) => {
                         const left = Math.max(0, Math.ceil((prev - Date.now()) / 1000));
-                        return Date.now() + Math.max(0, Math.min(600, left + d)) * 1000;
+                        const next = Math.max(0, Math.min(600, left + d));
+                        // No movement means no new deadline. Re-anchoring to
+                        // Date.now() when the clamp already pinned the value
+                        // pushed the deadline a fraction of a tick into the
+                        // future, so a "-30s" pressed at 0:00 flickered back
+                        // to 0:01 and fired the rest alert a second time.
+                        return next === left ? prev : Date.now() + next * 1000;
                       })
                     }
                     className="font-mono text-subtext min-w-[76px] gap-1"

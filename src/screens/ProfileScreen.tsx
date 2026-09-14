@@ -5,6 +5,14 @@ import { TopBar } from "@/components/TopBar";
 import { useWeightUnit, type WeightUnit } from "@/lib/weightUnit";
 import { getPushedAt } from "@/lib/db";
 import { syncNow } from "@/lib/sync";
+import {
+  getRestAlertMode,
+  setRestAlertMode,
+  primeRestAlert,
+  fireRestAlert,
+  requestRestNotifications,
+  type RestAlertMode,
+} from "@/lib/restAlert";
 
 function fmtSyncedAt(ts: number): string {
   const isToday = new Date(ts).toDateString() === new Date().toDateString();
@@ -22,6 +30,8 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [restAlert, setRestAlert] = useState<RestAlertMode>(getRestAlertMode);
+  const [notifyDenied, setNotifyDenied] = useState(false);
 
   useEffect(() => {
     // The PUSH watermark, not the pull one. lastSyncedAt holds the timestamp
@@ -50,6 +60,20 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleRestAlert = async (mode: RestAlertMode) => {
+    setRestAlert(mode);
+    setRestAlertMode(mode);
+    if (mode === "off") return;
+    // Both the audio unlock and the permission prompt have to ride a real
+    // gesture, and this tap is one. Firing the alert immediately doubles as
+    // the answer to "will I actually notice this in a gym?" — the only way to
+    // find out otherwise is to be mid-workout when it matters.
+    primeRestAlert();
+    const permission = await requestRestNotifications();
+    setNotifyDenied(permission === "denied");
+    fireRestAlert();
   };
 
   return (
@@ -83,6 +107,37 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
                 </Button>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent style={{ padding: "16px 20px" }}>
+            <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-2">
+              Rest alert
+            </p>
+            <div className="flex border border-border rounded-lg overflow-hidden">
+              {(
+                [
+                  ["off", "Off"],
+                  ["vibrate", "Vibrate"],
+                  ["sound", "Sound"],
+                ] as const
+              ).map(([mode, label]) => (
+                <Button
+                  key={mode}
+                  variant={restAlert === mode ? "default" : "ghost"}
+                  className="flex-1 rounded-none font-mono text-subtext"
+                  onClick={() => void handleRestAlert(mode)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-caption text-muted-foreground mt-2" style={{ lineHeight: 1.45 }}>
+              {notifyDenied
+                ? "Notifications are blocked, so the alert only reaches you with the app open. Allow them in your browser settings to be told with the screen off."
+                : "Plays when a rest period ends. Sound also vibrates; iPhones ignore vibration, and the mute switch silences sound."}
+            </p>
           </CardContent>
         </Card>
 
