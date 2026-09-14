@@ -2,7 +2,8 @@
 -- recomposition plan into a user's synced rows. Training only — the plan's
 -- nutrition, cardio and check-in sections have no table to live in.
 --
--- Requires 006_add_notes_columns.sql — run that first.
+-- Requires 006_add_notes_columns.sql and 007_per_user_record_ids.sql — run
+-- both first.
 --
 -- Run this in the Supabase SQL Editor, after replacing the email on the
 -- SELECT below with the account to seed. Optional: the app seeds the same
@@ -19,9 +20,9 @@
 -- pulls only rows newer than its last-synced watermark, so a backdated stamp
 -- would never reach a device that has already synced.
 --
--- Note: templates.id and exercise_library.id are global primary keys, so
--- these fixed ids can only be seeded for ONE account. Seeding a second
--- account needs a different id prefix.
+-- Run it once per account you want the program on: since 007 made ids unique
+-- per user, each account holds its own copy of the same ids and they no
+-- longer collide.
 
 do $$
 declare
@@ -68,7 +69,7 @@ begin
     ('ppl-v1-ex-cable-curl', 'Cable Curl (Single-Arm, High Pulley)', 'Biceps', 'Long head cable variation — a different angle from the preacher curl.'),
     ('ppl-v1-ex-reverse-barbell-curl', 'Reverse Barbell Curl', 'Forearms', 'Forearm and brachialis — critical for arm thickness.')
   ) as v(id, name, muscle, notes)
-  on conflict (id) do nothing;
+  on conflict (user_id, id) do nothing;
 
   -- Rows seeded before notes existed get them filled in, but a note the user
   -- has already written is never overwritten (same rule as ensureProgramSeed).
@@ -119,7 +120,7 @@ begin
     ('ppl-v1-push-b', 'Push B', '[{"exerciseId":"ppl-v1-ex-seated-db-shoulder-press","order":0,"targetSets":4,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":150},{"exerciseId":"ppl-v1-ex-db-lateral-raise","order":1,"targetSets":3,"repsMin":10,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-cable-chest-press","order":2,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-machine-shoulder-press","order":3,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-skull-crusher","order":4,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-dips","order":5,"targetSets":3,"repsMin":8,"repsMax":12,"targetWeight":0,"restSeconds":120}]'::jsonb, 3, 'Shoulders emphasis / Chest accessory / Triceps — volume bias: more sets, higher reps, pump work. Together with the A days this drives both myofibrillar and sarcoplasmic hypertrophy.'),
     ('ppl-v1-pull-b', 'Pull B', '[{"exerciseId":"ppl-v1-ex-single-arm-db-row","order":0,"targetSets":4,"repsMin":8,"repsMax":10,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-lat-pulldown","order":1,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":120},{"exerciseId":"ppl-v1-ex-face-pull","order":2,"targetSets":4,"repsMin":15,"repsMax":20,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-preacher-curl","order":3,"targetSets":3,"repsMin":10,"repsMax":12,"targetWeight":0,"restSeconds":90},{"exerciseId":"ppl-v1-ex-cable-curl","order":4,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":75},{"exerciseId":"ppl-v1-ex-reverse-barbell-curl","order":5,"targetSets":3,"repsMin":12,"repsMax":15,"targetWeight":0,"restSeconds":60}]'::jsonb, 4, 'Lats emphasis / Rear Delts / Biceps peak / Forearms — volume bias. Face pulls are shoulder health: never skip them, never rush them.')
   ) as v(id, name, exercises, position, notes)
-  on conflict (id) do nothing;
+  on conflict (user_id, id) do nothing;
 
   update public.templates t
   set notes = v.notes, updated_at = now()

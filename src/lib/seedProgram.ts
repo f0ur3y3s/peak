@@ -6,10 +6,12 @@
 //
 // Ids are deterministic (not random UUIDs) so that seeding the same program
 // on a second device, or straight into Postgres via
-// `supabase/migrations/007_seed_training_program.sql`, converges on the same
+// `supabase/migrations/008_seed_training_program.sql`, converges on the same
 // rows through the sync engine's upsert instead of creating duplicates.
 // This matches the fixed-id precedent set by the original "e1"/"e2"/"e3"
-// seed library that migration 003 relaxed the id columns for.
+// seed library that migration 003 relaxed the id columns for. Migration 007
+// then keys both synced tables by (user_id, id), so these shared ids can
+// exist once per account instead of once across the whole database.
 
 export interface SeedProgramExercise {
   id: string;

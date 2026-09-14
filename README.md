@@ -128,10 +128,11 @@ Page-level titles use a branded stencil display font (`font-title` → "Allerta 
   empty (that is how v1 devices picked up the notes added in v2) and never
   overwrites what you have changed. Because seeded ids are deterministic, the same program pushed up
   by sync (or inserted directly via
-  `supabase/migrations/007_seed_training_program.sql`) converges on the same
-  rows rather than duplicating. Those fixed ids can only be used by one
-  account, though: `templates.id` and `exercise_library.id` are global primary
-  keys, so a second account needs a different id prefix.
+  `supabase/migrations/008_seed_training_program.sql`) converges on the same
+  rows rather than duplicating. Migration 007 makes `templates` and
+  `exercise_library` keyed by `(user_id, id)` rather than `id` alone, so every
+  account can hold its own copy of those fixed ids — without it, the second
+  account to sync them collides on the primary key and the sync fails.
 - **Weight unit is display-only.** All weights are stored in kg internally; the kg/lb toggle in Profile only affects formatting and what unit new input fields interpret, never what's persisted.
 
 ---
