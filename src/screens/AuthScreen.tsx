@@ -144,7 +144,7 @@ export function AuthScreen() {
               disabled={codeSent}
               value={email}
               onChange={e => { setEmail(e.target.value); setError(null); }}
-              className="auth-input text-body"
+              className="auth-input text-field"
               style={{
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -207,7 +207,7 @@ export function AuthScreen() {
               required
               value={requestName}
               onChange={e => { setRequestName(e.target.value); setRequestError(null); setRequestSent(false); }}
-              className="auth-input text-body"
+              className="auth-input text-field"
               style={{
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -228,7 +228,7 @@ export function AuthScreen() {
               required
               value={requestEmail}
               onChange={e => { setRequestEmail(e.target.value); setRequestError(null); setRequestSent(false); }}
-              className="auth-input text-body"
+              className="auth-input text-field"
               style={{
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -246,7 +246,7 @@ export function AuthScreen() {
               aria-label="Why do you want access?"
               value={requestMessage}
               onChange={e => { setRequestMessage(e.target.value); setRequestError(null); setRequestSent(false); }}
-              className="auth-input text-body"
+              className="auth-input text-field"
               rows={4}
               style={{
                 background: "hsl(var(--card))",

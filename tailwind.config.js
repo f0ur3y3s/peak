@@ -66,8 +66,12 @@ export default {
         caption: ["0.6875rem", { lineHeight: "1.4" }],
         // Secondary/supporting prose, field-group labels, button labels.
         subtext: ["0.8125rem", { lineHeight: "1.4" }],
-        // Interactive list-row text and form input text.
+        // Interactive list-row text.
         body: ["0.875rem", { lineHeight: "1.4" }],
+        // Form control text. Deliberately 16px and never smaller: iOS Safari
+        // zooms the whole viewport in when a focused input's text is under
+        // 16px, and does not zoom back out afterwards.
+        field: ["1rem", { lineHeight: "1.4" }],
         // Row/card titles (paired with font-semibold at call sites).
         title: ["0.9375rem", { lineHeight: "1.3" }],
         // Compact big numerals — active-set counter, collapsed rest timer.

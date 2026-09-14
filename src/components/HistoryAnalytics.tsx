@@ -412,7 +412,7 @@ export function HistoryAnalytics({ focusExercise }: HistoryAnalyticsProps = {}) 
             <select
               value={selEx}
               onChange={(e) => setSelEx(e.target.value)}
-              className="font-mono text-subtext"
+              className="font-mono text-field"
               style={{
                 appearance: "none",
                 WebkitAppearance: "none",

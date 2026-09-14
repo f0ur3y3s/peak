@@ -268,6 +268,17 @@
 /* Shared focus state for TEXT_INPUT_STYLE/PAGE_INPUT_STYLE consumers — those
    style objects set outline: none inline with no compensating indicator, so
    keyboard focus was previously invisible on every input using them. */
+/* iOS Safari zooms the viewport in whenever a focused form control's text is
+   smaller than 16px, and never zooms back out — which reads as "the app keeps
+   zooming". Every control must therefore be at least 1rem: via `text-field`
+   in the Tailwind scale, or the shared objects in lib/inputStyles.ts. This is
+   the backstop for anything that sets neither. */
+input,
+textarea,
+select {
+  font-size: 1rem;
+}
+
 .field-input:focus {
   --field-border-color: hsl(var(--primary));
   outline: none;
