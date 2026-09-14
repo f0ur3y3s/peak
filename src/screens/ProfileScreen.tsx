@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TopBar } from "@/components/TopBar";
 import { useWeightUnit, type WeightUnit } from "@/lib/weightUnit";
-import { getSyncedAt } from "@/lib/db";
+import { getPushedAt } from "@/lib/db";
 import { syncNow } from "@/lib/sync";
 
 function fmtSyncedAt(ts: number): string {
@@ -24,7 +24,13 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
-    getSyncedAt().then((v) => setLastSyncedAt(v || null));
+    // The PUSH watermark, not the pull one. lastSyncedAt holds the timestamp
+    // of the newest row this device has pulled — minted by whichever device
+    // wrote it — so on a device that only ever uploads it sits still for
+    // weeks while sync succeeds every five minutes. lastPushedAt is this
+    // device's own clock at its last successful pass, which is what "last
+    // synced" means to the person reading it.
+    getPushedAt().then((v) => setLastSyncedAt(v || null));
   }, []);
 
   const handleSyncNow = async () => {

@@ -152,16 +152,36 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return;
-    const iv = setInterval(async () => {
-      if (!navigator.onLine) return;
+    let cancelled = false;
+
+    const pass = async () => {
+      if (cancelled || !navigator.onLine) return;
       const result = await syncNow().catch(() => ({ ok: false }) as const);
       // Covers the device that was offline at startup: seeding is gated on a
       // successful sync, so the first one that lands is where it happens.
-      if (result.ok && (await applyProgramSeed().catch(() => false))) {
+      if (result.ok && !cancelled && (await applyProgramSeed().catch(() => false))) {
         setDataVersion((v) => v + 1);
       }
-    }, SYNC_INTERVAL_MS);
-    return () => clearInterval(iv);
+    };
+
+    // A five-minute timer alone misses the two moments that actually decide
+    // whether a workout logged in a basement gym ever reaches the account:
+    // the phone regaining signal, and the app being put away. Waiting up to
+    // five minutes for the first means a walk out of the gym and a closed tab
+    // can land inside the same window. syncNow() already coalesces overlapping
+    // passes, so these can fire as often as the browser likes.
+    const iv = setInterval(pass, SYNC_INTERVAL_MS);
+    const onOnline = () => void pass();
+    const onVisibility = () => void pass();
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [session]);
 
   if (session === undefined) return <UpdateBanner />;
