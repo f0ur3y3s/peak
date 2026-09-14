@@ -15,6 +15,10 @@ interface ExerciseCardProps {
   onLogSet: (exId: string, reps: number, weight: number) => void;
   onDeleteSet: (exId: string, setId: string) => void;
   onUpdateRest: (exId: string, restSeconds: number) => void;
+  /** Sends this exercise to the end of the session — this session only. */
+  onDoLater: (exId: string) => void;
+  /** False for the last remaining unfinished exercise: nothing to defer to. */
+  canDoLater: boolean;
 }
 
 export function ExerciseCard({
@@ -24,6 +28,8 @@ export function ExerciseCard({
   onLogSet,
   onDeleteSet,
   onUpdateRest,
+  onDoLater,
+  canDoLater,
 }: ExerciseCardProps) {
   const { unit } = useWeightUnit();
   const logFormIdBase = useId();
@@ -72,6 +78,52 @@ export function ExerciseCard({
     : isActive
     ? "card-active"
     : "";
+
+  // A finished exercise collapses to one line as soon as you move to another.
+  // Left expanded, every completed exercise kept its full stack of logged
+  // rows, so by the last exercise of a session the thing you are working on
+  // sat below several screens of history. Tapping it activates it, which
+  // expands it again — that is also how you add an extra set to it.
+  if (done && !isActive) {
+    const top = ex.logged.reduce<{ reps: number; weight: number } | null>(
+      (best, set) => (!best || set.weight > best.weight ? set : best),
+      null
+    );
+    return (
+      <Card
+        onClick={() => onActivate(ex.id)}
+        role="button"
+        tabIndex={0}
+        aria-label={`${ex.name}, complete. Open to review or add a set.`}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onActivate(ex.id);
+          }
+        }}
+        style={{ cursor: "pointer" }}
+      >
+        <CardContent style={{ padding: "13px 16px" }} className="flex items-center gap-3">
+          <Check size={16} strokeWidth={2} style={{ color: "hsl(var(--success))", flexShrink: 0 }} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p className="font-semibold text-title truncate">{ex.name}</p>
+            <p className="font-mono text-caption text-muted-foreground mt-0.5">
+              {ex.logged.length} set{ex.logged.length === 1 ? "" : "s"}
+              {top ? ` · top ${top.reps}×${fmtWeight(top.weight, unit)}${unit}` : ""}
+            </p>
+          </div>
+          <div className="flex gap-1 flex-shrink-0">
+            {ex.logged.map((_, i) => (
+              <span
+                key={i}
+                style={{ width: 16, height: 5, borderRadius: 3, background: "hsl(var(--success))" }}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -130,6 +182,24 @@ export function ExerciseCard({
               {ex.targetWeight > 0 ? ` @ ${fmtWeight(ex.targetWeight, unit)}${unit}` : ""}
             </span>
             <div className="flex items-center gap-3 flex-shrink-0">
+              {isActive && !done && canDoLater && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDoLater(ex.id);
+                  }}
+                  className="text-caption"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "hsl(var(--muted-foreground))",
+                    padding: 0,
+                  }}
+                >
+                  Do later
+                </button>
+              )}
               {ex.notes && (
                 <button
                   onClick={(e) => {

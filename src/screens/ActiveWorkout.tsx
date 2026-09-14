@@ -86,21 +86,28 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
         .then((exs) => {
           let hydrated = exs;
           if (resumeDraft) {
-            const draftByExerciseId = new Map(
-              resumeDraft.exercises.map((e) => [e.exerciseId, e])
-            );
             // Note: if an exercise was removed from the template after the draft was
             // saved, getExercises won't return it, so any logged sets for that
             // exercise have nothing to attach to and are silently dropped here.
             // Known, accepted edge case — not handled.
-            hydrated = exs.map((ex) => {
-              const draftEx = draftByExerciseId.get(ex.id);
-              return {
+            // Draft order, not template order: "Do later" reorders the
+            // session, and mapping over the template's order on resume would
+            // silently undo that. Anything in the template but absent from
+            // the draft (added to the template while this workout was open)
+            // follows, in template order.
+            const remaining = new Map(exs.map((ex) => [ex.id, ex]));
+            const ordered: Exercise[] = [];
+            for (const draftEx of resumeDraft.exercises) {
+              const ex = remaining.get(draftEx.exerciseId);
+              if (!ex) continue;
+              remaining.delete(draftEx.exerciseId);
+              ordered.push({
                 ...ex,
-                logged: draftEx?.logged ?? ex.logged,
-                restSeconds: draftEx?.restSeconds ?? ex.restSeconds,
-              };
-            });
+                logged: draftEx.logged ?? ex.logged,
+                restSeconds: draftEx.restSeconds ?? ex.restSeconds,
+              });
+            }
+            hydrated = [...ordered, ...exs.filter((ex) => remaining.has(ex.id))];
           }
           applyExercises(hydrated);
 
@@ -203,6 +210,37 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
     applyExercises(updatedExercises);
     setDraftError(null);
+
+    persistDraft({
+      id: "current",
+      templateId,
+      templateName: templateName || "Workout",
+      startedAt: startedAt.current,
+      exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
+    });
+  };
+
+  /**
+   * Sends an exercise to the end of the session. Deliberately session-only:
+   * doing squats later because the rack was busy says nothing about how the
+   * program should be ordered, so unlike rest changes and added exercises
+   * this never reaches the template at Finish. It does persist to the draft,
+   * so a reload mid-session keeps the order you are actually working in.
+   */
+  const handleDoLater = (exId: string) => {
+    const current = exercisesRef.current;
+    const moved = current.find((ex) => ex.id === exId);
+    if (!moved || current.length < 2) return;
+    const updatedExercises = [...current.filter((ex) => ex.id !== exId), moved];
+
+    applyExercises(updatedExercises);
+
+    // Hand the user the next thing to actually do, rather than leaving the
+    // deferred exercise selected at the bottom of the list.
+    const nextUp = updatedExercises.find(
+      (ex) => ex.id !== exId && ex.logged.length < ex.targetSets
+    );
+    if (nextUp) setActiveId(nextUp.id);
 
     persistDraft({
       id: "current",
@@ -465,6 +503,10 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
               onLogSet={handleLog}
               onDeleteSet={handleDeleteSet}
               onUpdateRest={handleUpdateRest}
+              onDoLater={handleDoLater}
+              canDoLater={exercises.some(
+                (other) => other.id !== ex.id && other.logged.length < other.targetSets
+              )}
             />
           ))}
 
