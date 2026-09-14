@@ -30,6 +30,21 @@ export const PAGE_INPUT_STYLE: CSSProperties = {
   background: "hsl(var(--card))",
 };
 
+// Notes fields are prose, not values — taller, wrapping, and in the body
+// font rather than the mono one the numeric inputs use.
+export const TEXTAREA_STYLE: CSSProperties = {
+  ...TEXT_INPUT_STYLE,
+  fontFamily: "inherit",
+  lineHeight: 1.6,
+  minHeight: 88,
+  resize: "vertical",
+};
+
+export const PAGE_TEXTAREA_STYLE: CSSProperties = {
+  ...TEXTAREA_STYLE,
+  background: "hsl(var(--card))",
+};
+
 export function normalizeMuscle(value: string): string {
   return value.trim() || "Other";
 }

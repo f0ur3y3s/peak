@@ -50,10 +50,10 @@ dev`, don't expect HMR to pick it up.
 
 Any IndexedDB — fresh or existing — seeds itself once with the 5-day
 Push/Pull/Legs training program (Push A / Pull A / Legs / Push B / Pull B, 31
-exercises). The data lives in `lib/seedProgram.ts`; `ensureProgramSeed()` in
+exercises), each carrying the plan's progression notes. The data lives in `lib/seedProgram.ts`; `ensureProgramSeed()` in
 `lib/db.ts` applies it on open and records a marker in `sync_meta`, so it runs
 exactly once per device and never resurrects a template you deleted. To see it
-apply again, delete the `seed:recomp-ppl-v1` row from `sync_meta` in DevTools →
+apply again, delete the `seed:recomp-ppl-v2` row from `sync_meta` in DevTools →
 Application → IndexedDB and reload.
 
 ## 5. Verify the build before and after any change

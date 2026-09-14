@@ -15,6 +15,8 @@ export interface Exercise {
   id: string;
   name: string;
   muscle: string;
+  /** Mirrors LibraryExercise.notes — form cues, setup, progression rules. */
+  notes?: string;
   targetSets: number;
   repsMin: number;
   repsMax: number;

@@ -48,7 +48,7 @@ src/
   lib/
     db.ts              ← IndexedDB — the single source of truth for all app data
     data.ts             ← Runtime types (Exercise, TimerState), fmtTime util
-    seedProgram.ts      ← The seeded 5-day Push/Pull/Legs training program (see below)
+    seedProgram.ts      ← The seeded 5-day Push/Pull/Legs training program + its notes (see below)
     muscles.ts          ← Static muscle-group taxonomy + fuzzy search for the muscle picker
     weightUnit.tsx       ← kg/lb display-preference context (conversion is display-only; storage stays kg)
     supabase.ts          ← Supabase client
@@ -61,7 +61,8 @@ src/
     ExerciseCard.tsx       ← Exercise card during an active workout (log form, rest timer, set list)
     ExerciseConfigEditor.tsx ← Sets/reps/weight/rest editor, used by template editing and mid-workout adds
     ExercisePicker.tsx      ← Library search/create picker, used by template editing and mid-workout adds
-    ExerciseEditForm.tsx    ← Create/rename form for the standalone Exercise Library screen
+    ExerciseEditForm.tsx    ← Create/rename/notes form for the standalone Exercise Library screen
+    NotesBlock.tsx           ← Read-only display for template and exercise notes
     MuscleSelect.tsx         ← Fuzzy-searchable muscle-group combobox
     ConfirmDialog.tsx         ← Shared styled confirmation modal (replaces window.confirm everywhere)
     TimerSheet.tsx             ← Draggable rest-timer bottom sheet
@@ -109,16 +110,25 @@ Page-level titles use a branded stencil display font (`font-title` → "Allerta 
 
 - **Deferred template sync from a workout.** Changing an exercise's rest time, logging more/fewer sets than planned, or adding a new exercise mid-workout only updates the *session* live — the parent template is only updated when you tap Finish, and only from data in the completed session. Discarding or abandoning a workout never touches the template.
 - **Active workout draft persistence.** An in-progress workout is saved to IndexedDB after every logged set, so navigating away and back (or losing the tab) resumes exactly where you left off. Starting a second workout while one is already in progress is blocked with an explicit message.
+- **Notes on templates and exercises.** Both carry optional free-text notes.
+  A template's notes describe the session (focus, bias, how to run it) and are
+  edited in its Edit mode; an exercise's notes are form cues and progression
+  rules, edited in the Exercise Library and shown wherever that exercise
+  appears — on the template's exercise cards, and during a workout on the
+  *active* card only, so a collapsed list stays scannable. Both sync like any
+  other field (`notes` columns, migration 006).
 - **Seeded training program.** Every device is seeded once with the 5-day
   Push/Pull/Legs split (Push A / Pull A / Legs / Push B / Pull B) and its 31
   exercises, defined in `src/lib/seedProgram.ts` and applied by
   `ensureProgramSeed()` in `src/lib/db.ts`. Sets, rep ranges and rest come from
   the program; loads seed at 0 kg since those are personal. Seeded templates
   append after any templates you already have, and a `sync_meta` marker keyed
-  by the seed version means editing or deleting one sticks — it is never
-  re-applied. Because seeded ids are deterministic, the same program pushed up
+  by the seed version means editing or deleting one sticks. Bumping that
+  version re-runs the seed once, which only fills in fields that are still
+  empty (that is how v1 devices picked up the notes added in v2) and never
+  overwrites what you have changed. Because seeded ids are deterministic, the same program pushed up
   by sync (or inserted directly via
-  `supabase/migrations/006_seed_training_program.sql`) converges on the same
+  `supabase/migrations/007_seed_training_program.sql`) converges on the same
   rows rather than duplicating. Those fixed ids can only be used by one
   account, though: `templates.id` and `exercise_library.id` are global primary
   keys, so a second account needs a different id prefix.

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseEditForm } from "@/components/ExerciseEditForm";
+import { NotesBlock } from "@/components/NotesBlock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { MUSCLE_GROUPS, fuzzyMatch, groupForMuscle } from "@/lib/muscles";
@@ -39,9 +40,15 @@ export function ExercisesScreen() {
     exercises: filtered.filter((ex) => groupForMuscle(ex.muscle) === group),
   })).filter((s) => s.exercises.length > 0);
 
-  const handleCreate = async (name: string, muscle: string) => {
+  const handleCreate = async (name: string, muscle: string, notes: string) => {
     setActionError(null);
-    const exercise: LibraryExercise = { id: crypto.randomUUID(), name, muscle, updatedAt: Date.now() };
+    const exercise: LibraryExercise = {
+      id: crypto.randomUUID(),
+      name,
+      muscle,
+      notes: notes || undefined,
+      updatedAt: Date.now(),
+    };
     try {
       await saveLibraryExercise(exercise);
       setCreating(false);
@@ -51,11 +58,11 @@ export function ExercisesScreen() {
     }
   };
 
-  const handleEditSave = async (name: string, muscle: string) => {
+  const handleEditSave = async (name: string, muscle: string, notes: string) => {
     if (!editingExercise) return;
     setActionError(null);
     try {
-      await saveLibraryExercise({ ...editingExercise, name, muscle });
+      await saveLibraryExercise({ ...editingExercise, name, muscle, notes: notes || undefined });
       setEditingExercise(null);
       reload();
     } catch {
@@ -159,17 +166,24 @@ export function ExercisesScreen() {
                 >
                   <CardContent
                     style={{ padding: "14px 16px" }}
-                    className="flex justify-between items-center"
+                    className="flex justify-between items-center gap-3"
                   >
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-title">{ex.name}</p>
-                      <Badge
-                        variant="secondary"
-                        className="text-label"
-                        style={{ padding: "1px 7px" }}
-                      >
-                        {ex.muscle}
-                      </Badge>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-title">{ex.name}</p>
+                        <Badge
+                          variant="secondary"
+                          className="text-label"
+                          style={{ padding: "1px 7px" }}
+                        >
+                          {ex.muscle}
+                        </Badge>
+                      </div>
+                      {ex.notes && (
+                        <div className="mt-1.5">
+                          <NotesBlock notes={ex.notes} clamp={2} />
+                        </div>
+                      )}
                     </div>
                     <IconButton
                       variant="destructive"
@@ -208,6 +222,7 @@ export function ExercisesScreen() {
           title="Edit exercise"
           initialName={editingExercise.name}
           initialMuscle={editingExercise.muscle}
+          initialNotes={editingExercise.notes ?? ""}
           onSave={handleEditSave}
           onCancel={() => setEditingExercise(null)}
         />

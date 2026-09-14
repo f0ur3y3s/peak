@@ -8,6 +8,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
+import { NotesBlock } from "@/components/NotesBlock";
 
 interface ExerciseCardProps {
   ex: Exercise;
@@ -144,6 +145,15 @@ export function ExerciseCard({
               <Plus size={16} strokeWidth={2} />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Notes — only on the active card: cues matter for the set you are
+          about to do, and repeating them down a collapsed list would bury
+          the sets themselves. */}
+      {isActive && ex.notes && (
+        <div className="px-4 pb-2.5">
+          <NotesBlock notes={ex.notes} label="Notes" />
         </div>
       )}
 

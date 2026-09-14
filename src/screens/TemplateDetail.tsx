@@ -20,10 +20,11 @@ import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/Ex
 import { ExercisePicker } from "@/components/ExercisePicker";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
+import { NotesBlock } from "@/components/NotesBlock";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { fmtRelativeDate } from "@/lib/utils";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
-import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
+import { PAGE_INPUT_STYLE, PAGE_TEXTAREA_STYLE } from "@/lib/inputStyles";
 import {
   getTemplate,
   getExercises,
@@ -121,6 +122,21 @@ export function TemplateDetail({
     } catch {
       setTemplate(previous);
       setActionError("Couldn't rename template — try again.");
+    }
+  };
+
+  const handleNotesChange = async (notes: string) => {
+    const trimmed = notes.trim();
+    if (trimmed === (template.notes ?? "")) return;
+    setActionError(null);
+    const previous = template;
+    const updated = { ...template, notes: trimmed || undefined };
+    setTemplate(updated);
+    try {
+      await saveTemplate(updated);
+    } catch {
+      setTemplate(previous);
+      setActionError("Couldn't save notes — try again.");
     }
   };
 
@@ -357,6 +373,14 @@ export function TemplateDetail({
         </div>
       </CardHeader>
       <Separator />
+      {ex.notes && (
+        <>
+          <CardContent style={{ padding: "12px 16px" }}>
+            <NotesBlock notes={ex.notes} label="Notes" />
+          </CardContent>
+          <Separator />
+        </>
+      )}
       <CardContent style={{ padding: "12px 16px" }}>
         {ex.last ? (
           <>
@@ -418,6 +442,14 @@ export function TemplateDetail({
             aria-label="Template name"
             onBlur={(e) => handleRename(e.target.value)}
           />
+          <textarea
+            className="field-input"
+            style={PAGE_TEXTAREA_STYLE}
+            defaultValue={template.notes ?? ""}
+            aria-label="Template notes"
+            placeholder="Notes for this session — focus, bias, how to run it…"
+            onBlur={(e) => handleNotesChange(e.target.value)}
+          />
           <Button variant="destructive" className="w-full" onClick={() => setConfirmingDelete(true)}>
             Delete template
           </Button>
@@ -455,6 +487,16 @@ export function TemplateDetail({
                       <p className="text-caption text-muted-foreground mt-px">{l}</p>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {!editMode && template.notes && (
+            <div className="px-5 pt-2.5">
+              <Card>
+                <CardContent style={{ padding: "14px 16px" }}>
+                  <NotesBlock notes={template.notes} label="Session notes" />
                 </CardContent>
               </Card>
             </div>

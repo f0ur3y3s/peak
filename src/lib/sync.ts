@@ -76,6 +76,7 @@ async function pushChanges(userId: string, since: number): Promise<void> {
         user_id: userId,
         name: t.name,
         exercises: t.exercises,
+        notes: t.notes ?? null,
         position: t.order,
         updated_at: new Date(t.updatedAt).toISOString(),
       }))
@@ -91,6 +92,7 @@ async function pushChanges(userId: string, since: number): Promise<void> {
         user_id: userId,
         name: e.name,
         muscle: e.muscle,
+        notes: e.notes ?? null,
         updated_at: new Date(e.updatedAt).toISOString(),
       }))
     );
@@ -196,6 +198,7 @@ async function pullChanges(userId: string, since: number): Promise<void> {
       id: row.id,
       name: row.name,
       exercises: row.exercises,
+      notes: row.notes ?? undefined,
       order: row.position ?? 0,
       updatedAt,
     };
@@ -220,6 +223,7 @@ async function pullChanges(userId: string, since: number): Promise<void> {
       id: row.id,
       name: row.name,
       muscle: row.muscle,
+      notes: row.notes ?? undefined,
       updatedAt,
     };
     await putLibraryExerciseRaw(local);

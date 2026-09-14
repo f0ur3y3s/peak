@@ -20,6 +20,8 @@ export interface LibraryExercise {
   id: string;
   name: string;
   muscle: string;
+  /** Free-text notes: form cues, setup, progression rules. */
+  notes?: string;
   updatedAt: number;
 }
 
@@ -37,6 +39,8 @@ export interface Template {
   id: string;
   name: string;
   exercises: TemplateExerciseConfig[];
+  /** Free-text notes about the session as a whole: focus, bias, how to run it. */
+  notes?: string;
   order: number;
   updatedAt: number;
 }
@@ -265,16 +269,32 @@ async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
 
   for (const program of SEED_PROGRAM) {
     for (const ex of program.exercises) {
-      if (await libraryStore.get(ex.id)) continue;
+      const existing = await libraryStore.get(ex.id);
+      if (existing) {
+        // A later seed version can add notes to a record an earlier one
+        // wrote, but must never overwrite anything the user has since
+        // typed — so only an empty notes field is filled in.
+        if (!existing.notes && ex.notes) {
+          await libraryStore.put({ ...existing, notes: ex.notes, updatedAt: seededAt });
+        }
+        continue;
+      }
       await libraryStore.put({
         id: ex.id,
         name: ex.name,
         muscle: ex.muscle,
+        notes: ex.notes,
         updatedAt: seededAt,
       });
     }
 
-    if (await templateStore.get(program.id)) continue;
+    const existingTemplate = await templateStore.get(program.id);
+    if (existingTemplate) {
+      if (!existingTemplate.notes && program.notes) {
+        await templateStore.put({ ...existingTemplate, notes: program.notes, updatedAt: seededAt });
+      }
+      continue;
+    }
     await templateStore.put({
       id: program.id,
       name: program.name,
@@ -287,6 +307,7 @@ async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
         targetWeight: PROGRAM_SEED_WEIGHT,
         restSeconds: ex.restSeconds,
       })),
+      notes: program.notes,
       order: nextOrder++,
       updatedAt: seededAt,
     });
@@ -419,6 +440,7 @@ export async function getExercises(templateId: string): Promise<Exercise[]> {
           id: cfg.exerciseId,
           name: lib.name,
           muscle: lib.muscle,
+          notes: lib.notes,
           targetSets: cfg.targetSets,
           repsMin: cfg.repsMin,
           repsMax: cfg.repsMax,

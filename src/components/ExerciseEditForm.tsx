@@ -2,13 +2,14 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MuscleSelect } from "@/components/MuscleSelect";
 import { Modal } from "@/components/Modal";
-import { TEXT_INPUT_STYLE, normalizeMuscle } from "@/lib/inputStyles";
+import { TEXT_INPUT_STYLE, TEXTAREA_STYLE, normalizeMuscle } from "@/lib/inputStyles";
 
 interface ExerciseEditFormProps {
   title: string;
   initialName: string;
   initialMuscle: string;
-  onSave: (name: string, muscle: string) => void;
+  initialNotes?: string;
+  onSave: (name: string, muscle: string, notes: string) => void;
   onCancel: () => void;
 }
 
@@ -16,14 +17,17 @@ export function ExerciseEditForm({
   title,
   initialName,
   initialMuscle,
+  initialNotes = "",
   onSave,
   onCancel,
 }: ExerciseEditFormProps) {
   const titleId = useId();
   const nameId = useId();
   const muscleId = useId();
+  const notesId = useId();
   const [name, setName] = useState(initialName);
   const [muscle, setMuscle] = useState(initialMuscle);
+  const [notes, setNotes] = useState(initialNotes);
 
   const canSave = name.trim().length > 0;
 
@@ -46,6 +50,19 @@ export function ExerciseEditForm({
             <label htmlFor={muscleId} className="block text-caption text-muted-foreground mb-1.5">Muscle group</label>
             <MuscleSelect id={muscleId} value={muscle} onChange={setMuscle} />
           </div>
+          <div>
+            <label htmlFor={notesId} className="block text-caption text-muted-foreground mb-1.5">
+              Notes <span className="text-muted-foreground">(optional)</span>
+            </label>
+            <textarea
+              id={notesId}
+              className="field-input"
+              style={TEXTAREA_STYLE}
+              value={notes}
+              placeholder="Form cues, setup, progression rule…"
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
         </div>
         <div className="flex gap-2.5">
           <Button variant="outline" className="flex-1" onClick={onCancel}>
@@ -54,7 +71,7 @@ export function ExerciseEditForm({
           <Button
             className="flex-1 font-semibold"
             disabled={!canSave}
-            onClick={() => onSave(name.trim(), normalizeMuscle(muscle))}
+            onClick={() => onSave(name.trim(), normalizeMuscle(muscle), notes.trim())}
           >
             Save
           </Button>
