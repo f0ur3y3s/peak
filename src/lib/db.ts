@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { openDB, deleteDB, type DBSchema, type IDBPDatabase } from "idb";
 import { type Exercise } from "@/lib/data";
 import { PROGRAM_SEED_VERSION, PROGRAM_SEED_WEIGHT, SEED_PROGRAM } from "@/lib/seedProgram";
 
@@ -111,11 +111,13 @@ interface PeakDB extends DBSchema {
   };
 }
 
+const DB_NAME = "peak-db";
+
 let dbPromise: Promise<IDBPDatabase<PeakDB>> | null = null;
 
 function getDB(): Promise<IDBPDatabase<PeakDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<PeakDB>("peak-db", 5, {
+    dbPromise = openDB<PeakDB>(DB_NAME, 5, {
       async upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const sessionStore = db.createObjectStore("workout_sessions", { keyPath: "id" });
@@ -222,10 +224,6 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
         }
       },
     })
-      .then(async (db) => {
-        await ensureProgramSeed(db);
-        return db;
-      })
       .catch((err) => {
         dbPromise = null;
         throw err;
@@ -243,29 +241,48 @@ const PROGRAM_SEED_KEY = `seed:${PROGRAM_SEED_VERSION}` as const;
  * editing a seeded template stays deleted or edited rather than being
  * resurrected on the next load.
  *
- * Deliberately runs on every open rather than inside an `upgrade()` handler:
- * databases already at the current schema version (every existing user)
- * never re-enter `upgrade()`, and they need the program too.
+ * MUST NOT run before the account's own rows have been pulled down. The
+ * seeded records use deterministic ids, so a device that seeds while its
+ * IndexedDB is empty would push a pristine `ppl-v1-push-a` (every load back
+ * to 0kg) straight over the account's customized row of the same id, on
+ * every device. App.tsx therefore calls this only after a successful sync,
+ * by which point any already-customized copy is present locally and the
+ * `if (existing) continue` branches below leave it alone.
+ *
+ * Returns whether anything was written, so the caller can refresh a UI that
+ * has already read an empty database.
+ *
+ * Deliberately not part of an `upgrade()` handler: databases already at the
+ * current schema version (every existing user) never re-enter `upgrade()`,
+ * and they need the program too.
  */
-async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
-  if (await db.get("sync_meta", PROGRAM_SEED_KEY)) return;
+export async function applyProgramSeed(): Promise<boolean> {
+  const db = await getDB();
+  if (await db.get("sync_meta", PROGRAM_SEED_KEY)) return false;
+  let wrote = false;
 
   // Stamped with the current time, not a fixed release date, because the sync
   // engine only pushes records whose updatedAt is newer than this device's
   // last-synced watermark — a backdated stamp would leave the whole program
-  // sitting in local IndexedDB, never reaching the account. The cost is that a
-  // device seeding for the first time can re-push a seeded template that was
-  // deleted on another device; deleting it again settles it for good.
+  // sitting in local IndexedDB, never reaching the account.
   const seededAt = Date.now();
 
   const tx = db.transaction(["exercise_library", "templates", "sync_meta"], "readwrite");
   const libraryStore = tx.objectStore("exercise_library");
   const templateStore = tx.objectStore("templates");
 
-  // Seeded templates land after whatever the user already has, so seeding an
-  // established library doesn't reshuffle their list.
-  const existing = await templateStore.getAll();
-  let nextOrder = existing.reduce((max, t) => Math.max(max, t.order ?? 0), -1) + 1;
+  const existingTemplates = await templateStore.getAll();
+  const existingLibraryCount = await libraryStore.count();
+
+  // The program is a starting point for an empty account, not a top-up. Once
+  // the account holds anything at all, a missing seeded record means the user
+  // deleted it (the pull applies a remote delete by removing the row locally,
+  // leaving no trace to check against) — so re-creating it here would
+  // resurrect it on every device. Notes are still filled in below either way:
+  // that only touches records this seed already wrote, and only while they
+  // have no note of their own.
+  const isEmptyAccount = existingTemplates.length === 0 && existingLibraryCount === 0;
+  let nextOrder = existingTemplates.reduce((max, t) => Math.max(max, t.order ?? 0), -1) + 1;
 
   for (const program of SEED_PROGRAM) {
     for (const ex of program.exercises) {
@@ -276,9 +293,11 @@ async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
         // typed — so only an empty notes field is filled in.
         if (!existing.notes && ex.notes) {
           await libraryStore.put({ ...existing, notes: ex.notes, updatedAt: seededAt });
+          wrote = true;
         }
         continue;
       }
+      if (!isEmptyAccount) continue;
       await libraryStore.put({
         id: ex.id,
         name: ex.name,
@@ -286,15 +305,18 @@ async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
         notes: ex.notes,
         updatedAt: seededAt,
       });
+      wrote = true;
     }
 
     const existingTemplate = await templateStore.get(program.id);
     if (existingTemplate) {
       if (!existingTemplate.notes && program.notes) {
         await templateStore.put({ ...existingTemplate, notes: program.notes, updatedAt: seededAt });
+        wrote = true;
       }
       continue;
     }
+    if (!isEmptyAccount) continue;
     await templateStore.put({
       id: program.id,
       name: program.name,
@@ -311,10 +333,27 @@ async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
       order: nextOrder++,
       updatedAt: seededAt,
     });
+    wrote = true;
   }
 
   await tx.objectStore("sync_meta").put({ key: PROGRAM_SEED_KEY, value: Date.now() });
   await tx.done;
+  return wrote;
+}
+
+/**
+ * Deletes this device's entire local database. IndexedDB is per-origin, not
+ * per-account, so signing in as a different user must start from nothing —
+ * otherwise the previous account's templates, history, draft, tombstones and
+ * sync watermark all carry over and get pushed up as the new user's.
+ */
+export async function clearLocalData(): Promise<void> {
+  if (dbPromise) {
+    const open = await dbPromise.catch(() => null);
+    open?.close();
+    dbPromise = null;
+  }
+  await deleteDB(DB_NAME);
 }
 
 async function tombstone(store: SyncTombstone["store"], id: string): Promise<void> {

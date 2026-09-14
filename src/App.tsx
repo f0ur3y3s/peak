@@ -12,11 +12,17 @@ import { ExercisesScreen } from "@/screens/ExercisesScreen";
 import { ExerciseHistoryScreen } from "@/screens/ExerciseHistoryScreen";
 import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
-import { getActiveWorkoutDraft } from "@/lib/db";
+import { getActiveWorkoutDraft, applyProgramSeed, clearLocalData } from "@/lib/db";
 import { syncNow } from "@/lib/sync";
 import { UpdateBanner } from "@/components/UpdateBanner";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+
+// IndexedDB is per-origin, so one local database is shared by every account
+// that signs in on this device. This records who used it last, so a different
+// user signing in can start from an empty store instead of inheriting — and
+// then uploading — the previous account's data.
+const LAST_USER_KEY = "peak-last-user";
 
 // Opt-in local preview: with no real Supabase project configured, set
 // VITE_LOCAL_PREVIEW=1 in .env to skip AuthScreen and use the app directly.
@@ -46,6 +52,10 @@ export default function App() {
   // Drives NavBar's "workout in progress" indicator — otherwise nothing
   // signals a session is running once you leave the Workout tab.
   const [hasActiveDraft, setHasActiveDraft] = useState(false);
+  // Bumped when the database is replaced underneath the UI (an account switch
+  // wiped it, or seeding populated it after a screen already read it empty).
+  // Used as a key so the current screen remounts and re-reads.
+  const [dataVersion, setDataVersion] = useState(0);
   const resolvedUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -71,29 +81,76 @@ export default function App() {
     if (resolvedUserId.current === userKey) return;
     resolvedUserId.current = userKey;
 
-    getActiveWorkoutDraft().then((draft) => {
+    let cancelled = false;
+
+    (async () => {
+      // 1. Wipe first, before anything reads the database. Whatever is in
+      //    there belongs to whoever signed in last; if that was someone else,
+      //    reading it would show their templates and history, and syncing it
+      //    would upload their data into this account.
+      let previousUser: string | null = null;
+      try {
+        previousUser = window.localStorage.getItem(LAST_USER_KEY);
+      } catch {
+        previousUser = null;
+      }
+      if (previousUser && previousUser !== userKey) {
+        await clearLocalData();
+        setDataVersion((v) => v + 1);
+      }
+      try {
+        window.localStorage.setItem(LAST_USER_KEY, userKey);
+      } catch {
+        // Private browsing with storage blocked — the wipe above still ran;
+        // only the "who was here last" record is lost.
+      }
+      if (cancelled) return;
+
+      // 2. Resolve the landing screen from local data, which is fast and
+      //    works offline. Sync and seeding continue underneath.
+      const draft = await getActiveWorkoutDraft().catch(() => undefined);
+      if (cancelled) return;
       setHasActiveDraft(!!draft);
       if (draft) {
         setActiveTemplateId(draft.templateId);
         setScreen("workout");
         setNav("workout");
-        return;
+      } else {
+        setScreen("workout-home");
+        setNav("workout");
       }
-      setScreen("workout-home");
-      setNav("workout");
-    });
 
-    // One sync pass on sign-in/app-open, in addition to the periodic timer
-    // below, so a freshly opened app catches up immediately rather than
-    // waiting for the first interval tick. Skipped in local-preview mode —
-    // there's no real backend to sync with.
-    if (session && navigator.onLine) syncNow();
+      // 3. Sync before seeding, never the other way round. The seeded program
+      //    uses fixed ids, so seeding an empty database and pushing it would
+      //    overwrite this account's customized rows of the same ids on every
+      //    device. Pulling first means an already-customized copy is present
+      //    locally and applyProgramSeed() leaves it alone. A signed-in device
+      //    that cannot reach the server therefore stays unseeded until a sync
+      //    succeeds — the periodic pass below picks it up.
+      if (session) {
+        if (!navigator.onLine) return;
+        const result = await syncNow().catch(() => ({ ok: false }) as const);
+        if (cancelled || !result.ok) return;
+      }
+      const seeded = await applyProgramSeed().catch(() => false);
+      if (seeded && !cancelled) setDataVersion((v) => v + 1);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [session]);
 
   useEffect(() => {
     if (!session) return;
-    const iv = setInterval(() => {
-      if (navigator.onLine) syncNow();
+    const iv = setInterval(async () => {
+      if (!navigator.onLine) return;
+      const result = await syncNow().catch(() => ({ ok: false }) as const);
+      // Covers the device that was offline at startup: seeding is gated on a
+      // successful sync, so the first one that lands is where it happens.
+      if (result.ok && (await applyProgramSeed().catch(() => false))) {
+        setDataVersion((v) => v + 1);
+      }
     }, SYNC_INTERVAL_MS);
     return () => clearInterval(iv);
   }, [session]);
@@ -135,7 +192,7 @@ export default function App() {
       className="bg-background min-h-screen relative"
       style={{ maxWidth: 430, margin: "0 auto" }}
     >
-      <div className="scroll-area">
+      <div className="scroll-area" key={dataVersion}>
         {screen === "templates" && (
           <TemplatesScreen
             onSelectTemplate={(id) => {
@@ -202,7 +259,16 @@ export default function App() {
         {screen === "profile" && (
           <ProfileScreen
             email={session?.user.email ?? (LOCAL_PREVIEW ? "local-preview" : null)}
-            onSignOut={() => supabase.auth.signOut()}
+            onSignOut={async () => {
+              // Flush anything still pending while this account's session is
+              // alive — afterwards these rows cannot be attributed to it.
+              // The local wipe happens on the next sign-in, and only if a
+              // different user signs in, so signing back in keeps your data.
+              if (navigator.onLine) {
+                await syncNow().catch(() => undefined);
+              }
+              await supabase.auth.signOut();
+            }}
           />
         )}
         {screen === "exercises" && <ExercisesScreen />}
