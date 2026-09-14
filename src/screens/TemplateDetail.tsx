@@ -350,10 +350,10 @@ export function TemplateDetail({
           </div>
           <div className="flex items-start gap-2">
             <div className="text-right">
-              <p className="font-mono text-sm">
+              <p className="font-mono text-sm whitespace-nowrap">
                 {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
               </p>
-              <p className="font-mono text-caption text-muted-foreground mt-0.5">
+              <p className="font-mono text-caption text-muted-foreground mt-0.5 whitespace-nowrap">
                 @ {fmtWeight(ex.targetWeight, unit)} {unit}
               </p>
             </div>

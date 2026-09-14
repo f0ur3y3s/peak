@@ -79,7 +79,7 @@ export function ExerciseCard({
               >
                 {ex.muscle}
               </Badge>
-              <span className="font-mono text-caption text-muted-foreground">
+              <span className="font-mono text-caption text-muted-foreground whitespace-nowrap">
                 {ex.targetSets}×{ex.repsMin}–{ex.repsMax} @ {fmtWeight(ex.targetWeight, unit)}{unit}
               </span>
               <button

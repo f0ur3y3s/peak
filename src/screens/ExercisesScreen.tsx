@@ -169,8 +169,8 @@ export function ExercisesScreen() {
                     className="flex justify-between items-center gap-3"
                   >
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-title">{ex.name}</p>
+                      <p className="font-semibold text-title">{ex.name}</p>
+                      <div className="mt-1 flex">
                         <Badge
                           variant="secondary"
                           className="text-label"
