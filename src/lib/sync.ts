@@ -31,6 +31,41 @@ import {
 
 type SyncResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * A pub-sub store of the last pass's outcome, mirroring lib/swUpdate.ts, so a
+ * status line can react without threading state through every screen.
+ *
+ * Nothing in the UI used to say whether sync was working. A device that had
+ * been failing to reach the server for a week looked exactly like one that
+ * was up to date.
+ */
+export type SyncStatus = "idle" | "syncing" | "error";
+
+let status: SyncStatus = "idle";
+let lastError: string | null = null;
+const statusListeners = new Set<() => void>();
+// useSyncExternalStore compares snapshots by identity, so this has to be a
+// stable object that is only replaced when something actually changes —
+// returning a fresh literal each call would re-render forever.
+let snapshot: { status: SyncStatus; error: string | null } = { status, error: lastError };
+
+function publishStatus(next: SyncStatus, error: string | null): void {
+  if (status === next && lastError === error) return;
+  status = next;
+  lastError = error;
+  snapshot = { status, error: lastError };
+  statusListeners.forEach((l) => l());
+}
+
+export function subscribeSyncStatus(listener: () => void): () => void {
+  statusListeners.add(listener);
+  return () => statusListeners.delete(listener);
+}
+
+export function getSyncStatus(): { status: SyncStatus; error: string | null } {
+  return snapshot;
+}
+
 // Guards against overlapping sync passes (periodic timer + manual button +
 // on-sign-in trigger can all fire close together) — two syncs racing would
 // each capture their own "since" watermark and could interleave push/pull
@@ -46,6 +81,7 @@ export function syncNow(): Promise<SyncResult> {
 }
 
 async function runSync(): Promise<SyncResult> {
+  publishStatus("syncing", null);
   try {
     // Inside the try: supabase-js acquires a navigator.locks lock here and
     // rejects with NavigatorLockAcquireTimeoutError when another tab or a
@@ -56,7 +92,10 @@ async function runSync(): Promise<SyncResult> {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session) return { ok: false, error: "Not signed in." };
+    if (!session) {
+      publishStatus("idle", null);
+      return { ok: false, error: "Not signed in." };
+    }
     const userId = session.user.id;
 
     // Two watermarks, because two different clocks are involved.
@@ -99,9 +138,12 @@ async function runSync(): Promise<SyncResult> {
     await setPushedAt(pushStartedAt);
     // Only ever forward, and only to something the server actually returned.
     if (newestSeen > pullSince) await setSyncedAt(newestSeen);
+    publishStatus("idle", null);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Sync failed — try again." };
+    const error = err instanceof Error ? err.message : "Sync failed — try again.";
+    publishStatus("error", error);
+    return { ok: false, error };
   }
 }
 

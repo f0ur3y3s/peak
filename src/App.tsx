@@ -20,6 +20,7 @@ import {
 import { syncNow } from "@/lib/sync";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SyncStatusBar } from "@/components/SyncStatusBar";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -220,6 +221,10 @@ export default function App() {
       style={{ maxWidth: 430, margin: "0 auto" }}
     >
       <div className="scroll-area" key={dataVersion}>
+        {/* LOCAL_PREVIEW stands in for a signed-in user everywhere else in
+            this file; excluding it here would leave the one state that is
+            awkward to reach in production unreachable in the preview too. */}
+        <SyncStatusBar signedIn={!!session || LOCAL_PREVIEW} />
         {/* Keyed by the current screen so navigating to another tab clears a
             caught error, and inside the chrome so the nav bar below survives
             it — a crash on one screen must not strand you there. */}

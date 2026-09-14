@@ -9,9 +9,10 @@ import { fakeState, fakeSupabase, remoteRow, resetFakeSupabase } from "./fakeSup
 
 vi.mock("@/lib/supabase", () => ({ supabase: fakeSupabase }));
 
-import { syncNow, mergeDrafts } from "@/lib/sync";
+import { syncNow, mergeDrafts, getSyncStatus } from "@/lib/sync";
 import {
   clearLocalData,
+  countUnsyncedChanges,
   deleteTemplate,
   deleteWorkoutSession,
   getSyncTombstones,
@@ -138,6 +139,38 @@ describe("syncNow", () => {
     await syncNow();
 
     expect((await getTemplate("t1"))?.name).toBe("Local newer");
+  });
+});
+
+describe("what the status line reads", () => {
+  it("reports a failure, then clears it on the next good pass", async () => {
+    fakeState.sessionError = new Error("Failed to fetch");
+    await syncNow();
+    expect(getSyncStatus()).toEqual({ status: "error", error: "Failed to fetch" });
+
+    fakeState.sessionError = null;
+    await syncNow();
+
+    expect(getSyncStatus()).toEqual({ status: "idle", error: null });
+  });
+
+  it("does not call being signed out a sync failure", async () => {
+    // Signing out is not something to alarm anyone about.
+    fakeState.session = null;
+    await syncNow();
+    expect(getSyncStatus().status).toBe("idle");
+  });
+
+  it("counts what has not reached the account, and stops once it has", async () => {
+    await saveTemplate({ id: "t1", name: "Pull A", exercises: [], order: 0 });
+    await deleteTemplate("t1");
+    await saveTemplate({ id: "t2", name: "Push A", exercises: [], order: 1 });
+    // One live template and one pending deletion.
+    expect(await countUnsyncedChanges()).toBe(2);
+
+    await syncNow();
+
+    expect(await countUnsyncedChanges()).toBe(0);
   });
 });
 

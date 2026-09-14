@@ -870,6 +870,26 @@ export async function getDraftUpdatedSince(since: number): Promise<ActiveWorkout
   return draft && draft.updatedAt > since ? draft : null;
 }
 
+/**
+ * How many local records have not reached the account yet.
+ *
+ * The app is offline-first and said so nowhere: you could log a whole session
+ * in a basement gym and get no indication at all that it was still sitting on
+ * the phone. Counted against the push watermark, which is exactly what the
+ * next pass would upload, plus deletions still waiting to be asserted.
+ */
+export async function countUnsyncedChanges(): Promise<number> {
+  const since = await getPushedAt();
+  const [templates, library, sessions, draft, tombstones] = await Promise.all([
+    getTemplatesUpdatedSince(since),
+    getLibraryUpdatedSince(since),
+    getSessionsUpdatedSince(since),
+    getDraftUpdatedSince(since),
+    getSyncTombstones(),
+  ]);
+  return templates.length + library.length + sessions.length + (draft ? 1 : 0) + tombstones.length;
+}
+
 export async function putTemplateRaw(template: Template): Promise<void> {
   const db = await getDB();
   await db.put("templates", template);
