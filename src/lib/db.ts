@@ -68,7 +68,7 @@ export interface SyncTombstone {
 }
 
 interface SyncMetaRecord {
-  key: "lastSyncedAt" | `seed:${string}`;
+  key: "lastSyncedAt" | "lastPushedAt" | `seed:${string}`;
   value: number;
 }
 
@@ -686,6 +686,36 @@ export async function getSyncedAt(): Promise<number> {
   const db = await getDB();
   const rec = await db.get("sync_meta", "lastSyncedAt");
   return rec?.value ?? 0;
+}
+
+/**
+ * Watermark for the PUSH half of a sync, in local clock time.
+ *
+ * Deliberately separate from lastSyncedAt, which is the PULL watermark and
+ * holds a timestamp minted by whichever device wrote the newest row we have
+ * seen. Mixing them meant comparing this device's clock against other
+ * devices' clocks: a laptop ten minutes fast advanced the watermark past a
+ * phone's genuinely newer workout, which then never arrived — on that device,
+ * ever. Each half now compares like with like.
+ */
+export async function getPushedAt(): Promise<number> {
+  const db = await getDB();
+  const rec = await db.get("sync_meta", "lastPushedAt");
+  // Devices that synced before this watermark existed fall back to the pull
+  // watermark, which is what they were using for both halves. Starting them
+  // at 0 instead would re-push every local record on the first pass after the
+  // update, including ones another device has since edited — the stale copy
+  // would upsert straight over the newer remote row.
+  const value = rec?.value ?? (await db.get("sync_meta", "lastSyncedAt"))?.value ?? 0;
+  // A clock that jumped backwards (NTP correction, manual change, a dual-boot
+  // machine) would otherwise stamp every later write below this watermark and
+  // silently stop the device uploading anything at all.
+  return value > Date.now() ? 0 : value;
+}
+
+export async function setPushedAt(value: number): Promise<void> {
+  const db = await getDB();
+  await db.put("sync_meta", { key: "lastPushedAt", value });
 }
 
 export async function setSyncedAt(value: number): Promise<void> {

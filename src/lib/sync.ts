@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import {
   getSyncedAt,
   setSyncedAt,
+  getPushedAt,
+  setPushedAt,
   getSyncTombstones,
   clearSyncTombstone,
   getTemplatesUpdatedSince,
@@ -19,6 +21,7 @@ import {
   getLibraryExercise,
   getWorkoutSession,
   getActiveWorkoutDraft,
+  clearActiveWorkoutDraft,
   type Template,
   type LibraryExercise,
   type WorkoutSession,
@@ -55,18 +58,46 @@ async function runSync(): Promise<SyncResult> {
     if (!session) return { ok: false, error: "Not signed in." };
     const userId = session.user.id;
 
-    const since = await getSyncedAt();
-    // Captured before push/pull run, not after — advancing the watermark to
-    // a timestamp taken after the pull query executes would silently and
-    // permanently miss anything written remotely in that window (it would
-    // fall below every future "since" too, not just this pass's).
-    const syncStartedAt = Date.now();
+    // Two watermarks, because two different clocks are involved.
+    //
+    // The PUSH watermark is local time compared against local records'
+    // updatedAt — same clock both sides. Captured before the push runs, not
+    // after, so anything written during the pass is caught next time rather
+    // than falling below every future watermark.
+    //
+    // The PULL watermark is remote time: the newest updated_at this device
+    // has actually seen, which was minted by whichever device wrote it.
+    // Comparing it against the local clock (as a single watermark did) meant
+    // a laptop ten minutes fast advanced past a phone's genuinely newer
+    // workout, which then never arrived on that laptop — not late, never.
+    const pushSince = await getPushedAt();
+    const pullSince = await getSyncedAt();
+    const sinceIso = new Date(pullSince).toISOString();
 
-    await pushChanges(userId, since);
+    // The newest remote timestamp this pass actually saw, which becomes the
+    // next pull watermark. Starts at the current one so an empty pull leaves
+    // it untouched rather than resetting it.
+    let newestSeen = pullSince;
+    const observe = (iso: string) => {
+      const t = new Date(iso).getTime();
+      if (Number.isFinite(t) && t > newestSeen) newestSeen = t;
+    };
+
+    // The draft is reconciled BEFORE the push, unlike every other store. It
+    // is the one record the engine unions rather than overwrites, and its
+    // upsert is unconditional — pushing first sent this device's copy straight
+    // over the other device's sets, so by the time the pull ran there was
+    // nothing left to union. Merging first means the push carries the union.
+    await pullDraft(userId, sinceIso, observe);
+
+    const pushStartedAt = Date.now();
+    await pushChanges(userId, pushSince);
     await pushTombstones(userId);
-    await pullChanges(userId, since);
+    await pullChanges(userId, sinceIso, observe);
 
-    await setSyncedAt(syncStartedAt);
+    await setPushedAt(pushStartedAt);
+    // Only ever forward, and only to something the server actually returned.
+    if (newestSeen > pullSince) await setSyncedAt(newestSeen);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Sync failed — try again." };
@@ -178,17 +209,45 @@ async function pushTombstones(userId: string): Promise<void> {
   }
 }
 
-async function pullChanges(userId: string, since: number): Promise<void> {
-  const sinceIso = new Date(since).toISOString();
+/**
+ * Reads every row a table has for this user since `sinceIso`, a page at a
+ * time, oldest first.
+ *
+ * The previous single `.select("*")` was silently capped by the project's
+ * "Max rows" API setting (commonly 1000) while the watermark advanced past
+ * the rows that were cut — putting them permanently outside every future
+ * window. Most acute on workout_sessions during a new device's first sync,
+ * which is exactly when there is the most to lose. Ordering by updated_at
+ * makes the paging deterministic even as rows change underneath it.
+ */
+const PAGE_SIZE = 500;
 
-  const { data: remoteTemplates, error: templatesError } = await supabase
-    .from("templates")
-    .select("*")
-    .eq("user_id", userId)
-    .gt("updated_at", sinceIso);
-  if (templatesError) throw templatesError;
-  for (const row of remoteTemplates ?? []) {
+async function pullPage<T>(table: string, userId: string, sinceIso: string): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .eq("user_id", userId)
+      .gt("updated_at", sinceIso)
+      .order("updated_at", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
+
+async function pullChanges(
+  userId: string,
+  sinceIso: string,
+  observe: (iso: string) => void
+): Promise<void> {
+  const remoteTemplates = await pullPage<any>("templates", userId, sinceIso);
+  for (const row of remoteTemplates) {
     const updatedAt = new Date(row.updated_at).getTime();
+    observe(row.updated_at);
     const existing = await getTemplate(row.id);
     // Guards against a stale pull clobbering a local edit made after this
     // sync pass's own push already ran (push happens before pull, so a
@@ -203,8 +262,12 @@ async function pullChanges(userId: string, since: number): Promise<void> {
       // template that no longer exists. App then routed straight into an
       // active workout with no exercises and no way back to its logged sets,
       // and Finish built a session from nothing.
+      //
+      // Tombstoned rather than dropped raw: the remote draft row survives the
+      // template's deletion, so a raw local delete was undone by the very next
+      // pull, which restored the orphan from the server.
       const draft = await getActiveWorkoutDraft();
-      if (draft && draft.templateId === row.id) await deleteActiveWorkoutDraftRaw();
+      if (draft && draft.templateId === row.id) await clearActiveWorkoutDraft();
       continue;
     }
     const local: Template = {
@@ -218,14 +281,10 @@ async function pullChanges(userId: string, since: number): Promise<void> {
     await putTemplateRaw(local);
   }
 
-  const { data: remoteLibrary, error: libraryError } = await supabase
-    .from("exercise_library")
-    .select("*")
-    .eq("user_id", userId)
-    .gt("updated_at", sinceIso);
-  if (libraryError) throw libraryError;
-  for (const row of remoteLibrary ?? []) {
+  const remoteLibrary = await pullPage<any>("exercise_library", userId, sinceIso);
+  for (const row of remoteLibrary) {
     const updatedAt = new Date(row.updated_at).getTime();
+    observe(row.updated_at);
     const existing = await getLibraryExercise(row.id);
     if (existing && existing.updatedAt >= updatedAt) continue;
     if (row.deleted_at) {
@@ -242,14 +301,10 @@ async function pullChanges(userId: string, since: number): Promise<void> {
     await putLibraryExerciseRaw(local);
   }
 
-  const { data: remoteSessions, error: sessionsError } = await supabase
-    .from("workout_sessions")
-    .select("*")
-    .eq("user_id", userId)
-    .gt("updated_at", sinceIso);
-  if (sessionsError) throw sessionsError;
-  for (const row of remoteSessions ?? []) {
+  const remoteSessions = await pullPage<any>("workout_sessions", userId, sinceIso);
+  for (const row of remoteSessions) {
     const updatedAt = new Date(row.updated_at).getTime();
+    observe(row.updated_at);
     const existing = await getWorkoutSession(row.id);
     if (existing && existing.updatedAt >= updatedAt) continue;
     const local: WorkoutSession = {
@@ -264,7 +319,13 @@ async function pullChanges(userId: string, since: number): Promise<void> {
     };
     await putWorkoutSessionRaw(local);
   }
+}
 
+async function pullDraft(
+  userId: string,
+  sinceIso: string,
+  observe: (iso: string) => void
+): Promise<void> {
   const { data: remoteDraft, error: draftError } = await supabase
     .from("active_workout_draft")
     .select("*")
@@ -272,22 +333,100 @@ async function pullChanges(userId: string, since: number): Promise<void> {
     .gt("updated_at", sinceIso)
     .maybeSingle();
   if (draftError) throw draftError;
-  if (remoteDraft) {
-    const remoteUpdatedAt = new Date(remoteDraft.updated_at).getTime();
-    const existing = await getActiveWorkoutDraft();
-    if (existing && existing.updatedAt >= remoteUpdatedAt) return;
-    if (remoteDraft.deleted_at) {
-      await deleteActiveWorkoutDraftRaw();
-    } else {
-      const local: ActiveWorkoutDraft = {
-        id: "current",
-        templateId: remoteDraft.template_id,
-        templateName: remoteDraft.template_name,
-        startedAt: remoteDraft.started_at,
-        exercises: remoteDraft.exercises,
-        updatedAt: remoteUpdatedAt,
-      };
-      await putActiveWorkoutDraftRaw(local);
-    }
+  if (!remoteDraft) return;
+
+  observe(remoteDraft.updated_at);
+  const remoteUpdatedAt = new Date(remoteDraft.updated_at).getTime();
+  const existing = await getActiveWorkoutDraft();
+
+  if (remoteDraft.deleted_at) {
+    // A delete still wins by recency: finishing or discarding a workout on
+    // one device must clear it everywhere.
+    if (!existing || existing.updatedAt < remoteUpdatedAt) await deleteActiveWorkoutDraftRaw();
+    return;
   }
+
+  const remote: ActiveWorkoutDraft = {
+    id: "current",
+    templateId: remoteDraft.template_id,
+    templateName: remoteDraft.template_name,
+    startedAt: remoteDraft.started_at,
+    exercises: remoteDraft.exercises,
+    updatedAt: remoteUpdatedAt,
+  };
+
+  if (!existing) {
+    await putActiveWorkoutDraftRaw(remote);
+    return;
+  }
+
+  if (existing.templateId !== remote.templateId) {
+    // Two different workouts in progress on two devices. Their sets belong to
+    // different sessions, so merging them would be wrong; the newer record
+    // wins whole, as before.
+    if (existing.updatedAt < remoteUpdatedAt) await putActiveWorkoutDraftRaw(remote);
+    return;
+  }
+
+  const merged = mergeDrafts(existing, remote);
+  if (merged) await putActiveWorkoutDraftRaw(merged);
+}
+
+/**
+ * Unions two copies of the same in-progress workout by logged-set id.
+ *
+ * The draft used to be plain last-write-wins over the whole record, and its
+ * `exercises` array holds every set of the workout — so a phone that logged
+ * four sets in the gym and a tablet that logged three more overwrote each
+ * other: whichever synced second won, and the other three sets were gone with
+ * no conflict shown anywhere. Logged sets already carry stable ids, so the
+ * union is exact — a set is the same set on both devices or it is not.
+ *
+ * Returns null when the merge changes nothing, so an unchanged draft is not
+ * rewritten (and so does not re-push on the next pass).
+ *
+ * Exported for its unit tests; nothing outside the sync engine calls it.
+ */
+export function mergeDrafts(
+  local: ActiveWorkoutDraft,
+  remote: ActiveWorkoutDraft
+): ActiveWorkoutDraft | null {
+  const remoteNewer = remote.updatedAt > local.updatedAt;
+  // Exercise order is the session's own (see ActiveWorkout's "Do later"), so
+  // take it from the newer record and append anything only the other has.
+  const primary = remoteNewer ? remote : local;
+  const secondary = remoteNewer ? local : remote;
+  const secondaryById = new Map(secondary.exercises.map((e) => [e.exerciseId, e]));
+
+  let changed = false;
+  const exercises = primary.exercises.map((ex) => {
+    const other = secondaryById.get(ex.exerciseId);
+    secondaryById.delete(ex.exerciseId);
+    if (!other) return ex;
+
+    const seen = new Set(ex.logged.map((s) => s.id));
+    const extra = other.logged.filter((s) => !seen.has(s.id));
+    if (extra.length === 0) return ex;
+    changed = true;
+    return { ...ex, logged: [...ex.logged, ...extra] };
+  });
+
+  for (const leftover of secondaryById.values()) {
+    changed = true;
+    exercises.push(leftover);
+  }
+
+  if (!changed) {
+    // Nothing to union. Still adopt the remote record if it is simply newer,
+    // so later edits to rest times and the like are not dropped.
+    return remoteNewer ? remote : null;
+  }
+
+  return {
+    ...primary,
+    exercises,
+    // Stamped now so the union itself propagates: the device that merged is
+    // the only one holding the complete picture until it pushes.
+    updatedAt: Date.now(),
+  };
 }
