@@ -3,7 +3,6 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { IconButton } from "@/components/ui/icon-button";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseEditForm } from "@/components/ExerciseEditForm";
 import { NotesBlock } from "@/components/NotesBlock";
@@ -206,8 +205,7 @@ export function ExercisesScreen({ embedded = false }: ExercisesScreenProps = {})
                         </div>
                       )}
                     </div>
-                    <IconButton
-                      variant="destructive"
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         // Otherwise a previous action's error (e.g. "used in
@@ -216,10 +214,23 @@ export function ExercisesScreen({ embedded = false }: ExercisesScreenProps = {})
                         setActionError(null);
                         setDeletingExercise(ex);
                       }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "hsl(var(--muted-foreground))",
+                        width: 44,
+                        height: 44,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        marginRight: -10,
+                      }}
                       aria-label={`Delete ${ex.name}`}
                     >
                       <X size={16} strokeWidth={2} />
-                    </IconButton>
+                    </button>
                   </CardContent>
                 </Card>
               ))}

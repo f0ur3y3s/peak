@@ -170,7 +170,9 @@ export function WorkoutHomeScreen({
           </Card>
         )}
 
-        {weekDays.length === 7 && (
+        {/* Held back until there is a session to show: on a new account this
+            was seven dead boxes reading "0 logged", second on the screen. */}
+        {weekDays.length === 7 && lastSession && (
           <Card style={{ background: "hsl(var(--surface-sunken))" }}>
             <CardContent style={{ padding: "15px 18px" }} className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between">

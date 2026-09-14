@@ -186,11 +186,13 @@ export function ExerciseCard({
             <div
               key={s.id}
               className="grid gap-2 items-center py-1.5 border-b border-border"
-              style={{ gridTemplateColumns: "20px 1fr 1fr 44px" }}
+              style={{ gridTemplateColumns: "20px 1fr 44px" }}
             >
               <span className="font-mono text-caption text-muted-foreground">{i + 1}</span>
-              <span className="font-mono text-sm">{s.reps} reps</span>
-              <span className="font-mono text-sm">{fmtWeight(s.weight, unit)} {unit}</span>
+              <span className="font-mono text-sm">
+                {s.reps} × {fmtWeight(s.weight, unit)}{" "}
+                <span className="text-caption text-muted-foreground">{unit}</span>
+              </span>
               {/* Muted, not a filled red tile: deleting a set is rare and
                   reversible by re-logging it, and the loudest element on a
                   logged row should be the set, not the way to destroy it. */}

@@ -229,6 +229,16 @@ export function TemplatesScreen({
                           </>
                         )}
                         <div style={{ minWidth: 0, flex: 1 }}>
+                          {/* Without this the lit Start button two rows down
+                              the list reads as arbitrary emphasis. */}
+                          {isNextUp && !editing && (
+                            <p
+                              className="font-mono text-label uppercase tracking-widest mb-1"
+                              style={{ color: "hsl(var(--primary))" }}
+                            >
+                              Next up
+                            </p>
+                          )}
                           <p className="font-semibold text-title">{t.name}</p>
                           {muscleGroups.length > 0 && (
                             <div className="flex gap-1.5 flex-wrap mt-2">
@@ -317,7 +327,7 @@ export function TemplatesScreen({
             style={{ border: "1px dashed hsl(var(--border))" }}
             onClick={() => setCreating(true)}
           >
-            + New Template
+            + New session
           </Button>
         )}
       </div>
