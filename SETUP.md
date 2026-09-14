@@ -48,9 +48,13 @@ Open `http://localhost:5173`. **Vite only reads `.env` at server startup** — i
 you create or edit it after the server is already running, restart `npm run
 dev`, don't expect HMR to pick it up.
 
-A fresh IndexedDB seeds itself automatically with a "Push Day A" template
-(Bench Press / Incline DB Press / Tricep Pushdown) — see the `upgrade()`
-migration in `lib/db.ts` if you need to know why.
+Any IndexedDB — fresh or existing — seeds itself once with the 5-day
+Push/Pull/Legs training program (Push A / Pull A / Legs / Push B / Pull B, 31
+exercises). The data lives in `lib/seedProgram.ts`; `ensureProgramSeed()` in
+`lib/db.ts` applies it on open and records a marker in `sync_meta`, so it runs
+exactly once per device and never resurrects a template you deleted. To see it
+apply again, delete the `seed:recomp-ppl-v1` row from `sync_meta` in DevTools →
+Application → IndexedDB and reload.
 
 ## 5. Verify the build before and after any change
 

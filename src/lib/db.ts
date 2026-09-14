@@ -1,5 +1,11 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import { SEED_EXERCISES, type Exercise } from "@/lib/data";
+import { type Exercise } from "@/lib/data";
+import {
+  PROGRAM_SEED_STAMP,
+  PROGRAM_SEED_VERSION,
+  PROGRAM_SEED_WEIGHT,
+  SEED_PROGRAM,
+} from "@/lib/seedProgram";
 
 export interface WorkoutSession {
   id: string;
@@ -63,7 +69,7 @@ export interface SyncTombstone {
 }
 
 interface SyncMetaRecord {
-  key: "lastSyncedAt";
+  key: "lastSyncedAt" | `seed:${string}`;
   value: number;
 }
 
@@ -161,26 +167,10 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
             // Same reasoning as `rawTx` above — "exercises" is no longer a
             // known store name in the typed v2+ schema.
             (db as unknown as IDBDatabase).deleteObjectStore("exercises");
-          } else {
-            for (const ex of SEED_EXERCISES) {
-              libraryStore.put({ id: ex.id, name: ex.name, muscle: ex.muscle, updatedAt: Date.now() });
-            }
-            templateStore.put({
-              id: crypto.randomUUID(),
-              name: "Push Day A",
-              exercises: SEED_EXERCISES.map((ex, i) => ({
-                exerciseId: ex.id,
-                order: i,
-                targetSets: ex.targetSets,
-                repsMin: ex.repsMin,
-                repsMax: ex.repsMax,
-                targetWeight: ex.targetWeight,
-                restSeconds: ex.restSeconds,
-              })),
-              order: 0,
-              updatedAt: Date.now(),
-            });
           }
+          // A fresh database isn't seeded here — ensureProgramSeed() below
+          // runs on every open and populates the training program for new
+          // and existing databases alike.
         }
 
         if (oldVersion < 3) {
@@ -232,12 +222,75 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
           }
         }
       },
-    }).catch((err) => {
-      dbPromise = null;
-      throw err;
-    });
+    })
+      .then(async (db) => {
+        await ensureProgramSeed(db);
+        return db;
+      })
+      .catch((err) => {
+        dbPromise = null;
+        throw err;
+      });
   }
   return dbPromise;
+}
+
+const PROGRAM_SEED_KEY = `seed:${PROGRAM_SEED_VERSION}` as const;
+
+/**
+ * Writes the seeded training program (src/lib/seedProgram.ts) into the
+ * exercise library and templates once per device, then records a marker in
+ * sync_meta so it never runs again for this seed version — deleting or
+ * editing a seeded template stays deleted or edited rather than being
+ * resurrected on the next load.
+ *
+ * Deliberately runs on every open rather than inside an `upgrade()` handler:
+ * databases already at the current schema version (every existing user)
+ * never re-enter `upgrade()`, and they need the program too.
+ */
+async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
+  if (await db.get("sync_meta", PROGRAM_SEED_KEY)) return;
+
+  const tx = db.transaction(["exercise_library", "templates", "sync_meta"], "readwrite");
+  const libraryStore = tx.objectStore("exercise_library");
+  const templateStore = tx.objectStore("templates");
+
+  // Seeded templates land after whatever the user already has, so seeding an
+  // established library doesn't reshuffle their list.
+  const existing = await templateStore.getAll();
+  let nextOrder = existing.reduce((max, t) => Math.max(max, t.order ?? 0), -1) + 1;
+
+  for (const program of SEED_PROGRAM) {
+    for (const ex of program.exercises) {
+      if (await libraryStore.get(ex.id)) continue;
+      await libraryStore.put({
+        id: ex.id,
+        name: ex.name,
+        muscle: ex.muscle,
+        updatedAt: PROGRAM_SEED_STAMP,
+      });
+    }
+
+    if (await templateStore.get(program.id)) continue;
+    await templateStore.put({
+      id: program.id,
+      name: program.name,
+      exercises: program.exercises.map((ex, i) => ({
+        exerciseId: ex.id,
+        order: i,
+        targetSets: ex.targetSets,
+        repsMin: ex.repsMin,
+        repsMax: ex.repsMax,
+        targetWeight: PROGRAM_SEED_WEIGHT,
+        restSeconds: ex.restSeconds,
+      })),
+      order: nextOrder++,
+      updatedAt: PROGRAM_SEED_STAMP,
+    });
+  }
+
+  await tx.objectStore("sync_meta").put({ key: PROGRAM_SEED_KEY, value: Date.now() });
+  await tx.done;
 }
 
 async function tombstone(store: SyncTombstone["store"], id: string): Promise<void> {

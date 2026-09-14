@@ -48,6 +48,7 @@ src/
   lib/
     db.ts              ← IndexedDB — the single source of truth for all app data
     data.ts             ← Runtime types (Exercise, TimerState), fmtTime util
+    seedProgram.ts      ← The seeded 5-day Push/Pull/Legs training program (see below)
     muscles.ts          ← Static muscle-group taxonomy + fuzzy search for the muscle picker
     weightUnit.tsx       ← kg/lb display-preference context (conversion is display-only; storage stays kg)
     supabase.ts          ← Supabase client
@@ -108,6 +109,19 @@ Page-level titles use a branded stencil display font (`font-title` → "Allerta 
 
 - **Deferred template sync from a workout.** Changing an exercise's rest time, logging more/fewer sets than planned, or adding a new exercise mid-workout only updates the *session* live — the parent template is only updated when you tap Finish, and only from data in the completed session. Discarding or abandoning a workout never touches the template.
 - **Active workout draft persistence.** An in-progress workout is saved to IndexedDB after every logged set, so navigating away and back (or losing the tab) resumes exactly where you left off. Starting a second workout while one is already in progress is blocked with an explicit message.
+- **Seeded training program.** Every device is seeded once with the 5-day
+  Push/Pull/Legs split (Push A / Pull A / Legs / Push B / Pull B) and its 31
+  exercises, defined in `src/lib/seedProgram.ts` and applied by
+  `ensureProgramSeed()` in `src/lib/db.ts`. Sets, rep ranges and rest come from
+  the program; loads seed at 0 kg since those are personal. Seeded templates
+  append after any templates you already have, and a `sync_meta` marker keyed
+  by the seed version means editing or deleting one sticks — it is never
+  re-applied. Because seeded ids are deterministic, the same program pushed up
+  by sync (or inserted directly via
+  `supabase/migrations/006_seed_training_program.sql`) converges on the same
+  rows rather than duplicating. Those fixed ids can only be used by one
+  account, though: `templates.id` and `exercise_library.id` are global primary
+  keys, so a second account needs a different id prefix.
 - **Weight unit is display-only.** All weights are stored in kg internally; the kg/lb toggle in Profile only affects formatting and what unit new input fields interpret, never what's persisted.
 
 ---
