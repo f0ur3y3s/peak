@@ -170,7 +170,7 @@ export default function App() {
     } else if (tab === "profile") {
       setScreen("profile");
     } else {
-      const draft = await getActiveWorkoutDraft();
+      const draft = await getActiveWorkoutDraft().catch(() => undefined);
       setHasActiveDraft(!!draft);
       if (draft) {
         setActiveTemplateId(draft.templateId);

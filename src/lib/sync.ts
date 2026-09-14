@@ -42,13 +42,19 @@ export function syncNow(): Promise<SyncResult> {
 }
 
 async function runSync(): Promise<SyncResult> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return { ok: false, error: "Not signed in." };
-  const userId = session.user.id;
-
   try {
+    // Inside the try: supabase-js acquires a navigator.locks lock here and
+    // rejects with NavigatorLockAcquireTimeoutError when another tab or a
+    // backgrounded PWA instance holds it. Outside, that rejection escaped
+    // syncNow() entirely — Profile's "Sync now" stayed disabled on
+    // "Syncing…" with no error shown, and App's periodic call produced an
+    // unhandled rejection.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return { ok: false, error: "Not signed in." };
+    const userId = session.user.id;
+
     const since = await getSyncedAt();
     // Captured before push/pull run, not after — advancing the watermark to
     // a timestamp taken after the pull query executes would silently and
@@ -192,6 +198,13 @@ async function pullChanges(userId: string, since: number): Promise<void> {
     if (existing && existing.updatedAt >= updatedAt) continue;
     if (row.deleted_at) {
       await deleteTemplateRaw(row.id);
+      // The local delete path cascades to the draft (db.ts deleteTemplate);
+      // this raw one deliberately does not, which left a draft pointing at a
+      // template that no longer exists. App then routed straight into an
+      // active workout with no exercises and no way back to its logged sets,
+      // and Finish built a session from nothing.
+      const draft = await getActiveWorkoutDraft();
+      if (draft && draft.templateId === row.id) await deleteActiveWorkoutDraftRaw();
       continue;
     }
     const local: Template = {

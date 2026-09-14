@@ -30,12 +30,19 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
   const handleSyncNow = async () => {
     setSyncing(true);
     setSyncError(null);
-    const result = await syncNow();
-    setSyncing(false);
-    if (result.ok) {
-      setLastSyncedAt(Date.now());
-    } else {
-      setSyncError(result.error);
+    try {
+      const result = await syncNow();
+      if (result.ok) {
+        setLastSyncedAt(Date.now());
+      } else {
+        setSyncError(result.error);
+      }
+    } catch {
+      // runSync resolves rather than rejects, but a caller that leaves the
+      // button disabled forever is a bad enough failure to guard twice.
+      setSyncError("Sync failed — try again.");
+    } finally {
+      setSyncing(false);
     }
   };
 

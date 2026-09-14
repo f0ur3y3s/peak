@@ -17,6 +17,7 @@ import {
   getPR,
   getActiveWorkoutDraft,
   saveActiveWorkoutDraft,
+  type ActiveWorkoutDraft,
   clearActiveWorkoutDraft,
   lastSetsFor,
   type WorkoutSession,
@@ -48,6 +49,9 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [templateUpdates, setTemplateUpdates] = useState<string[]>([]);
   const [finishError, setFinishError] = useState<string | null>(null);
+  // Monotonic id of the most recent draft save, so a slow failure from an
+  // earlier save cannot raise an error banner over a newer save that worked.
+  const draftSaveSeq = useRef(0);
   // Rest times the user actually changed during this workout. The draft
   // persists a restSeconds for every exercise, and on resume that value wins
   // over the template's — so writing all of them back at Finish silently
@@ -74,7 +78,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   };
 
   useEffect(() => {
-    getActiveWorkoutDraft().then((draft) => {
+    getActiveWorkoutDraft().catch(() => undefined).then((draft) => {
       const resumeDraft = draft && draft.templateId === templateId ? draft : undefined;
       if (resumeDraft) startedAt.current = resumeDraft.startedAt;
 
@@ -99,6 +103,11 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
             });
           }
           applyExercises(hydrated);
+
+          // Resuming used to open on exercise 1 even with the first four
+          // complete, so you had to scroll and tap back to where you were.
+          const firstUnfinished = hydrated.find((e) => e.logged.length < e.targetSets);
+          if (firstUnfinished) setActiveId(firstUnfinished.id);
           if (hydrated.length > 0) setActiveId(hydrated[0].id);
         })
         .catch(() => setLoadError("Couldn't load exercises — try reloading."));
@@ -135,13 +144,13 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     setTimer({ seconds: restSeconds, exerciseName, nextSet });
     setDraftError(null);
 
-    saveActiveWorkoutDraft({
+    persistDraft({
       id: "current",
       templateId,
       templateName: templateName || "Workout",
       startedAt: startedAt.current,
       exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
-    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
+    });
   };
 
   const handleDeleteSet = (exId: string, setId: string) => {
@@ -152,13 +161,35 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     applyExercises(updatedExercises);
     setDraftError(null);
 
-    saveActiveWorkoutDraft({
+    persistDraft({
       id: "current",
       templateId,
       templateName: templateName || "Workout",
       startedAt: startedAt.current,
       exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
-    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
+    });
+  };
+
+  /**
+   * Persists the draft, reporting failure only while it is still the newest
+   * save in flight. Previously every save set the banner from its own async
+   * catch with no ordering: log set 1 (save A), log set 2 (save B, clears the
+   * banner), A rejects late — and "Couldn't save progress" stayed pinned for
+   * the rest of the workout even though the draft on disk was complete and
+   * current, which invites the user to re-log sets that were in fact saved.
+   */
+  const persistDraft = (draft: Omit<ActiveWorkoutDraft, "updatedAt">) => {
+    const seq = ++draftSaveSeq.current;
+    saveActiveWorkoutDraft(draft).then(
+      () => {
+        if (seq === draftSaveSeq.current) setDraftError(null);
+      },
+      () => {
+        if (seq === draftSaveSeq.current) {
+          setDraftError("Couldn't save progress — check your connection.");
+        }
+      }
+    );
   };
 
   const handleUpdateRest = (exId: string, restSeconds: number) => {
@@ -173,13 +204,13 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     applyExercises(updatedExercises);
     setDraftError(null);
 
-    saveActiveWorkoutDraft({
+    persistDraft({
       id: "current",
       templateId,
       templateName: templateName || "Workout",
       startedAt: startedAt.current,
       exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
-    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
+    });
   };
 
   const handleAddExercise = async (values: ExerciseConfigValues) => {
@@ -204,13 +235,13 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     // workout finishes, getExercises(templateId) won't return it and this
     // addition — along with any sets logged for it — is lost. Known, accepted
     // edge case, same as the removed-from-template case noted above.
-    saveActiveWorkoutDraft({
+    persistDraft({
       id: "current",
       templateId,
       templateName: templateName || "Workout",
       startedAt: startedAt.current,
       exercises: updatedExercises.map((ex) => ({ exerciseId: ex.id, logged: ex.logged, restSeconds: ex.restSeconds })),
-    }).catch(() => setDraftError("Couldn't save progress — check your connection."));
+    });
   };
 
   const handleFinish = async () => {

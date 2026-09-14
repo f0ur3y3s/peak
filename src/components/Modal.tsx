@@ -49,10 +49,23 @@ export function Modal({ children, onClose, labelledBy, className }: ModalProps) 
       if (items.length === 0) return;
       const firstItem = items[0];
       const lastItem = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === firstItem) {
+      const active = document.activeElement as HTMLElement | null;
+
+      // Focus outside the panel entirely — the case a first/last identity
+      // check missed. Clicking the backdrop moves focus to <body>, and from
+      // there Shift+Tab walked backwards into the page behind the dialog:
+      // "Done editing", "Add exercise", "Delete exercise" all reachable and
+      // still activatable by Enter, since the overlay only blocks the mouse.
+      if (!active || !panel.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? lastItem : firstItem).focus();
+        return;
+      }
+
+      if (e.shiftKey && active === firstItem) {
         e.preventDefault();
         lastItem.focus();
-      } else if (!e.shiftKey && document.activeElement === lastItem) {
+      } else if (!e.shiftKey && active === lastItem) {
         e.preventDefault();
         firstItem.focus();
       }

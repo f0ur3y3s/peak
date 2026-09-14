@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, Clock, Minus, Plus, X } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,20 @@ export function ExerciseCard({
   const defaultWeight = String(toDisplayWeight(ex.last?.[lastIdx]?.w ?? ex.targetWeight, unit));
   const [reps, setReps] = useState(defaultReps);
   const [weight, setWeight] = useState(defaultWeight);
+
+  // defaultReps/defaultWeight index last session by the set you are ABOUT to
+  // log, but as useState initializers they only ever ran once: ActiveWorkout
+  // keys this card by ex.id so it never remounts, and after set 1 the fields
+  // kept the previously typed value while ex.last[1], ex.last[2]… went
+  // unused. Re-seed whenever the set index moves, so each set is offered what
+  // you did for that same set last time.
+  const seededForIdx = useRef(lastIdx);
+  useEffect(() => {
+    if (seededForIdx.current === lastIdx) return;
+    seededForIdx.current = lastIdx;
+    setReps(defaultReps);
+    setWeight(defaultWeight);
+  }, [lastIdx, defaultReps, defaultWeight]);
   const [addingExtra, setAddingExtra] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -44,7 +58,10 @@ export function ExerciseCard({
 
   const repsNum = Number(reps);
   const weightNum = Number(weight);
-  const canLog = Number.isFinite(repsNum) && repsNum > 0 && Number.isFinite(weightNum) && weightNum >= 0;
+  // Reps are whole: "1e3" would log a thousand-rep set and "6.5" a fractional
+  // one. Weight stays fractional — 2.5kg plates are real.
+  const canLog =
+    /^\d+$/.test(reps.trim()) && repsNum > 0 && Number.isFinite(weightNum) && weightNum >= 0;
 
   const done = ex.logged.length >= ex.targetSets;
   const showLogForm = isActive && (!done || addingExtra);
@@ -61,6 +78,19 @@ export function ExerciseCard({
     <Card
       className={cardBorderClass}
       onClick={() => !isActive && onActivate(ex.id)}
+      // A plain <div> with onClick: a keyboard-only user could log sets on
+      // whichever exercise happened to be active but could never switch to
+      // another one, since nothing else calls onActivate.
+      role={isActive ? undefined : "button"}
+      tabIndex={isActive ? undefined : 0}
+      aria-label={isActive ? undefined : `Switch to ${ex.name}`}
+      onKeyDown={(e) => {
+        if (isActive) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onActivate(ex.id);
+        }
+      }}
       style={{ cursor: isActive ? "default" : "pointer", transition: "border-color 0.2s" }}
     >
       {/* Header */}

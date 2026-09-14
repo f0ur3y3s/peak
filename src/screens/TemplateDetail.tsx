@@ -67,6 +67,8 @@ export function TemplateDetail({
   const [pickingExercise, setPickingExercise] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
   const [deletingExercise, setDeletingExercise] = useState<{ id: string; name: string } | null>(null);
   // Drives "Start" -> "Resume" on this screen's action button — otherwise
   // the only signal that a draft is waiting is the nav-bar dot on a
@@ -77,8 +79,19 @@ export function TemplateDetail({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const reload = () => {
-    getTemplate(templateId).then((t) => setTemplate(t ?? null));
-    getExercises(templateId).then(setExercises);
+    setLoadError(null);
+    getTemplate(templateId)
+      .then((t) => {
+        setTemplate(t ?? null);
+        setMissing(!t);
+      })
+      .catch(() => setLoadError("Couldn't load this session — try again."));
+    getExercises(templateId)
+      .catch(() => {
+        setLoadError("Couldn't load this session's exercises — try again.");
+        return [];
+      })
+      .then(setExercises);
   };
 
   useEffect(() => {
@@ -103,7 +116,27 @@ export function TemplateDetail({
     });
   }, [template]);
 
-  if (!template) return null;
+  if (!template) {
+    // Previously `return null`, which rendered nothing at all: no header, no
+    // back button, just the nav bar — reachable both from a failed read and
+    // from a sync pull deleting this template on another device.
+    return (
+      <div>
+        <TopBar title="Session" onBack={onBack} breadcrumb={[{ label: "Plan", onClick: onBack }]} />
+        <div className="px-5">
+          <EmptyState
+            message={
+              loadError ??
+              (missing
+                ? "This session no longer exists — it may have been deleted on another device."
+                : "Loading…")
+            }
+            action={missing || loadError ? { label: "Back to Plan", onClick: onBack } : undefined}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const totalTargetSets = exercises.reduce((a, e) => a + e.targetSets, 0);
   // Sum of restSeconds × targetSets across all exercises — total time spent
@@ -142,12 +175,22 @@ export function TemplateDetail({
 
   const handleReorderExercises = async (reordered: Exercise[]) => {
     setActionError(null);
+    // getExercises() skips a config whose library row is gone (which a sync
+    // pull can do: it deletes a remotely-deleted exercise without checking
+    // local templates). Rebuilding purely from what is on screen therefore
+    // dropped those configs permanently — one drag and the exercise was gone
+    // from the template for good. Invisible configs are preserved after the
+    // visible ones instead.
+    const visibleIds = new Set(reordered.map((ex) => ex.id));
+    const hidden = template.exercises.filter((cfg) => !visibleIds.has(cfg.exerciseId));
     const updated: Template = {
       ...template,
-      exercises: reordered.map((ex, i) => {
-        const cfg = template.exercises.find((c) => c.exerciseId === ex.id);
-        return cfg ? { ...cfg, order: i } : cfg;
-      }).filter((c): c is Template["exercises"][number] => c !== undefined),
+      exercises: [
+        ...reordered
+          .map((ex) => template.exercises.find((c) => c.exerciseId === ex.id))
+          .filter((c): c is Template["exercises"][number] => c !== undefined),
+        ...hidden,
+      ].map((cfg, i) => ({ ...cfg, order: i })),
     };
     setExercises(reordered);
     try {

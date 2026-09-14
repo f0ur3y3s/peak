@@ -74,19 +74,27 @@ export function ExerciseConfigEditor({
 
   const weightStep = unit === "lb" ? 5 : 2.5;
 
+  // Sets, reps and rest are counts. Number() happily returns 90.5 for "90.5",
+  // 1000 for "1e3" and 255 for "0xff" — a rest of 90.5 rendered as "1:30.5"
+  // through every timer and chip, and 1e3 sets made "all sets complete"
+  // unreachable.
+  const isCount = (v: string) => /^\d+$/.test(v.trim());
+
   const repsMinNum = Number(repsMin);
   const repsMaxNum = Number(repsMax);
   const repsValid =
-    Number.isFinite(repsMinNum) && Number.isFinite(repsMaxNum) && repsMinNum > 0 && repsMinNum <= repsMaxNum;
+    isCount(repsMin) && isCount(repsMax) && repsMinNum > 0 && repsMinNum <= repsMaxNum;
 
   const setsNum = Number(targetSets);
   const weightNum = Number(targetWeight);
   const restNum = Number(restSeconds);
   const canSave =
     repsValid &&
-    Number.isFinite(setsNum) && setsNum > 0 &&
+    isCount(targetSets) && setsNum > 0 &&
+    // Weight is the one genuinely fractional field (2.5kg plates, 0.001kg
+    // storage precision), so it stays a plain finite check.
     Number.isFinite(weightNum) && weightNum >= 0 &&
-    Number.isFinite(restNum) && restNum >= 0;
+    isCount(restSeconds) && restNum >= 0;
 
   return (
     <Modal onClose={onCancel} labelledBy={titleId}>

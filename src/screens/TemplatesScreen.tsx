@@ -53,9 +53,12 @@ export function TemplatesScreen({
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getTemplates().then(setTemplates);
+    getTemplates()
+      .then(setTemplates)
+      .catch(() => setLoadError("Couldn't load your sessions — try reloading."));
     // Deliberately unbounded — this builds "last performed" per template by
     // taking the first (most recent) session matching each template as it
     // walks newest-first. A limit here could hide a rarely-used template's
@@ -68,11 +71,15 @@ export function TemplatesScreen({
         if (!map.has(key)) map.set(key, s.startedAt);
       }
       setLastPerformed(map);
+    }).catch(() => {
+      // Non-fatal: the list still renders, rows just show "never run".
     });
     getNextUpTemplateId().then(setNextUpId);
-    getExerciseLibrary().then((library) => {
-      setLibraryById(new Map(library.map((ex) => [ex.id, ex])));
-    });
+    getExerciseLibrary()
+      .then((library) => setLibraryById(new Map(library.map((ex) => [ex.id, ex]))))
+      .catch(() => {
+        // Non-fatal: rows lose their muscle badges but stay usable.
+      });
   }, []);
 
   const handleCreate = async () => {
@@ -130,6 +137,11 @@ export function TemplatesScreen({
       {!embedded && <TopBar title="Templates" />}
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
+        {loadError && (
+          <p className="font-mono text-caption" style={{ color: "hsl(var(--destructive))", margin: 0 }}>
+            {loadError}
+          </p>
+        )}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={templates.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             {templates.map((t, i) => {
