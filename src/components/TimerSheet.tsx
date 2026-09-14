@@ -17,7 +17,17 @@ const COLLAPSE_THRESHOLD = 80;
 
 export function TimerSheet({ timer, onClose }: TimerSheetProps) {
   const { seconds: totalSeconds, exerciseName, nextSet } = timer;
-  const [remaining, setRemaining] = useState(totalSeconds);
+  // The countdown is anchored to a wall-clock deadline rather than held as a
+  // number that a setInterval decrements. An interval is not a clock: iOS
+  // Safari freezes timers when the phone locks or the app is backgrounded,
+  // and Chrome throttles hidden tabs to roughly one tick a minute — so the
+  // decrementing version showed ~3:28 left after a two-minute rest, which for
+  // a rest timer is a wrong answer rather than a cosmetic wobble. Deriving
+  // from Date.now() means time away from the app is counted, however the
+  // browser treats the tick.
+  const [endsAt, setEndsAt] = useState(() => Date.now() + totalSeconds * 1000);
+  const [now, setNow] = useState(() => Date.now());
+  const remaining = Math.max(0, Math.ceil((endsAt - now) / 1000));
   const [collapsed, setCollapsed] = useState(false);
   const [dragging, setDragging] = useState(false);
   const startYRef = useRef<number | null>(null);
@@ -31,16 +41,17 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
   // the sheet was still open/collapsed kept counting down from the
   // *previous* period's leftover time instead of restarting.
   useEffect(() => {
-    setRemaining(totalSeconds);
+    setEndsAt(Date.now() + totalSeconds * 1000);
+    setNow(Date.now());
     setCollapsed(false);
   }, [timer, totalSeconds]);
 
-  // Countdown — depends only on [timer], not [remaining], so the interval
-  // isn't torn down and recreated every single tick (60x/minute).
+  // Ticks faster than once a second so the display corrects itself promptly
+  // when the browser resumes a throttled or frozen tab, rather than showing a
+  // stale value until the next whole second. The rendered value is derived
+  // from the deadline, so a missed tick costs nothing.
   useEffect(() => {
-    const iv = setInterval(() => {
-      setRemaining((r) => Math.max(0, r - 1));
-    }, 1000);
+    const iv = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(iv);
   }, [timer]);
 
@@ -59,7 +70,11 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
     setAnnouncement(remaining === 0 ? "Rest complete — time to lift" : `${remaining} seconds left`);
   }, [remaining]);
 
-  const pct = (remaining / totalSeconds) * 100;
+  // Clamped: "+30" can push the remaining time past the original duration,
+  // which drove the indicator outside its own overflow-hidden track and read
+  // as 0% complete. A zero-second rest (the stepper allows it) would divide
+  // by zero.
+  const pct = totalSeconds > 0 ? Math.min(100, Math.max(0, (remaining / totalSeconds) * 100)) : 0;
   const danger = remaining <= 10 && remaining > 0;
   const done = remaining === 0;
 
@@ -191,7 +206,12 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
                   <Button
                     key={d}
                     variant="outline"
-                    onClick={() => setRemaining((r) => Math.max(0, Math.min(600, r + d)))}
+                    onClick={() =>
+                      setEndsAt((prev) => {
+                        const left = Math.max(0, Math.ceil((prev - Date.now()) / 1000));
+                        return Date.now() + Math.max(0, Math.min(600, left + d)) * 1000;
+                      })
+                    }
                     className="font-mono text-subtext min-w-[76px] gap-1"
                   >
                     {d < 0 ? <Minus size={16} strokeWidth={2} /> : <Plus size={16} strokeWidth={2} />}

@@ -48,6 +48,12 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [templateUpdates, setTemplateUpdates] = useState<string[]>([]);
   const [finishError, setFinishError] = useState<string | null>(null);
+  // Rest times the user actually changed during this workout. The draft
+  // persists a restSeconds for every exercise, and on resume that value wins
+  // over the template's — so writing all of them back at Finish silently
+  // reverted any rest edit made in the template while the draft was open, and
+  // reported the reversal on the Summary as if the user had made it.
+  const restEdited = useRef<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
@@ -156,6 +162,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   };
 
   const handleUpdateRest = (exId: string, restSeconds: number) => {
+    restEdited.current.add(exId);
     // Persisted to the draft (so a mid-workout reload doesn't lose the
     // adjustment) but not to the template — that only happens at Finish,
     // so an abandoned/discarded workout never touches the template.
@@ -212,6 +219,17 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     setFinishError(null);
     try {
       const loggedExercises = exercisesRef.current.filter((ex) => ex.logged.length > 0);
+
+      // Finishing with nothing logged used to save a 0-set, 0-volume session
+      // that could never be deleted (there is no delete-session UI), and which
+      // then drove "last performed" and Quick Start. It also cleared the draft
+      // — so on the error path, where exercises never loaded, tapping Finish
+      // destroyed a draft holding real sets. Say so instead.
+      if (loggedExercises.length === 0) {
+        setFinishError("Log at least one set before finishing — or tap Discard to throw this workout away.");
+        setIsFinishing(false);
+        return;
+      }
 
       // Each getPR() is an independent read — run them concurrently rather
       // than one at a time, since a workout can log several exercises.
@@ -280,10 +298,18 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
                 if (nextTargetSets > cfg.targetSets) {
                   updates.push(`${match.name}: target raised from ${cfg.targetSets} to ${nextTargetSets} sets`);
                 }
-                if (match.restSeconds !== cfg.restSeconds) {
+                const restChangedHere =
+                  restEdited.current.has(cfg.exerciseId) && match.restSeconds !== cfg.restSeconds;
+                if (restChangedHere) {
                   updates.push(`${match.name}: rest changed to ${fmtTime(match.restSeconds)}`);
                 }
-                return { ...cfg, targetSets: nextTargetSets, restSeconds: match.restSeconds };
+                return {
+                  ...cfg,
+                  targetSets: nextTargetSets,
+                  // Untouched here: keep whatever the template says now, which
+                  // may have been edited while this workout was in progress.
+                  restSeconds: restChangedHere ? match.restSeconds : cfg.restSeconds,
+                };
               }),
               ...newConfigs,
             ],

@@ -437,10 +437,57 @@ export async function getLibraryExercise(id: string): Promise<LibraryExercise | 
   return db.get("exercise_library", id);
 }
 
+/**
+ * A workout session records the exercises it contains by NAME, not by library
+ * id (see WorkoutSession.exercises[].name), and lastSetsFor/getPR/
+ * groupSessionsByExercise all match on that string. Renaming a library
+ * exercise therefore used to cut it off from its own history: the card went
+ * back to "No previous data", the chart split the lift into two unrelated
+ * series, and getPR returned 0 so the next warm-up set was recorded as an
+ * all-time PR. The rename is carried into past sessions here instead.
+ */
+async function renameInSessions(
+  db: IDBPDatabase<PeakDB>,
+  from: string,
+  to: string
+): Promise<void> {
+  const sessions = await db.getAll("workout_sessions");
+  const now = Date.now();
+  for (const session of sessions) {
+    const hasName =
+      session.exercises.some((e) => e.name === from) || session.prs.includes(from);
+    if (!hasName) continue;
+    await db.put("workout_sessions", {
+      ...session,
+      exercises: session.exercises.map((e) => (e.name === from ? { ...e, name: to } : e)),
+      prs: session.prs.map((p) => (p === from ? to : p)),
+      // Re-stamped so the rewrite reaches this account's other devices; the
+      // sync engine only uploads records newer than the last watermark.
+      updatedAt: now,
+    });
+  }
+}
+
+/** Case-insensitive name lookup, so two library entries can't share a name
+ *  and silently share one history and one PR. */
+export async function findLibraryExerciseByName(
+  name: string,
+  exceptId?: string
+): Promise<LibraryExercise | undefined> {
+  const db = await getDB();
+  const wanted = name.trim().toLowerCase();
+  const all = await db.getAll("exercise_library");
+  return all.find((ex) => ex.id !== exceptId && ex.name.trim().toLowerCase() === wanted);
+}
+
 export async function saveLibraryExercise(exercise: Omit<LibraryExercise, "updatedAt">): Promise<void> {
   const db = await getDB();
+  const previous = await db.get("exercise_library", exercise.id);
   await db.put("exercise_library", { ...exercise, updatedAt: Date.now() });
   await clearTombstoneFor("exercise_library", exercise.id);
+  if (previous && previous.name !== exercise.name) {
+    await renameInSessions(db, previous.name, exercise.name);
+  }
 }
 
 export async function deleteLibraryExercise(

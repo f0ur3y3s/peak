@@ -13,6 +13,7 @@ import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
   getExerciseLibrary,
   saveLibraryExercise,
+  findLibraryExerciseByName,
   deleteLibraryExercise,
   type LibraryExercise,
 } from "@/lib/db";
@@ -50,6 +51,11 @@ export function ExercisesScreen() {
       updatedAt: Date.now(),
     };
     try {
+      const clash = await findLibraryExerciseByName(name);
+      if (clash) {
+        setActionError(`"${clash.name}" is already in your library.`);
+        return;
+      }
       await saveLibraryExercise(exercise);
       setCreating(false);
       reload();
@@ -62,6 +68,13 @@ export function ExercisesScreen() {
     if (!editingExercise) return;
     setActionError(null);
     try {
+      const clash = await findLibraryExerciseByName(name, editingExercise.id);
+      if (clash) {
+        // Two entries sharing a name would share one history and one PR,
+        // since sessions link to exercises by name.
+        setActionError(`"${clash.name}" is already in your library.`);
+        return;
+      }
       await saveLibraryExercise({ ...editingExercise, name, muscle, notes: notes || undefined });
       setEditingExercise(null);
       reload();
