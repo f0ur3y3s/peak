@@ -23,10 +23,19 @@ export function toDisplayWeight(kg: number, unit: WeightUnit): number {
   return Math.round(value * 10) / 10;
 }
 
-/** Converts a value entered in the display unit back to kg for storage. */
+/**
+ * Converts a value entered in the display unit back to kg for storage.
+ *
+ * Rounded to 0.001kg, not 0.1kg: 0.1kg is ~0.22lb, so a coarser grid than the
+ * 0.1lb the value is displayed at. Storing at 0.1kg made 219 of the first 400
+ * integer lb values fail to round-trip — enter 135lb and the logged set read
+ * back 134.9lb, enter 225lb and it read 225.1lb, and the error then carried
+ * into the next set's prefill. Three decimals is finer than either display
+ * unit, so whatever the user typed is what they see.
+ */
 export function toKgWeight(displayValue: number, unit: WeightUnit): number {
   const kg = unit === "lb" ? lbToKg(displayValue) : displayValue;
-  return Math.round(kg * 10) / 10;
+  return Math.round(kg * 1000) / 1000;
 }
 
 export function fmtWeight(kg: number, unit: WeightUnit): string {

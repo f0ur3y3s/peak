@@ -211,7 +211,24 @@
   color: hsl(var(--foreground));
   text-align: center;
   padding: 8px 0;
+  /* A flex item's min-width:auto is its content width, so `width: 64px` used
+     to make the whole stepper unshrinkable below 44+64+44 = 152px. Inside a
+     two-column grid on a phone that is wider than the column, and
+     `overflow: hidden` above then clipped the "+" button clean off — reps and
+     weight could only be decreased. The input gives way instead now. */
+  min-width: 0;
   width: 64px;
+}
+
+/* Two 44px buttons plus a value wide enough for "102.5" need ~152px per
+   column. The app's container is capped at 430px, so below that viewport the
+   two-up columns cannot hold one — measured 48px of value width at 390px,
+   which clips a 5-character weight mid-digit. They stack to full width
+   instead; at 430px and above the pair fits side by side. */
+@media (max-width: 429px) {
+  .stepper-pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Custom scrollbar — themed thin thumb, no layout shift when it appears */

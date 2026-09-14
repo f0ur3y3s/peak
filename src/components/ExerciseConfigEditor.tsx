@@ -112,7 +112,7 @@ export function ExerciseConfigEditor({
               <Repeat size={16} strokeWidth={2} aria-hidden="true" />
               Reps
             </p>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="stepper-pair grid grid-cols-2 gap-2.5">
               <div>
                 <label htmlFor={repsMinId} className="block text-caption text-muted-foreground mb-1.5">Min</label>
                 <Stepper

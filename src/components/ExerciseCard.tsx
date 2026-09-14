@@ -209,7 +209,7 @@ export function ExerciseCard({
           <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-3">
             Set {ex.logged.length + 1}{done ? " (extra)" : ""}
           </p>
-          <div className="grid grid-cols-2 gap-2.5 mb-3">
+          <div className="stepper-pair grid grid-cols-2 gap-2.5 mb-3">
             {(
               [
                 ["Reps", reps, setReps, 1, repsFieldId],
