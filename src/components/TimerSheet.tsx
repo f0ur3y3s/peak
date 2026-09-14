@@ -222,7 +222,12 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
 
               {/* Progress bar */}
               <div className="w-full mb-9">
-                <Progress value={pct} className="h-[3px]" />
+                <Progress
+                  value={pct}
+                  className="h-[3px]"
+                  aria-label="Rest remaining"
+                  aria-valuetext={fmtTime(remaining)}
+                />
               </div>
 
               {/* Controls */}

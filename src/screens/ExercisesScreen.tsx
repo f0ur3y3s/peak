@@ -134,6 +134,7 @@ export function ExercisesScreen({ embedded = false }: ExercisesScreenProps = {})
 
       {actionError && (
         <p
+          role="alert"
           className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >

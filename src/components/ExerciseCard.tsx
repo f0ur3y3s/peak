@@ -130,32 +130,53 @@ export function ExerciseCard({
     <Card
       className={cardBorderClass}
       onClick={() => !isActive && onActivate(ex.id)}
-      // A plain <div> with onClick: a keyboard-only user could log sets on
-      // whichever exercise happened to be active but could never switch to
-      // another one, since nothing else calls onActivate.
-      role={isActive ? undefined : "button"}
-      tabIndex={isActive ? undefined : 0}
-      aria-label={isActive ? undefined : `Switch to ${ex.name}`}
-      onKeyDown={(e) => {
-        if (isActive) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onActivate(ex.id);
-        }
-      }}
+      // Pointer affordance only. This card carries its own buttons (Notes, Do
+      // later, the rest stepper, delete), and a control containing controls
+      // is neither reachable nor announced correctly — screen readers flatten
+      // it to one node and the inner buttons become unreachable. The keyboard
+      // path to onActivate is the real <button> around the exercise name
+      // below, which sits outside everything else.
       style={{ cursor: isActive ? "default" : "pointer", transition: "border-color 0.2s" }}
     >
       {/* Header */}
       <CardHeader style={{ padding: "15px 16px 12px" }}>
         <div className="flex flex-col gap-2.5">
           <div className="flex justify-between items-start gap-3">
-            <p className="font-semibold text-title" style={{ minWidth: 0 }}>{ex.name}</p>
+            <p className="font-semibold text-title" style={{ minWidth: 0 }}>
+              {isActive ? (
+                ex.name
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onActivate(ex.id);
+                  }}
+                  aria-label={`Switch to ${ex.name}`}
+                  className="tap-sm"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    font: "inherit",
+                    color: "inherit",
+                    textAlign: "left",
+                    cursor: "pointer",
+                  }}
+                >
+                  {ex.name}
+                </button>
+              )}
+            </p>
             {/* Set pips instead of "1/4": countable at a glance, and they
                 cannot squeeze a long name the way a right-aligned numeral
                 pair did. */}
             <div
               className="flex gap-1 flex-shrink-0"
               style={{ paddingTop: 5 }}
+              // aria-label is ignored on a generic div; role="img" makes this
+              // the graphic it actually is, so the label is read instead of
+              // the pips being announced as nothing at all.
+              role="img"
               aria-label={`${ex.logged.length} of ${effectiveTarget} sets logged`}
             >
               {Array.from({ length: effectiveTarget }).map((_, i) => (
@@ -188,7 +209,7 @@ export function ExerciseCard({
                     e.stopPropagation();
                     onDoLater(ex.id);
                   }}
-                  className="text-caption"
+                  className="tap-sm text-caption"
                   style={{
                     background: "none",
                     border: "none",
@@ -206,13 +227,13 @@ export function ExerciseCard({
                     e.stopPropagation();
                     setShowNotes((v) => !v);
                   }}
-                  className="text-caption"
+                  className="tap-sm text-caption"
                   style={{
                     background: "none",
                     border: "none",
                     cursor: "pointer",
                     color: showNotes ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                    padding: 0,
+                    padding: "0 4px",
                   }}
                   aria-expanded={showNotes}
                 >
@@ -224,7 +245,7 @@ export function ExerciseCard({
                   e.stopPropagation();
                   setEditingRest((v) => !v);
                 }}
-                className="font-mono text-caption"
+                className="tap-sm font-mono text-caption"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -233,7 +254,7 @@ export function ExerciseCard({
                   border: `1px solid ${editingRest ? "hsl(var(--primary) / 0.5)" : "hsl(var(--border))"}`,
                   borderRadius: 999,
                   color: editingRest ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                  padding: "3px 9px",
+                  padding: "6px 10px",
                   cursor: "pointer",
                 }}
               >

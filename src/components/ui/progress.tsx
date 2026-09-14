@@ -8,6 +8,12 @@ const Progress = React.forwardRef<
 >(({ className, value, ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}
+    // `value` was destructured out and used only for the indicator's
+    // transform, never handed to Radix — so every progress bar in the app
+    // rendered data-state="indeterminate" with no aria-valuenow, announcing
+    // itself as "busy, amount unknown" while showing an exact percentage on
+    // screen. Visually right, semantically a loading spinner.
+    value={value}
     className={cn("relative h-2 w-full overflow-hidden rounded-full bg-secondary", className)}
     {...props}
   >

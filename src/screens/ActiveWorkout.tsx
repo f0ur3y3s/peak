@@ -10,6 +10,7 @@ import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/Ex
 import { WorkoutSummary } from "@/screens/WorkoutSummary";
 import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
 import { primeRestAlert } from "@/lib/restAlert";
+import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 import { useWakeLock } from "@/lib/useWakeLock";
 import {
   getExercises,
@@ -60,6 +61,12 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   // reverted any rest edit made in the template while the draft was open, and
   // reported the reversal on the Summary as if the user had made it.
   const restEdited = useRef<Set<string>>(new Set());
+  const { unit } = useWeightUnit();
+  // Spoken confirmation of the things this screen does silently. Everything
+  // here is visual feedback — a pip fills, the set list grows, the progress
+  // bar moves — none of which a screen reader reports, so logging a set gave
+  // no confirmation that anything had happened at all.
+  const [announcement, setAnnouncement] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
 
@@ -163,6 +170,10 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     applyExercises(updatedExercises);
     setTimer({ seconds: restSeconds, exerciseName, nextSet });
     setDraftError(null);
+    const logged = updatedExercises.find((ex) => ex.id === exId)?.logged.length ?? 0;
+    setAnnouncement(
+      `Logged set ${logged} of ${exerciseName}: ${reps} reps at ${fmtWeight(weight, unit)} ${unit}. Resting ${fmtTime(restSeconds)}.`
+    );
 
     persistDraft({
       id: "current",
@@ -180,6 +191,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
     applyExercises(updatedExercises);
     setDraftError(null);
+    setAnnouncement("Set removed.");
 
     persistDraft({
       id: "current",
@@ -254,6 +266,9 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
       (ex) => ex.id !== exId && ex.logged.length < ex.targetSets
     );
     if (nextUp) setActiveId(nextUp.id);
+    setAnnouncement(
+      `${moved.name} moved to the end.${nextUp ? ` Now on ${nextUp.name}.` : ""}`
+    );
 
     persistDraft({
       id: "current",
@@ -439,6 +454,13 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     <>
       {timer && <TimerSheet timer={timer} onClose={() => setTimer(null)} />}
 
+      {/* Visually hidden. Polite rather than assertive: a logged set is a
+          confirmation, not an interruption, and the rest timer's own
+          countdown announcements follow immediately behind it. */}
+      <span aria-live="polite" role="status" className="sr-only">
+        {announcement}
+      </span>
+
       <div>
         <TopBar
           title={templateName || "Workout"}
@@ -449,7 +471,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <button
                 onClick={() => setConfirmingDiscard(true)}
-                className="text-caption"
+                className="tap-sm text-caption"
                 style={{
                   background: "none",
                   border: "none",
@@ -458,6 +480,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
                   fontFamily: "'DM Mono', monospace",
                   letterSpacing: "0.05em",
                   padding: "4px 8px",
+                  minHeight: 44,
                 }}
               >
                 Discard
@@ -476,6 +499,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {loadError && (
           <p
+            role="alert"
             className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
@@ -485,6 +509,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {finishError && (
           <p
+            role="alert"
             className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
@@ -494,6 +519,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {draftError && (
           <p
+            role="alert"
             className="font-mono text-caption px-5 pt-1"
             style={{ color: "hsl(var(--destructive))", margin: 0 }}
           >
@@ -503,7 +529,12 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
         {/* Global progress bar */}
         <div className="px-5 pt-2.5">
-          <Progress value={totalTarget > 0 ? (totalLogged / totalTarget) * 100 : 0} className="h-[3px]" />
+          <Progress
+            value={totalTarget > 0 ? (totalLogged / totalTarget) * 100 : 0}
+            className="h-[3px]"
+            aria-label="Workout progress"
+            aria-valuetext={`${totalLogged} of ${totalTarget} sets logged`}
+          />
         </div>
 
         <div className="px-5 pt-3.5 pb-28 flex flex-col gap-2.5">

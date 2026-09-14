@@ -96,6 +96,7 @@ export function HistoryScreen() {
 
       {loadError && (
         <p
+          role="alert"
           className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >
@@ -105,6 +106,7 @@ export function HistoryScreen() {
 
       {saveError && (
         <p
+          role="alert"
           className="font-mono text-caption px-5 pt-1"
           style={{ color: "hsl(var(--destructive))", margin: 0 }}
         >
@@ -142,7 +144,7 @@ export function HistoryScreen() {
                 fontWeight: view === id ? 600 : 500,
                 border: "none",
                 borderRadius: 7,
-                padding: "10px 0",
+                padding: "13px 0",
                 cursor: "pointer",
               }}
             >

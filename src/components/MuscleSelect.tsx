@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useId } from "react";
 import { MUSCLE_GROUPS, fuzzyMatch } from "@/lib/muscles";
 import { TEXT_INPUT_STYLE } from "@/lib/inputStyles";
 
@@ -18,6 +18,12 @@ interface MuscleSelectProps {
 export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectProps) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
+  // Index into the flattened option list. -1 means "nothing highlighted", so
+  // Enter falls through to whatever the field is inside rather than picking an
+  // option the user never moved to.
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listboxId = useId();
+  const optionId = (i: number) => `${listboxId}-opt-${i}`;
   // Positioned in fixed coordinates (recomputed from the input's own rect)
   // rather than absolute-inside-the-input, because MuscleSelect is always
   // used inside .config-editor-panel, which is overflow-y:auto — an
@@ -72,6 +78,69 @@ export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectP
     muscles: g.muscles.filter((m) => fuzzyMatch(query, m) || fuzzyMatch(query, g.group)),
   })).filter((g) => g.muscles.length > 0);
 
+  // The options as the arrow keys see them: one sequence, ignoring the group
+  // headings they are visually divided by. Each group also records where it
+  // starts in that sequence, so an option's index never has to be recovered
+  // by searching for its name — two groups are free to list the same muscle.
+  const flatOptions = filteredGroups.flatMap((g) => g.muscles);
+  const groupOffsets: number[] = [];
+  filteredGroups.reduce((offset, g) => {
+    groupOffsets.push(offset);
+    return offset + g.muscles.length;
+  }, 0);
+  const isOpen = open && flatOptions.length > 0 && dropdownStyle !== null;
+
+  const select = (muscle: string) => {
+    setQuery(muscle);
+    onChange(muscle);
+    setOpen(false);
+    setActiveIndex(-1);
+  };
+
+  // Keeps the highlighted option in view when the arrows walk past the
+  // bottom of a list that is taller than the dropdown.
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    // getElementById rather than a CSS selector: useId produces ids
+    // containing ":", which is not valid in a selector without escaping.
+    document.getElementById(optionId(activeIndex))?.scrollIntoView({ block: "nearest" });
+  });
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open) {
+        setOpen(true);
+        setActiveIndex(0);
+        return;
+      }
+      if (flatOptions.length === 0) return;
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((i) => {
+        // From "nothing highlighted", Down enters at the top and Up enters at
+        // the bottom. Treating -1 as an ordinary index instead put the first
+        // Up press on the second-to-last option.
+        if (i < 0) return step === 1 ? 0 : flatOptions.length - 1;
+        return (i + step + flatOptions.length) % flatOptions.length;
+      });
+      return;
+    }
+    if (e.key === "Enter" && isOpen && activeIndex >= 0) {
+      e.preventDefault();
+      select(flatOptions[activeIndex]);
+      return;
+    }
+    if (e.key === "Escape" && open) {
+      // Stopped here rather than allowed to bubble: this field lives inside a
+      // Modal whose document-level handler closes the whole dialog on Escape,
+      // so dismissing the suggestions would have thrown away the form.
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
       <input
@@ -82,15 +151,29 @@ export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectP
         placeholder={placeholder ?? "Search muscle group"}
         aria-label={id ? undefined : placeholder ?? "Search muscle group"}
         value={query}
+        // The ARIA 1.2 combobox pattern. Without it this announced as a plain
+        // text field: nothing said a list of suggestions had appeared, how
+        // many there were, or which one was highlighted — and the only way
+        // through the options was to Tab out of the field into them.
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        aria-autocomplete="list"
+        aria-activedescendant={isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined}
+        onKeyDown={onKeyDown}
         onChange={(e) => {
           setQuery(e.target.value);
           onChange(e.target.value);
           setOpen(true);
+          setActiveIndex(-1);
         }}
         onFocus={() => setOpen(true)}
       />
-      {open && filteredGroups.length > 0 && dropdownStyle && (
+      {isOpen && (
         <div
+          id={listboxId}
+          role="listbox"
+          aria-label="Muscle groups"
           style={{
             position: "fixed",
             top: dropdownStyle.top,
@@ -104,37 +187,43 @@ export function MuscleSelect({ value, onChange, placeholder, id }: MuscleSelectP
             zIndex: 70,
           }}
         >
-          {filteredGroups.map((g) => (
-            <div key={g.group}>
+          {filteredGroups.map((g, gi) => (
+            <div key={g.group} role="group" aria-label={g.group}>
               <p
                 className="font-mono text-label text-muted-foreground uppercase tracking-wider"
                 style={{ padding: "6px 12px 2px", margin: 0 }}
+                aria-hidden="true"
               >
                 {g.group}
               </p>
-              {g.muscles.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => {
-                    setQuery(m);
-                    onChange(m);
-                    setOpen(false);
-                  }}
-                  className="text-body"
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "8px 12px",
-                    color: "hsl(var(--foreground))",
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
+              {g.muscles.map((m, mi) => {
+                const i = groupOffsets[gi] + mi;
+                const active = i === activeIndex;
+                return (
+                  <div
+                    key={m}
+                    id={optionId(i)}
+                    role="option"
+                    aria-selected={active}
+                    // Focus stays in the input and the highlight travels via
+                    // aria-activedescendant, so these must not be tab stops.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => select(m)}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    className="text-body"
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      padding: "8px 12px",
+                      color: "hsl(var(--foreground))",
+                      background: active ? "hsl(var(--secondary))" : "none",
+                    }}
+                  >
+                    {m}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>

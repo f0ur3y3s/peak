@@ -23,7 +23,7 @@ const TABS: { id: Screen; label: string; icon: LucideIcon }[] = [
 
 export function NavBar({ active, onNav, hasActiveDraft }: NavBarProps) {
   return (
-    <div className="nav-bar">
+    <nav className="nav-bar" aria-label="Main">
       {TABS.map((t) => {
         const isActive = active === t.id;
         const showDraftDot = t.id === "workout" && hasActiveDraft;
@@ -62,7 +62,7 @@ export function NavBar({ active, onNav, hasActiveDraft }: NavBarProps) {
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }
 

@@ -37,7 +37,7 @@ export function PlanScreen({ onSelectTemplate, onCreateTemplate, onStartTemplate
                 border: "none",
                 cursor: "pointer",
                 color: editing ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-                padding: "10px 4px",
+                padding: "10px 12px",
                 minHeight: 44,
               }}
             >
@@ -80,7 +80,7 @@ export function PlanScreen({ onSelectTemplate, onCreateTemplate, onStartTemplate
                 fontWeight: tab === id ? 600 : 500,
                 border: "none",
                 borderRadius: 7,
-                padding: "10px 0",
+                padding: "13px 0",
                 cursor: "pointer",
               }}
             >

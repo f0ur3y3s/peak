@@ -28,7 +28,13 @@
     --muted-foreground: 0 0% 58%;
     --accent: 72 100% 64%;
     --accent-foreground: 0 0% 0%;
+    /* Two reds, because one cannot do both jobs. 58% L is the red as TEXT on
+       a dark surface (5.1:1 on --background, 4.7:1 on --card). Used as a
+       button FILL under white text it computes to 3.6:1, below the 4.5:1 AA
+       minimum — so the fill gets its own darker value, which in turn is too
+       dark to read as text. */
     --destructive: 4 90% 58%;
+    --destructive-surface: 4 90% 46%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 16%;
     --input: 0 0% 14%;
@@ -253,6 +259,18 @@
 
 *::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+/* WCAG 2.2 "Target Size (Minimum)" is 24x24 CSS px. Several of the controls
+   on the workout screen — Notes, Do later, the rest chip, the breadcrumb —
+   rendered between 12 and 20px tall, which is the screen you use mid-set with
+   chalk on your hands. Raised to 32: clear of the floor with room to spare,
+   without loosening the dense set-logging layout the screen depends on.
+   Primary actions keep the 44px platform guideline. */
+.tap-sm {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Misc */

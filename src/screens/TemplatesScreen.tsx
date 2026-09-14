@@ -138,7 +138,7 @@ export function TemplatesScreen({
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
         {loadError && (
-          <p className="font-mono text-caption" style={{ color: "hsl(var(--destructive))", margin: 0 }}>
+          <p role="alert" className="font-mono text-caption" style={{ color: "hsl(var(--destructive))", margin: 0 }}>
             {loadError}
           </p>
         )}
@@ -308,6 +308,7 @@ export function TemplatesScreen({
               />
               {createError && (
                 <p
+                  role="alert"
                   className="font-mono text-caption"
                   style={{ color: "hsl(var(--destructive))", margin: 0 }}
                 >

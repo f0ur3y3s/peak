@@ -266,6 +266,7 @@ export function AuthScreen() {
 
         {mode === "login" && error && (
           <p
+            role="alert"
             className="text-caption"
             style={{
               fontFamily: "'DM Mono', monospace",
@@ -279,6 +280,7 @@ export function AuthScreen() {
 
         {mode === "request" && requestError && (
           <p
+            role="alert"
             className="text-caption"
             style={{
               fontFamily: "'DM Mono', monospace",

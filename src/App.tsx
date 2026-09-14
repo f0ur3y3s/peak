@@ -228,6 +228,10 @@ export default function App() {
         {/* Keyed by the current screen so navigating to another tab clears a
             caught error, and inside the chrome so the nav bar below survives
             it — a crash on one screen must not strand you there. */}
+        {/* The app's one main landmark. Without it, a screen-reader user has
+            no way to skip the chrome and jump to the screen's content, and
+            everything outside a landmark is announced as loose page text. */}
+        <main>
         <ErrorBoundary resetKey={screen} title="This screen hit a problem">
           {screen === "plan" && (
             <PlanScreen
@@ -326,6 +330,7 @@ export default function App() {
             />
           )}
         </ErrorBoundary>
+        </main>
       </div>
       <NavBar active={nav} onNav={handleNav} hasActiveDraft={hasActiveDraft} />
     </div>

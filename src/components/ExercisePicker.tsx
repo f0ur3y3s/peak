@@ -75,6 +75,7 @@ export function ExercisePicker({
 
         {actionError && (
           <p
+            role="alert"
             className="font-mono text-caption mb-2"
             style={{ color: "hsl(var(--destructive))" }}
           >

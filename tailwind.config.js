@@ -20,6 +20,8 @@ export default {
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
+          // The fill behind --destructive-foreground; see index.css.
+          surface: "hsl(var(--destructive-surface))",
           foreground: "hsl(var(--destructive-foreground))",
         },
         success: {

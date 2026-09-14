@@ -163,6 +163,7 @@ export function ProfileScreen({ email, onSignOut }: ProfileScreenProps) {
             </div>
             {syncError && (
               <p
+                role="alert"
                 className="font-mono text-caption"
                 style={{ color: "hsl(var(--destructive))", margin: 0 }}
               >

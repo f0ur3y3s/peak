@@ -44,8 +44,8 @@ export function TopBar({ title, sub, onBack, right, breadcrumb }: TopBarProps) {
                   )}
                   <button
                     onClick={crumb.onClick}
-                    className="font-mono text-label uppercase tracking-wider text-muted-foreground bg-transparent border-none cursor-pointer p-0"
-                    style={{ textDecoration: "underline", textUnderlineOffset: 2 }}
+                    className="tap-sm font-mono text-label uppercase tracking-wider text-muted-foreground bg-transparent border-none cursor-pointer p-0"
+                    style={{ textDecoration: "underline", textUnderlineOffset: 2, paddingRight: 6 }}
                   >
                     {crumb.label}
                   </button>

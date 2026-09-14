@@ -143,7 +143,7 @@ export function ExerciseConfigEditor({
               </div>
             </div>
             {!repsValid && (
-              <p className="font-mono text-caption mt-1.5" style={{ color: "hsl(var(--destructive))" }}>
+              <p role="alert" className="font-mono text-caption mt-1.5" style={{ color: "hsl(var(--destructive))" }}>
                 Min reps can't be greater than max.
               </p>
             )}
