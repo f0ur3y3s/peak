@@ -11,7 +11,12 @@ import { ProfileScreen } from "@/screens/ProfileScreen";
 import { ExerciseHistoryScreen } from "@/screens/ExerciseHistoryScreen";
 import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
-import { getActiveWorkoutDraft, applyProgramSeed, clearLocalData } from "@/lib/db";
+import {
+  getActiveWorkoutDraft,
+  applyProgramSeed,
+  clearLocalData,
+  requestPersistentStorage,
+} from "@/lib/db";
 import { syncNow } from "@/lib/sync";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -104,6 +109,11 @@ export default function App() {
         // only the "who was here last" record is lost.
       }
       if (cancelled) return;
+
+      // Ask once a real account is on this device: IndexedDB is evictable by
+      // default, and what is in it is the user's training history — including
+      // anything logged offline that has not reached the account yet.
+      void requestPersistentStorage();
 
       // 2. Resolve the landing screen from local data, which is fast and
       //    works offline. Sync and seeding continue underneath.

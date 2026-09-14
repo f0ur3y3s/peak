@@ -112,12 +112,57 @@ interface PeakDB extends DBSchema {
 }
 
 const DB_NAME = "peak-db";
+const DB_VERSION = 5;
+
+/** How long to wait after another tab reports us blocked before giving up.
+ *  Long enough for that tab to finish closing its connection on its own. */
+const BLOCKED_GRACE_MS = 3_000;
+
+const BLOCKED_MESSAGE =
+  "Another tab has an older version of Peak open. Close it, then reload this page.";
+const SUPERSEDED_MESSAGE =
+  "A newer version of Peak was opened in another tab. Reload this page to continue.";
 
 let dbPromise: Promise<IDBPDatabase<PeakDB>> | null = null;
+let instance: IDBPDatabase<PeakDB> | null = null;
+/** Set when another tab upgraded the database out from under this one. */
+let superseded = false;
 
 function getDB(): Promise<IDBPDatabase<PeakDB>> {
+  // Every read and write goes through here, so this is the one place that can
+  // turn "the database is gone" into a sentence rather than a hang.
+  if (superseded) return Promise.reject(new Error(SUPERSEDED_MESSAGE));
   if (!dbPromise) {
-    dbPromise = openDB<PeakDB>(DB_NAME, 5, {
+    // openDB simply never settles while another tab holds the old version
+    // open, which surfaced as screens stuck on their loading state forever
+    // with nothing in the UI to say why. `blocked` is the browser telling us
+    // exactly that, so after a grace period we fail with something readable.
+    let reportBlocked: (() => void) | null = null;
+    const blockedRejection = new Promise<never>((_, reject) => {
+      reportBlocked = () => setTimeout(() => reject(new Error(BLOCKED_MESSAGE)), BLOCKED_GRACE_MS);
+    });
+
+    const opening = openDB<PeakDB>(DB_NAME, DB_VERSION, {
+      blocked() {
+        reportBlocked?.();
+      },
+      blocking() {
+        // Another tab is running a newer build and needs to upgrade. Holding
+        // this connection open blocks it indefinitely, so let go — and refuse
+        // to reopen, because this tab's code is written against the old
+        // schema. Reloading gets the new build.
+        superseded = true;
+        instance?.close();
+        instance = null;
+        dbPromise = null;
+      },
+      terminated() {
+        // The browser force-closed the connection (storage pressure, a
+        // profile-wide clear). Every later call would fail against the dead
+        // handle; dropping it means the next one transparently reopens.
+        instance = null;
+        dbPromise = null;
+      },
       async upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const sessionStore = db.createObjectStore("workout_sessions", { keyPath: "id" });
@@ -223,13 +268,36 @@ function getDB(): Promise<IDBPDatabase<PeakDB>> {
           }
         }
       },
-    })
-      .catch((err) => {
-        dbPromise = null;
-        throw err;
-      });
+    }).then((db) => {
+      instance = db;
+      return db;
+    });
+
+    dbPromise = Promise.race([opening, blockedRejection]).catch((err) => {
+      dbPromise = null;
+      throw err;
+    });
   }
   return dbPromise;
+}
+
+/**
+ * Asks the browser to exempt this origin from storage eviction.
+ *
+ * IndexedDB is best-effort by default: under storage pressure a browser may
+ * clear it without asking, and on this device that is the user's entire
+ * training history. Everything synced comes back on the next sign-in, but
+ * anything logged since — a whole session, if it was logged offline in a gym
+ * basement — does not. Chrome and Safari grant this silently to installed
+ * PWAs; nothing breaks if it is refused.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.storage?.persist) return false;
+  try {
+    return (await navigator.storage.persisted()) || (await navigator.storage.persist());
+  } catch {
+    return false;
+  }
 }
 
 const PROGRAM_SEED_KEY = `seed:${PROGRAM_SEED_VERSION}` as const;
@@ -352,6 +420,7 @@ export async function clearLocalData(): Promise<void> {
     const open = await dbPromise.catch(() => null);
     open?.close();
     dbPromise = null;
+    instance = null;
   }
   await deleteDB(DB_NAME);
 }
