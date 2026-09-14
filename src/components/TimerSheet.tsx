@@ -156,7 +156,8 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onClose(); }}
-              className="bg-transparent border-none text-muted-foreground cursor-pointer text-lg px-1"
+              className="bg-transparent border-none text-muted-foreground cursor-pointer"
+              style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", marginRight: -8 }}
               aria-label="Close timer"
             >
               <X size={20} strokeWidth={2} />
@@ -222,10 +223,14 @@ export function TimerSheet({ timer, onClose }: TimerSheetProps) {
 
               {/* Skip / done */}
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={onClose}
-                className="font-mono text-xs tracking-widest gap-1.5"
-                style={{ color: done ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+                className="font-mono text-subtext tracking-widest gap-1.5"
+                style={{
+                  minWidth: 160,
+                  color: done ? "hsl(var(--primary))" : "hsl(var(--foreground))",
+                  borderColor: done ? "hsl(var(--primary) / 0.5)" : undefined,
+                }}
               >
                 {done ? (
                   <>

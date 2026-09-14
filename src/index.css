@@ -324,8 +324,11 @@ select {
   align-items: center;
   justify-content: center;
   /* Above .nav-bar (z-index: 50) — otherwise the nav bar, which comes later
-     in the DOM, paints over the bottom of a modal tall enough to reach it. */
-  z-index: 60;
+     in the DOM, paints over the bottom of a modal tall enough to reach it —
+     and above .timer-sheet (80), which otherwise swallowed every tap meant
+     for a dialog opened while a rest was running: "Discard workout" could be
+     opened but never confirmed. A modal is the topmost thing on screen. */
+  z-index: 100;
   padding: 20px;
 }
 

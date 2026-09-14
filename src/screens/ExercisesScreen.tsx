@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
@@ -20,7 +21,12 @@ import {
 
 const GROUP_ORDER = [...MUSCLE_GROUPS.map((g) => g.group), "Other"];
 
-export function ExercisesScreen() {
+interface ExercisesScreenProps {
+  /** Rendered inside PlanScreen, which supplies the header. */
+  embedded?: boolean;
+}
+
+export function ExercisesScreen({ embedded = false }: ExercisesScreenProps = {}) {
   const [library, setLibrary] = useState<LibraryExercise[]>([]);
   const [creating, setCreating] = useState(false);
   const [editingExercise, setEditingExercise] = useState<LibraryExercise | null>(null);
@@ -101,6 +107,7 @@ export function ExercisesScreen() {
 
   return (
     <div>
+      {!embedded && (
       <TopBar
         title="Exercise Library"
         right={
@@ -124,6 +131,7 @@ export function ExercisesScreen() {
           </button>
         }
       />
+      )}
 
       {actionError && (
         <p
@@ -217,6 +225,24 @@ export function ExercisesScreen() {
               ))}
             </div>
           ))
+        )}
+
+        {/* Embedded in Plan, the header belongs to that screen, so the way to
+            add an exercise lives with the list instead — matching the
+            "+ New session" row on the Sessions tab. */}
+        {embedded && (
+          <Button
+            variant="outline"
+            className="text-muted-foreground rounded-xl h-auto py-4"
+            style={{ border: "1px dashed hsl(var(--border))" }}
+            onClick={() => {
+              setActionError(null);
+              setCreating(true);
+            }}
+          >
+            <Plus size={16} strokeWidth={2} />
+            New exercise
+          </Button>
         )}
       </div>
 

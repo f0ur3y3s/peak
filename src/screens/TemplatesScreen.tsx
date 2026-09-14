@@ -19,6 +19,7 @@ import { groupForMuscle } from "@/lib/muscles";
 import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
   getTemplates,
+  getNextUpTemplateId,
   getWorkoutSessions,
   getExerciseLibrary,
   saveTemplate,
@@ -30,15 +31,25 @@ import {
 interface TemplatesScreenProps {
   onSelectTemplate: (id: string) => void;
   onCreateTemplate: (id: string) => void;
+  /** Starts this session straight from the list — the row's primary action. */
+  onStartTemplate?: (id: string) => void;
+  /** Rendered inside PlanScreen, which supplies the header and the Edit toggle. */
+  embedded?: boolean;
+  /** Reveals the drag handle and the chevron alternative. */
+  editing?: boolean;
 }
 
 export function TemplatesScreen({
   onSelectTemplate,
   onCreateTemplate,
+  onStartTemplate,
+  embedded = false,
+  editing = false,
 }: TemplatesScreenProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [lastPerformed, setLastPerformed] = useState<Map<string, number>>(new Map());
   const [libraryById, setLibraryById] = useState<Map<string, LibraryExercise>>(new Map());
+  const [nextUpId, setNextUpId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
@@ -58,6 +69,7 @@ export function TemplatesScreen({
       }
       setLastPerformed(map);
     });
+    getNextUpTemplateId().then(setNextUpId);
     getExerciseLibrary().then((library) => {
       setLibraryById(new Map(library.map((ex) => [ex.id, ex])));
     });
@@ -115,13 +127,15 @@ export function TemplatesScreen({
 
   return (
     <div>
-      <TopBar title="Templates" />
+      {!embedded && <TopBar title="Templates" />}
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={templates.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             {templates.map((t, i) => {
               const lastTs = lastPerformed.get(t.id) ?? lastPerformed.get(`name:${t.name}`);
+              const totalSets = t.exercises.reduce((sum, cfg) => sum + cfg.targetSets, 0);
+              const isNextUp = t.id === nextUpId;
               const muscleGroups = [
                 ...new Set(
                   t.exercises
@@ -138,13 +152,12 @@ export function TemplatesScreen({
                       className="cursor-pointer transition-colors"
                     >
                       <CardContent style={{ padding: "14px 16px" }} className="flex items-center gap-1">
-                        {/* Reorder controls (drag handle + chevrons) are dead
-                            weight with nothing to reorder against — hidden
-                            below 2 templates rather than competing with the
-                            row's one useful action (opening the template)
-                            for thumb space in the common single-template
-                            state. */}
-                        {templates.length > 1 && (
+                        {/* Reorder is a rare act, so its controls stay out of
+                            the way until Edit is on. Left permanently visible
+                            they took the row's leading edge — three controls
+                            per row for something done once a month — and
+                            pushed the session itself to one side. */}
+                        {editing && templates.length > 1 && (
                           <>
                             <button
                               {...handleProps}
@@ -216,19 +229,9 @@ export function TemplatesScreen({
                           </>
                         )}
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-semibold text-title">{t.name}</p>
-                              <p className="font-mono text-caption text-muted-foreground mt-0.5">
-                                {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
-                              </p>
-                            </div>
-                            <p className="font-mono text-caption text-muted-foreground">
-                              {lastTs ? fmtRelativeDate(lastTs) : "Never"}
-                            </p>
-                          </div>
+                          <p className="font-semibold text-title">{t.name}</p>
                           {muscleGroups.length > 0 && (
-                            <div className="flex gap-1.5 flex-wrap mt-2.5">
+                            <div className="flex gap-1.5 flex-wrap mt-2">
                               {muscleGroups.map((group) => (
                                 <Badge
                                   key={group}
@@ -241,7 +244,25 @@ export function TemplatesScreen({
                               ))}
                             </div>
                           )}
+                          <p className="font-mono text-caption text-muted-foreground mt-2">
+                            {t.exercises.length} exercise{t.exercises.length === 1 ? "" : "s"}
+                            {totalSets > 0 ? ` · ${totalSets} sets` : ""} ·{" "}
+                            {lastTs ? fmtRelativeDate(lastTs) : "never run"}
+                          </p>
                         </div>
+                        {!editing && onStartTemplate && t.exercises.length > 0 && (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStartTemplate(t.id);
+                            }}
+                            variant={isNextUp ? "default" : "outline"}
+                            className="font-semibold"
+                            style={{ minWidth: 78, flexShrink: 0 }}
+                          >
+                            Start
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   )}

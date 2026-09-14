@@ -20,7 +20,7 @@ export function ExerciseHistoryScreen({
         title={exerciseName}
         onBack={onBack}
         breadcrumb={[
-          { label: "Templates", onClick: onBackToTemplates },
+          { label: "Plan", onClick: onBackToTemplates },
           ...(templateName ? [{ label: templateName, onClick: onBack }] : []),
         ]}
       />

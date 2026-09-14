@@ -362,7 +362,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
           title={templateName || "Workout"}
           sub={`${fmtTime(elapsed)} · ${totalLogged}/${totalTarget} sets`}
           onBack={onBack}
-          breadcrumb={[{ label: "Templates", onClick: onBackToTemplates }]}
+          breadcrumb={[{ label: "Plan", onClick: onBackToTemplates }]}
           right={
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <button

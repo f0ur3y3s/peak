@@ -1,10 +1,8 @@
 import { useId, useState } from "react";
 import { Check, Clock, Minus, Plus, X } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { IconButton } from "@/components/ui/icon-button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, type Exercise } from "@/lib/data";
 import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
@@ -38,6 +36,7 @@ export function ExerciseCard({
   const [weight, setWeight] = useState(defaultWeight);
   const [addingExtra, setAddingExtra] = useState(false);
   const [editingRest, setEditingRest] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [deletingSet, setDeletingSet] = useState<
     { id: string; index: number; reps: number; weight: number } | null
   >(null);
@@ -65,23 +64,61 @@ export function ExerciseCard({
       style={{ cursor: isActive ? "default" : "pointer", transition: "border-color 0.2s" }}
     >
       {/* Header */}
-      <CardHeader style={{ padding: "14px 16px 8px" }}>
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="font-semibold text-title mb-1">{ex.name}</p>
-            <div className="flex gap-1.5 items-center">
-              <Badge
-                variant="secondary"
-                className="text-label"
-                style={{
-                  padding: "1px 7px",
-                }}
-              >
-                {ex.muscle}
-              </Badge>
-              <span className="font-mono text-caption text-muted-foreground whitespace-nowrap">
-                {ex.targetSets}×{ex.repsMin}–{ex.repsMax} @ {fmtWeight(ex.targetWeight, unit)}{unit}
-              </span>
+      <CardHeader style={{ padding: "15px 16px 12px" }}>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex justify-between items-start gap-3">
+            <p className="font-semibold text-title" style={{ minWidth: 0 }}>{ex.name}</p>
+            {/* Set pips instead of "1/4": countable at a glance, and they
+                cannot squeeze a long name the way a right-aligned numeral
+                pair did. */}
+            <div
+              className="flex gap-1 flex-shrink-0"
+              style={{ paddingTop: 5 }}
+              aria-label={`${ex.logged.length} of ${effectiveTarget} sets logged`}
+            >
+              {Array.from({ length: effectiveTarget }).map((_, i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 16,
+                    height: 5,
+                    borderRadius: 3,
+                    background:
+                      i < ex.logged.length
+                        ? done
+                          ? "hsl(var(--success))"
+                          : "hsl(var(--primary))"
+                        : "hsl(var(--secondary))",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-mono text-caption" style={{ whiteSpace: "nowrap" }}>
+              {ex.targetSets}×{ex.repsMin}–{ex.repsMax}
+              {ex.targetWeight > 0 ? ` @ ${fmtWeight(ex.targetWeight, unit)}${unit}` : ""}
+            </span>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {ex.notes && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotes((v) => !v);
+                  }}
+                  className="text-caption"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: showNotes ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+                    padding: 0,
+                  }}
+                  aria-expanded={showNotes}
+                >
+                  Notes
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -92,7 +129,7 @@ export function ExerciseCard({
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
-                  background: editingRest ? "hsl(var(--primary) / 0.15)" : "hsl(var(--secondary))",
+                  background: editingRest ? "hsl(var(--primary) / 0.15)" : "transparent",
                   border: `1px solid ${editingRest ? "hsl(var(--primary) / 0.5)" : "hsl(var(--border))"}`,
                   borderRadius: 999,
                   color: editingRest ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
@@ -104,22 +141,6 @@ export function ExerciseCard({
                 {fmtTime(ex.restSeconds)}
               </button>
             </div>
-          </div>
-          <div className="text-right">
-            <p
-              className="font-mono text-stat font-medium"
-              style={{
-                color: done
-                  ? "hsl(var(--success))"
-                  : isActive
-                  ? "hsl(var(--primary))"
-                  : "hsl(var(--muted-foreground))",
-              }}
-            >
-              {ex.logged.length}
-              <span className="text-sm text-muted-foreground">/{effectiveTarget}</span>
-            </p>
-            <p className="text-label text-muted-foreground">sets</p>
           </div>
         </div>
       </CardHeader>
@@ -148,26 +169,12 @@ export function ExerciseCard({
         </div>
       )}
 
-      {/* Notes — only on the active card: cues matter for the set you are
-          about to do, and repeating them down a collapsed list would bury
-          the sets themselves. */}
-      {isActive && ex.notes && (
+      {/* Collapsed by default: a form cue is worth a tap when you want it,
+          but printed above every set form it pushed the inputs down the card
+          on every single set. */}
+      {showNotes && ex.notes && (
         <div className="px-4 pb-2.5">
-          <NotesBlock notes={ex.notes} label="Notes" />
-        </div>
-      )}
-
-      {/* Previous session chips */}
-      {ex.last && (
-        <div className="flex gap-1.5 items-center flex-wrap px-4 pb-2.5">
-          <span className="font-mono text-label text-muted-foreground uppercase tracking-wider">
-            prev
-          </span>
-          {ex.last.map((s, i) => (
-            <span key={i} className="set-chip">
-              {s.r}×{fmtWeight(s.w, unit)}
-            </span>
-          ))}
+          <NotesBlock notes={ex.notes} />
         </div>
       )}
 
@@ -184,17 +191,31 @@ export function ExerciseCard({
               <span className="font-mono text-caption text-muted-foreground">{i + 1}</span>
               <span className="font-mono text-sm">{s.reps} reps</span>
               <span className="font-mono text-sm">{fmtWeight(s.weight, unit)} {unit}</span>
-              <IconButton
-                variant="destructive"
+              {/* Muted, not a filled red tile: deleting a set is rare and
+                  reversible by re-logging it, and the loudest element on a
+                  logged row should be the set, not the way to destroy it. */}
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setDeletingSet({ id: s.id, index: i, reps: s.reps, weight: s.weight });
                 }}
-                style={{ justifySelf: "end" }}
-                aria-label="Delete set"
+                style={{
+                  justifySelf: "end",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "hsl(var(--muted-foreground))",
+                  width: 44,
+                  height: 44,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: -12,
+                }}
+                aria-label={`Delete set ${i + 1}`}
               >
                 <X size={16} strokeWidth={2} />
-              </IconButton>
+              </button>
             </div>
           ))}
         </div>
@@ -206,9 +227,19 @@ export function ExerciseCard({
           className="log-form mx-4 mb-3.5 mt-2.5 rounded-[10px] border border-border"
           style={{ padding: 14, background: "hsl(var(--background))" }}
         >
-          <p className="font-mono text-label text-muted-foreground uppercase tracking-widest mb-3">
-            Set {ex.logged.length + 1}{done ? " (extra)" : ""}
-          </p>
+          {/* What you did last time sits with the field you are about to
+              type into, rather than as a separate row of chips higher up the
+              card that you have to look back at. */}
+          <div className="flex items-baseline justify-between gap-3 mb-3">
+            <p className="font-mono text-label text-muted-foreground uppercase tracking-widest">
+              Set {ex.logged.length + 1}{done ? " (extra)" : ""}
+            </p>
+            {ex.last && ex.last[lastIdx] && (
+              <p className="font-mono text-caption text-muted-foreground" style={{ whiteSpace: "nowrap" }}>
+                last time {ex.last[lastIdx].r}×{fmtWeight(ex.last[lastIdx].w, unit)}{unit}
+              </p>
+            )}
+          </div>
           <div className="stepper-pair grid grid-cols-2 gap-2.5 mb-3">
             {(
               [

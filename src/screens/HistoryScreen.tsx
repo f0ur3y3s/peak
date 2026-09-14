@@ -10,6 +10,10 @@ import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 
 export function HistoryScreen() {
   const { unit } = useWeightUnit();
+  // The log is what this tab is for. The analytics panel — exercise picker,
+  // five range chips, a metric toggle, three tiles and a chart — used to come
+  // first, putting the actual workout list about 660px down the screen.
+  const [view, setView] = useState<"log" | "progress">("log");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,20 +41,54 @@ export function HistoryScreen() {
         </p>
       )}
 
+      <div className="px-5 pt-3.5">
+        <div
+          className="flex"
+          style={{
+            background: "hsl(var(--surface-sunken))",
+            border: "1px solid hsl(var(--border))",
+            borderRadius: 10,
+            padding: 3,
+          }}
+          role="tablist"
+          aria-label="History view"
+        >
+          {(
+            [
+              ["log", "Log"],
+              ["progress", "Progress"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={view === id}
+              onClick={() => setView(id)}
+              className="flex-1 text-subtext"
+              style={{
+                background: view === id ? "hsl(var(--primary))" : "transparent",
+                color: view === id ? "hsl(var(--primary-foreground))" : "hsl(var(--muted-foreground))",
+                fontWeight: view === id ? 600 : 500,
+                border: "none",
+                borderRadius: 7,
+                padding: "10px 0",
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Analytics panel — no outer horizontal padding here; HistoryAnalytics
           has its own internal padding, matching ExerciseHistoryScreen. */}
-      <HistoryAnalytics />
+      {view === "progress" && <HistoryAnalytics />}
 
-      <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
-
-        {/* Divider */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
-          <span className="font-mono text-label uppercase tracking-widest text-muted-foreground">
-            Workouts
-          </span>
-          <div style={{ flex: 1, height: 1, background: "hsl(var(--border))" }} />
-        </div>
+      <div
+        className="px-5 pt-4 pb-24 flex flex-col gap-2.5"
+        style={{ display: view === "log" ? undefined : "none" }}
+      >
 
         {/* Workout list */}
         {sessions.map((session) => {

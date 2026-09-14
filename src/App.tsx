@@ -2,13 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { NavBar, type Screen } from "@/components/NavBar";
-import { TemplatesScreen } from "@/screens/TemplatesScreen";
+import { PlanScreen } from "@/screens/PlanScreen";
 import { TemplateDetail } from "@/screens/TemplateDetail";
 import { ActiveWorkout } from "@/screens/ActiveWorkout";
 import { HistoryScreen } from "@/screens/HistoryScreen";
 import { AuthScreen } from "@/screens/AuthScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
-import { ExercisesScreen } from "@/screens/ExercisesScreen";
 import { ExerciseHistoryScreen } from "@/screens/ExerciseHistoryScreen";
 import { WorkoutHomeScreen } from "@/screens/WorkoutHomeScreen";
 import { WeightUnitProvider } from "@/lib/weightUnit";
@@ -33,18 +32,17 @@ const LAST_USER_KEY = "peak-last-user";
 const LOCAL_PREVIEW = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PREVIEW === "1";
 
 type AppScreen =
-  | "templates"
+  | "plan"
   | "template"
   | "workout"
   | "workout-home"
   | "history"
   | "profile"
-  | "exercises"
   | "exercise-history";
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [screen, setScreen] = useState<AppScreen>("templates");
+  const [screen, setScreen] = useState<AppScreen>("plan");
   const [nav, setNav] = useState<Screen>("workout");
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [viewingExerciseName, setViewingExerciseName] = useState<string | null>(null);
@@ -167,12 +165,10 @@ export default function App() {
     setNav(tab);
     if (tab === "history") {
       setScreen("history");
-    } else if (tab === "templates") {
-      setScreen("templates");
+    } else if (tab === "plan") {
+      setScreen("plan");
     } else if (tab === "profile") {
       setScreen("profile");
-    } else if (tab === "exercises") {
-      setScreen("exercises");
     } else {
       const draft = await getActiveWorkoutDraft();
       setHasActiveDraft(!!draft);
@@ -193,8 +189,8 @@ export default function App() {
       style={{ maxWidth: 430, margin: "0 auto" }}
     >
       <div className="scroll-area" key={dataVersion}>
-        {screen === "templates" && (
-          <TemplatesScreen
+        {screen === "plan" && (
+          <PlanScreen
             onSelectTemplate={(id) => {
               setActiveTemplateId(id);
               setScreen("template");
@@ -202,6 +198,11 @@ export default function App() {
             onCreateTemplate={(id) => {
               setActiveTemplateId(id);
               setScreen("template");
+            }}
+            onStartTemplate={(id) => {
+              setActiveTemplateId(id);
+              setScreen("workout");
+              setNav("workout");
             }}
           />
         )}
@@ -213,7 +214,7 @@ export default function App() {
               setScreen("workout");
               setNav("workout");
             }}
-            onBack={() => handleNav("templates")}
+            onBack={() => handleNav("plan")}
             onViewExerciseHistory={(name, templateName) => {
               setViewingExerciseName(name);
               setViewingTemplateName(templateName);
@@ -231,7 +232,7 @@ export default function App() {
               // leaving it lit for a draft that was never actually saved.
               getActiveWorkoutDraft().then((draft) => setHasActiveDraft(!!draft));
               setScreen("template");
-              setNav("templates");
+              setNav("plan");
             }}
             onFinish={() => {
               setHasActiveDraft(false);
@@ -241,17 +242,22 @@ export default function App() {
             onDiscard={() => {
               setHasActiveDraft(false);
               setScreen("template");
-              setNav("templates");
+              setNav("plan");
             }}
-            onBackToTemplates={() => handleNav("templates")}
+            onBackToTemplates={() => handleNav("plan")}
           />
         )}
         {screen === "workout-home" && (
           <WorkoutHomeScreen
-            onBrowseTemplates={() => handleNav("templates")}
+            onBrowseTemplates={() => handleNav("plan")}
             onSelectTemplate={(id) => {
               setActiveTemplateId(id);
               setScreen("template");
+            }}
+            onStartTemplate={(id) => {
+              setActiveTemplateId(id);
+              setScreen("workout");
+              setNav("workout");
             }}
           />
         )}
@@ -271,13 +277,12 @@ export default function App() {
             }}
           />
         )}
-        {screen === "exercises" && <ExercisesScreen />}
         {screen === "exercise-history" && viewingExerciseName && (
           <ExerciseHistoryScreen
             exerciseName={viewingExerciseName}
             templateName={viewingTemplateName}
             onBack={() => setScreen("template")}
-            onBackToTemplates={() => handleNav("templates")}
+            onBackToTemplates={() => handleNav("plan")}
           />
         )}
       </div>

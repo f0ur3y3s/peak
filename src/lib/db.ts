@@ -563,6 +563,29 @@ export async function getLastUsedTemplateId(): Promise<string | null> {
   return sorted[0].id;
 }
 
+/**
+ * The session a split says to do next: the one after whichever was performed
+ * most recently, wrapping at the end of the list. Falls back to the first
+ * session when nothing has been performed yet.
+ *
+ * Deliberately separate from getLastUsedTemplateId, which resolves what to
+ * *resume or repeat* and falls back alphabetically.
+ */
+export async function getNextUpTemplateId(): Promise<string | null> {
+  const templates = await getTemplates();
+  if (templates.length === 0) return null;
+  // Unbounded for the same reason as getLastUsedTemplateId: a limited window
+  // could miss the real most-recent session for a rarely-run template.
+  const sessions = await getWorkoutSessions();
+  for (const session of sessions) {
+    const idx = session.templateId
+      ? templates.findIndex((t) => t.id === session.templateId)
+      : templates.findIndex((t) => t.name === session.templateName);
+    if (idx !== -1) return templates[(idx + 1) % templates.length].id;
+  }
+  return templates[0].id;
+}
+
 export async function getActiveWorkoutDraft(): Promise<ActiveWorkoutDraft | undefined> {
   const db = await getDB();
   return db.get("active_workout_draft", "current");
