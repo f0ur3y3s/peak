@@ -13,7 +13,24 @@ import { extendTailwindMerge } from "tailwind-merge";
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
-      "font-size": [{ text: ["label", "caption", "subtext", "body", "field", "title", "stat"] }],
+      // Must list EVERY fontSize key in tailwind.config.js. An omitted one is
+      // silently treated as a color again — utils.test.ts reads the config and
+      // fails if these two lists ever drift apart.
+      "font-size": [
+        {
+          text: [
+            "label",
+            "caption",
+            "subtext",
+            "body",
+            "field",
+            "title",
+            "stat",
+            "wordmark",
+            "countdown",
+          ],
+        },
+      ],
     },
   },
 });

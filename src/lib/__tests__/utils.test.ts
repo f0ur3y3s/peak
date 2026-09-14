@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cn, fmtRelativeDate } from "@/lib/utils";
 
@@ -202,18 +204,35 @@ describe("cn", () => {
       expect(result).toContain("text-body");
     });
 
-    it("KNOWN GAP: text-wordmark and text-countdown are NOT declared, so they still evict a color", () => {
-      // BUG (reported, source intentionally left unmodified): tailwind.config.js
-      // defines nine custom fontSize keys, but the extendTailwindMerge call in
-      // src/lib/utils.ts lists only seven. `wordmark` and `countdown` are
-      // missing, so they are still mis-classified as colors and strip the color
-      // class beside them — exactly the defect the other seven were fixed for.
-      // Latent today only because neither current call site (AuthScreen's
-      // wordmark, TimerSheet's countdown) pairs them with a text color.
-      // This asserts CURRENT behaviour so the suite stays green; flip these to
-      // the `toContain` form once utils.ts lists all nine keys.
-      expect(cn("text-primary-foreground", "text-wordmark")).toBe("text-wordmark");
-      expect(cn("text-primary-foreground", "text-countdown")).toBe("text-countdown");
+    it("keeps a color beside every custom size, wordmark and countdown included", () => {
+      // These two were left out when the other seven were declared, so they
+      // went on being mis-classified as colors — the same defect that made a
+      // lime button's label invisible, latent only because neither call site
+      // happened to pair them with a text color.
+      expect(cn("text-primary-foreground", "text-wordmark")).toContain("text-primary-foreground");
+      expect(cn("text-primary-foreground", "text-countdown")).toContain("text-primary-foreground");
+    });
+
+    it("declares every fontSize key in tailwind.config.js", () => {
+      // Read the config rather than a hand-copied list: the original bug was
+      // exactly a hand-copied list drifting from the source of truth.
+      const config = readFileSync(
+        fileURLToPath(new URL("../../../tailwind.config.js", import.meta.url)),
+        "utf8"
+      );
+      const block = config.slice(config.indexOf("fontSize:"));
+      const keys = [
+        ...block.slice(0, block.indexOf("\n      }")).matchAll(/^\s{8}([A-Za-z][\w-]*):/gm),
+      ].map((m) => m[1]);
+      expect(keys.length).toBeGreaterThanOrEqual(9);
+
+      for (const key of keys) {
+        expect(
+          cn("text-primary-foreground", `text-${key}`),
+          `text-${key} is a fontSize key in tailwind.config.js but is not declared in cn()'s ` +
+            "font-size group, so tailwind-merge treats it as a color and strips the real one"
+        ).toContain("text-primary-foreground");
+      }
     });
   });
 });
