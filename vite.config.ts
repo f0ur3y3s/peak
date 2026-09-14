@@ -14,6 +14,30 @@ export default defineConfig({
       // launch after install, not just after happening to load online once.
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2,ttf}"],
+        // The type faces come from Google Fonts, which precaching cannot
+        // reach — so an installed app opened offline for the first time fell
+        // back to system fonts and lost the mono numerals the whole logging
+        // UI is aligned on. Cached on first successful load instead, which is
+        // as good as precaching from the second launch onwards.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+            handler: "StaleWhileRevalidate",
+            options: { cacheName: "google-fonts-css" },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-files",
+              // Font files are immutable and served from hashed URLs; a year
+              // is Google's own recommended max-age for them.
+              expiration: { maxEntries: 24, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              // Opaque cross-origin responses report status 0.
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
       manifest: {
         name: "Peak",
