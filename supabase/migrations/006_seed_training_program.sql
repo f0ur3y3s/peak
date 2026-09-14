@@ -13,6 +13,10 @@
 -- ("on conflict do nothing"): it will not overwrite loads, rep ranges or
 -- reordering you have since changed in the app.
 --
+-- Rows are stamped now() rather than a fixed date on purpose: the client
+-- pulls only rows newer than its last-synced watermark, so a backdated stamp
+-- would never reach a device that has already synced.
+--
 -- Note: templates.id and exercise_library.id are global primary keys, so
 -- these fixed ids can only be seeded for ONE account. Seeding a second
 -- account needs a different id prefix.
@@ -20,7 +24,7 @@
 do $$
 declare
   target_user uuid;
-  seeded_at constant timestamptz := '2026-09-14T00:00:00.000Z';
+  seeded_at constant timestamptz := now();
 begin
   select id into target_user from auth.users where email = 'you@example.com';
   if target_user is null then

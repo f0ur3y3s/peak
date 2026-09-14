@@ -1,11 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { type Exercise } from "@/lib/data";
-import {
-  PROGRAM_SEED_STAMP,
-  PROGRAM_SEED_VERSION,
-  PROGRAM_SEED_WEIGHT,
-  SEED_PROGRAM,
-} from "@/lib/seedProgram";
+import { PROGRAM_SEED_VERSION, PROGRAM_SEED_WEIGHT, SEED_PROGRAM } from "@/lib/seedProgram";
 
 export interface WorkoutSession {
   id: string;
@@ -251,6 +246,14 @@ const PROGRAM_SEED_KEY = `seed:${PROGRAM_SEED_VERSION}` as const;
 async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
   if (await db.get("sync_meta", PROGRAM_SEED_KEY)) return;
 
+  // Stamped with the current time, not a fixed release date, because the sync
+  // engine only pushes records whose updatedAt is newer than this device's
+  // last-synced watermark — a backdated stamp would leave the whole program
+  // sitting in local IndexedDB, never reaching the account. The cost is that a
+  // device seeding for the first time can re-push a seeded template that was
+  // deleted on another device; deleting it again settles it for good.
+  const seededAt = Date.now();
+
   const tx = db.transaction(["exercise_library", "templates", "sync_meta"], "readwrite");
   const libraryStore = tx.objectStore("exercise_library");
   const templateStore = tx.objectStore("templates");
@@ -267,7 +270,7 @@ async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
         id: ex.id,
         name: ex.name,
         muscle: ex.muscle,
-        updatedAt: PROGRAM_SEED_STAMP,
+        updatedAt: seededAt,
       });
     }
 
@@ -285,7 +288,7 @@ async function ensureProgramSeed(db: IDBPDatabase<PeakDB>): Promise<void> {
         restSeconds: ex.restSeconds,
       })),
       order: nextOrder++,
-      updatedAt: PROGRAM_SEED_STAMP,
+      updatedAt: seededAt,
     });
   }
 

@@ -29,11 +29,6 @@ export interface SeedProgramTemplate {
 /** Bumping this re-seeds every device once (the applied marker is keyed by it). */
 export const PROGRAM_SEED_VERSION = "recomp-ppl-v1";
 
-// Seeded records are stamped with the program's release date rather than
-// Date.now() so that a genuine later edit or delete — made on another device
-// and pulled down afterwards — always wins over the seed's own copy.
-export const PROGRAM_SEED_STAMP = Date.parse("2026-09-14T00:00:00.000Z");
-
 // The plan prescribes sets, rep ranges and rest, but no loads — those are
 // personal and get set on the first session, so every exercise seeds at 0kg.
 export const PROGRAM_SEED_WEIGHT = 0;
