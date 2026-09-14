@@ -17,6 +17,7 @@ import {
   deleteTemplateRaw,
   deleteLibraryExerciseRaw,
   deleteActiveWorkoutDraftRaw,
+  deleteWorkoutSessionRaw,
   getTemplate,
   getLibraryExercise,
   getWorkoutSession,
@@ -169,6 +170,12 @@ async function pushChanges(userId: string, since: number): Promise<void> {
   }
 }
 
+/** PostgREST's two ways of saying the column is not there: 42703 from
+ *  Postgres itself, PGRST204 from the schema cache. */
+function isMissingColumn(error: { code?: string; message?: string }): boolean {
+  return error.code === "42703" || error.code === "PGRST204";
+}
+
 async function pushTombstones(userId: string): Promise<void> {
   const tombstones = await getSyncTombstones();
   for (const t of tombstones) {
@@ -189,6 +196,23 @@ async function pushTombstones(userId: string): Promise<void> {
         .eq("user_id", userId)
         .lt("updated_at", deletedAtIso);
       if (error) throw error;
+    } else if (t.store === "workout_sessions") {
+      const { error } = await supabase
+        .from("workout_sessions")
+        .update({ deleted_at: deletedAtIso, updated_at: deletedAtIso })
+        .eq("id", t.id)
+        .eq("user_id", userId)
+        .lt("updated_at", deletedAtIso);
+      // workout_sessions gained deleted_at later than the other tables (see
+      // migration 009), so a project that has not run it yet rejects this
+      // write. Leaving the tombstone in place rather than throwing means the
+      // local delete still stands, the rest of the pass still runs, and the
+      // deletion propagates by itself once the migration lands — instead of
+      // one un-migrated project breaking sync outright.
+      if (error) {
+        if (isMissingColumn(error)) continue;
+        throw error;
+      }
     } else if (t.store === "exercise_library") {
       const { error } = await supabase
         .from("exercise_library")
@@ -307,6 +331,10 @@ async function pullChanges(
     observe(row.updated_at);
     const existing = await getWorkoutSession(row.id);
     if (existing && existing.updatedAt >= updatedAt) continue;
+    if (row.deleted_at) {
+      await deleteWorkoutSessionRaw(row.id);
+      continue;
+    }
     const local: WorkoutSession = {
       id: row.id,
       templateId: row.template_id ?? undefined,

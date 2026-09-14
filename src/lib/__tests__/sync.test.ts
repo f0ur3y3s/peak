@@ -13,6 +13,9 @@ import { syncNow, mergeDrafts } from "@/lib/sync";
 import {
   clearLocalData,
   deleteTemplate,
+  deleteWorkoutSession,
+  getSyncTombstones,
+  saveWorkoutSession,
   getActiveWorkoutDraft,
   getPushedAt,
   getSyncedAt,
@@ -280,6 +283,76 @@ describe("tombstones", () => {
     // draft standing, so the very next pull restored the orphan.
     await syncNow();
     expect(fakeState.tables.active_workout_draft[0]?.deleted_at).toBeTruthy();
+  });
+});
+
+describe("deleting a finished workout", () => {
+  it("soft-deletes the remote row", async () => {
+    await saveWorkoutSession({
+      id: "w1",
+      templateName: "Push A",
+      startedAt: 1_000,
+      finishedAt: 2_000,
+      exercises: [],
+      prs: [],
+    });
+    await syncNow();
+    await deleteWorkoutSession("w1");
+
+    await syncNow();
+
+    expect(fakeState.tables.workout_sessions[0].deleted_at).toBeTruthy();
+    expect(await getSyncTombstones()).toHaveLength(0);
+  });
+
+  it("applies a delete made on another device", async () => {
+    remoteSession("w1", Date.now() - 10_000);
+    await syncNow();
+    expect(await getWorkoutSession("w1")).toBeDefined();
+
+    fakeState.tables.workout_sessions[0].deleted_at = iso(Date.now());
+    fakeState.tables.workout_sessions[0].updated_at = iso(Date.now());
+
+    await syncNow();
+
+    expect(await getWorkoutSession("w1")).toBeUndefined();
+  });
+
+  it("keeps the tombstone pending — and the rest of sync working — before migration 009", async () => {
+    // workout_sessions gained deleted_at later than the other tables. A
+    // project that has not run the migration rejects the write; throwing
+    // there would take the whole pass down, including everything that has
+    // nothing to do with this delete.
+    await saveWorkoutSession({
+      id: "w1",
+      templateName: "Push A",
+      startedAt: 1_000,
+      finishedAt: 2_000,
+      exercises: [],
+      prs: [],
+    });
+    await syncNow();
+    await deleteWorkoutSession("w1");
+    fakeState.rejectUpdate = {
+      table: "workout_sessions",
+      error: { code: "42703", message: 'column "deleted_at" does not exist' },
+    };
+    // A real millisecond, so this edit lands strictly after the previous
+    // pass's push watermark rather than inside the same tick as it.
+    await new Promise((r) => setTimeout(r, 2));
+    await saveTemplate({ id: "t1", name: "Pull A", exercises: [], order: 0 });
+
+    expect(await syncNow()).toEqual({ ok: true });
+
+    // The unrelated template still went up, and the delete is still queued.
+    expect(fakeState.tables.templates.map((r) => r.id)).toContain("t1");
+    expect(await getSyncTombstones()).toHaveLength(1);
+
+    // Once the migration lands it propagates by itself.
+    fakeState.rejectUpdate = null;
+    await syncNow();
+    expect(fakeState.tables.workout_sessions[0].deleted_at).toBeTruthy();
+    expect(await getSyncTombstones()).toHaveLength(0);
   });
 });
 

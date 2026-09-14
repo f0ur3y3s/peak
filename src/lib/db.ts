@@ -62,7 +62,7 @@ export interface ActiveWorkoutDraft {
  * propagate the deletion as a soft-delete remotely, then cleared. */
 export interface SyncTombstone {
   key: string; // `${store}:${id}`
-  store: "templates" | "exercise_library" | "active_workout_draft";
+  store: "templates" | "exercise_library" | "active_workout_draft" | "workout_sessions";
   id: string;
   deletedAt: number;
 }
@@ -675,6 +675,50 @@ export async function clearActiveWorkoutDraft(): Promise<void> {
 export async function saveWorkoutSession(session: Omit<WorkoutSession, "updatedAt">): Promise<void> {
   const db = await getDB();
   await db.put("workout_sessions", { ...session, updatedAt: Date.now() });
+  await clearTombstoneFor("workout_sessions", session.id);
+}
+
+/**
+ * A finished workout was previously permanent: no delete, no edit. Tap Log
+ * twice, or type 120 where you meant 20, and it sat in the history and in
+ * every chart forever.
+ */
+export async function deleteWorkoutSession(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete("workout_sessions", id);
+  await tombstone("workout_sessions", id);
+}
+
+/**
+ * Recomputes which exercises in `session` were all-time bests, for a session
+ * whose sets have been edited.
+ *
+ * Matches what Finish records: a PR is the heaviest single set of an exercise
+ * beating every session before this one. Sessions after it are excluded on
+ * purpose — the flag means "this was a best when you did it", and a later,
+ * heavier session does not retroactively unmake that.
+ */
+export function recomputeSessionPRs(
+  session: WorkoutSession,
+  allSessions: WorkoutSession[]
+): string[] {
+  const prs: string[] = [];
+  for (const ex of session.exercises) {
+    if (ex.sets.length === 0) continue;
+    const best = Math.max(...ex.sets.map((s) => s.weight));
+    let previousBest = 0;
+    for (const other of allSessions) {
+      if (other.id === session.id || other.startedAt >= session.startedAt) continue;
+      for (const otherEx of other.exercises) {
+        if (otherEx.name !== ex.name) continue;
+        for (const set of otherEx.sets) {
+          if (set.weight > previousBest) previousBest = set.weight;
+        }
+      }
+    }
+    if (best > previousBest) prs.push(ex.name);
+  }
+  return prs;
 }
 
 export async function getWorkoutSessions(limit?: number): Promise<WorkoutSession[]> {
@@ -844,6 +888,11 @@ export async function putWorkoutSessionRaw(session: WorkoutSession): Promise<voi
 export async function putActiveWorkoutDraftRaw(draft: ActiveWorkoutDraft): Promise<void> {
   const db = await getDB();
   await db.put("active_workout_draft", draft);
+}
+
+export async function deleteWorkoutSessionRaw(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete("workout_sessions", id);
 }
 
 export async function deleteTemplateRaw(id: string): Promise<void> {

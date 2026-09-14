@@ -32,6 +32,9 @@ interface FakeState {
   /** Runs before a read resolves, so a test can simulate a local write
    *  landing while a sync pass is still in flight. */
   beforeSelect: ((table: string) => void | Promise<void>) | null;
+  /** Makes `update` on one table fail, standing in for a column the
+   *  project's schema does not have yet. */
+  rejectUpdate: { table: string; error: { code?: string; message?: string } } | null;
 }
 
 export const TABLES = ["templates", "exercise_library", "workout_sessions", "active_workout_draft"];
@@ -42,6 +45,7 @@ export const fakeState: FakeState = {
   tables: {},
   selectCalls: [],
   beforeSelect: null,
+  rejectUpdate: null,
 };
 
 export function resetFakeSupabase(): void {
@@ -50,6 +54,7 @@ export function resetFakeSupabase(): void {
   fakeState.tables = Object.fromEntries(TABLES.map((t) => [t, [] as Row[]]));
   fakeState.selectCalls = [];
   fakeState.beforeSelect = null;
+  fakeState.rejectUpdate = null;
 }
 
 resetFakeSupabase();
@@ -129,6 +134,9 @@ class Builder implements PromiseLike<{ data: any; error: any }> {
     const hits = rows.filter((r) => matches(r, this.filters));
 
     if (this.mode === "update") {
+      if (fakeState.rejectUpdate?.table === this.table) {
+        return { data: null, error: fakeState.rejectUpdate.error };
+      }
       for (const r of hits) Object.assign(r, this.patch);
       return { data: null, error: null };
     }
