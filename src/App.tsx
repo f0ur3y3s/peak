@@ -14,6 +14,7 @@ import { WeightUnitProvider } from "@/lib/weightUnit";
 import { getActiveWorkoutDraft, applyProgramSeed, clearLocalData } from "@/lib/db";
 import { syncNow } from "@/lib/sync";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -189,102 +190,107 @@ export default function App() {
       style={{ maxWidth: 430, margin: "0 auto" }}
     >
       <div className="scroll-area" key={dataVersion}>
-        {screen === "plan" && (
-          <PlanScreen
-            onSelectTemplate={(id) => {
-              setActiveTemplateId(id);
-              setScreen("template");
-            }}
-            onCreateTemplate={(id) => {
-              setActiveTemplateId(id);
-              setScreen("template");
-            }}
-            onStartTemplate={(id) => {
-              setActiveTemplateId(id);
-              setScreen("workout");
-              setNav("workout");
-            }}
-          />
-        )}
-        {screen === "template" && activeTemplateId && (
-          <TemplateDetail
-            templateId={activeTemplateId}
-            onStart={() => {
-              setHasActiveDraft(true);
-              setScreen("workout");
-              setNav("workout");
-            }}
-            onBack={() => handleNav("plan")}
-            onViewExerciseHistory={(name, templateName) => {
-              setViewingExerciseName(name);
-              setViewingTemplateName(templateName);
-              setScreen("exercise-history");
-            }}
-          />
-        )}
-        {screen === "workout" && activeTemplateId && (
-          <ActiveWorkout
-            templateId={activeTemplateId}
-            onBack={() => {
-              // Re-check rather than assume: a real draft is only persisted
-              // once a set is logged (see ActiveWorkout's handleLog), so
-              // backing out beforehand must clear the indicator instead of
-              // leaving it lit for a draft that was never actually saved.
-              getActiveWorkoutDraft().then((draft) => setHasActiveDraft(!!draft));
-              setScreen("template");
-              setNav("plan");
-            }}
-            onFinish={() => {
-              setHasActiveDraft(false);
-              setScreen("history");
-              setNav("history");
-            }}
-            onDiscard={() => {
-              setHasActiveDraft(false);
-              setScreen("template");
-              setNav("plan");
-            }}
-            onBackToTemplates={() => handleNav("plan")}
-          />
-        )}
-        {screen === "workout-home" && (
-          <WorkoutHomeScreen
-            onBrowseTemplates={() => handleNav("plan")}
-            onSelectTemplate={(id) => {
-              setActiveTemplateId(id);
-              setScreen("template");
-            }}
-            onStartTemplate={(id) => {
-              setActiveTemplateId(id);
-              setScreen("workout");
-              setNav("workout");
-            }}
-          />
-        )}
-        {screen === "history" && <HistoryScreen />}
-        {screen === "profile" && (
-          <ProfileScreen
-            email={session?.user.email ?? (LOCAL_PREVIEW ? "local-preview" : null)}
-            onSignOut={async () => {
-              // Flush anything still pending while this account's session is
-              // alive — afterwards these rows cannot be attributed to it.
-              // The local wipe happens on the next sign-in, and only if a
-              // different user signs in, so signing back in keeps your data.
-              if (navigator.onLine) {
-                await syncNow().catch(() => undefined);
-              }
-              await supabase.auth.signOut();
-            }}
-          />
-        )}
-        {screen === "exercise-history" && viewingExerciseName && (
-          <ExerciseHistoryScreen
-            exerciseName={viewingExerciseName}
-            templateName={viewingTemplateName}
-            onBack={() => setScreen("template")}
-            onBackToTemplates={() => handleNav("plan")}
-          />
-        )}
+        {/* Keyed by the current screen so navigating to another tab clears a
+            caught error, and inside the chrome so the nav bar below survives
+            it — a crash on one screen must not strand you there. */}
+        <ErrorBoundary resetKey={screen} title="This screen hit a problem">
+          {screen === "plan" && (
+            <PlanScreen
+              onSelectTemplate={(id) => {
+                setActiveTemplateId(id);
+                setScreen("template");
+              }}
+              onCreateTemplate={(id) => {
+                setActiveTemplateId(id);
+                setScreen("template");
+              }}
+              onStartTemplate={(id) => {
+                setActiveTemplateId(id);
+                setScreen("workout");
+                setNav("workout");
+              }}
+            />
+          )}
+          {screen === "template" && activeTemplateId && (
+            <TemplateDetail
+              templateId={activeTemplateId}
+              onStart={() => {
+                setHasActiveDraft(true);
+                setScreen("workout");
+                setNav("workout");
+              }}
+              onBack={() => handleNav("plan")}
+              onViewExerciseHistory={(name, templateName) => {
+                setViewingExerciseName(name);
+                setViewingTemplateName(templateName);
+                setScreen("exercise-history");
+              }}
+            />
+          )}
+          {screen === "workout" && activeTemplateId && (
+            <ActiveWorkout
+              templateId={activeTemplateId}
+              onBack={() => {
+                // Re-check rather than assume: a real draft is only persisted
+                // once a set is logged (see ActiveWorkout's handleLog), so
+                // backing out beforehand must clear the indicator instead of
+                // leaving it lit for a draft that was never actually saved.
+                getActiveWorkoutDraft().then((draft) => setHasActiveDraft(!!draft));
+                setScreen("template");
+                setNav("plan");
+              }}
+              onFinish={() => {
+                setHasActiveDraft(false);
+                setScreen("history");
+                setNav("history");
+              }}
+              onDiscard={() => {
+                setHasActiveDraft(false);
+                setScreen("template");
+                setNav("plan");
+              }}
+              onBackToTemplates={() => handleNav("plan")}
+            />
+          )}
+          {screen === "workout-home" && (
+            <WorkoutHomeScreen
+              onBrowseTemplates={() => handleNav("plan")}
+              onSelectTemplate={(id) => {
+                setActiveTemplateId(id);
+                setScreen("template");
+              }}
+              onStartTemplate={(id) => {
+                setActiveTemplateId(id);
+                setScreen("workout");
+                setNav("workout");
+              }}
+            />
+          )}
+          {screen === "history" && <HistoryScreen />}
+          {screen === "profile" && (
+            <ProfileScreen
+              email={session?.user.email ?? (LOCAL_PREVIEW ? "local-preview" : null)}
+              onSignOut={async () => {
+                // Flush anything still pending while this account's session is
+                // alive — afterwards these rows cannot be attributed to it.
+                // The local wipe happens on the next sign-in, and only if a
+                // different user signs in, so signing back in keeps your data.
+                if (navigator.onLine) {
+                  await syncNow().catch(() => undefined);
+                }
+                await supabase.auth.signOut();
+              }}
+            />
+          )}
+          {screen === "exercise-history" && viewingExerciseName && (
+            <ExerciseHistoryScreen
+              exerciseName={viewingExerciseName}
+              templateName={viewingTemplateName}
+              onBack={() => setScreen("template")}
+              onBackToTemplates={() => handleNav("plan")}
+            />
+          )}
+        </ErrorBoundary>
       </div>
       <NavBar active={nav} onNav={handleNav} hasActiveDraft={hasActiveDraft} />
     </div>
