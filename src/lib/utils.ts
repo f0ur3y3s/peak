@@ -1,5 +1,22 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// tailwind-merge only knows Tailwind's stock scale, and its fallback for an
+// unrecognized `text-<something>` is to treat it as a COLOR. This app's type
+// scale (tailwind.config.js) is entirely custom — text-title, text-body,
+// text-label… — so every one of them looked like a color and silently evicted
+// the real text color beside it: <Button className="text-title"> lost the
+// variant's `text-primary-foreground` and fell back to inheriting
+// --foreground, which on the lime primary is near-white on near-white (1:1).
+// That is how the Log Set button — the control you press on every single set —
+// ended up unreadable. Declaring the scale keeps size and color independent.
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [{ text: ["label", "caption", "subtext", "body", "field", "title", "stat"] }],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
