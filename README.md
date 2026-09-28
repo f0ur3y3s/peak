@@ -20,6 +20,9 @@ VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 ```
 
+To run the backend on your own hardware instead of Supabase's hosted service,
+see [`docs/self-hosting.md`](docs/self-hosting.md).
+
 ---
 
 ## Tech overview

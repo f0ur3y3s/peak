@@ -1,0 +1,90 @@
+# Peak's overlay on the official self-hosted Supabase stack.
+#
+# Copy into the Supabase project directory (the one `setup.sh` created) and
+# enable it with:
+#   sh run.sh config add peak
+#   sh run.sh start
+#
+# What it changes, and why — see docs/self-hosting.md for the full runbook:
+#   - drops Realtime, Storage and imgproxy, which Peak never calls
+#   - keeps Postgres, the pooler and Studio off the public network
+#   - hands Peak's Edge Function secrets to the functions container
+#   - adds Caddy, serving the built app and only the three API prefixes Peak
+#     uses, and optionally a Cloudflare Tunnel in front of it
+#
+# Needs Docker Compose 2.24.4+ for `!override` (the upstream stack already
+# relies on it).
+
+services:
+  # Unused by Peak. A profile nobody enables keeps them out of `up` without
+  # editing the upstream file, so `update.sh` stays conflict-free.
+  realtime:
+    profiles: ["disabled"]
+  storage:
+    profiles: ["disabled"]
+  imgproxy:
+    profiles: ["disabled"]
+
+  # Studio is served through the gateway's `/` route. Publishing the gateway
+  # on loopback (or a LAN address) only keeps Studio reachable over SSH or the
+  # LAN while Caddy is the only public entry point.
+  api-gw:
+    ports: !override
+      - ${STUDIO_BIND_ADDRESS:-127.0.0.1}:${API_GW_HTTP_PORT:-8000}:8000/tcp
+
+  supavisor:
+    ports: !override
+      - 127.0.0.1:${POSTGRES_PORT}:5432
+      - 127.0.0.1:${POOLER_PROXY_PORT_TRANSACTION}:6543
+
+  # The main router passes its whole environment to every function, so these
+  # reach supabase/functions/* exactly as `supabase secrets set` did on the
+  # hosted project.
+  functions:
+    environment:
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      NOTIFY_TRIGGER_SECRET: ${NOTIFY_TRIGGER_SECRET}
+      REST_PUSH_SECRET: ${REST_PUSH_SECRET}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
+
+  caddy:
+    container_name: peak-caddy
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    depends_on:
+      api-gw:
+        condition: service_healthy
+    environment:
+      PEAK_APP_SITE: ${PEAK_APP_SITE}
+      PEAK_API_SITE: ${PEAK_API_SITE}
+    volumes:
+      - ./volumes/peak/Caddyfile:/etc/caddy/Caddyfile:ro,z
+      # The parent, not dist/ itself: deploy.sh swaps dist/ by rename, and a
+      # bind mount of dist/ would keep serving the old directory.
+      - ./volumes/peak:/srv/peak:ro,z
+      - peak_caddy_data:/data
+      - peak_caddy_config:/config
+
+  # Optional: `docker compose --profile tunnel up -d` (or add `tunnel` to
+  # COMPOSE_PROFILES in .env). Route both public hostnames to http://caddy:80
+  # in the Cloudflare dashboard, and use http:// site addresses in .env.
+  cloudflared:
+    container_name: peak-cloudflared
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - caddy
+
+volumes:
+  peak_caddy_data:
+  peak_caddy_config:

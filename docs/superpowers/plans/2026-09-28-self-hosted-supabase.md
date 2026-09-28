@@ -1,5 +1,7 @@
 # Self-Hosted Supabase on the Homelab — Implementation Plan
 
+> **Status (2026-09-28):** Tasks 1–2 done (repo side). Tasks 3–9 are the operator runbook, condensed in `docs/self-hosting.md`.
+
 > **For agentic workers:** Steps use checkbox (`- [ ]`) syntax for tracking. Tasks 1–2 are repo changes; Tasks 3–9 are operations on the homelab host and are done by hand (or by an agent with shell access to that host).
 
 **Goal:** Move Peak's backend off Supabase's free tier — which pauses the project after a week of inactivity — onto the same Supabase software running in Docker on the homelab, with **no changes to the app's code under `src/`**.
@@ -17,7 +19,7 @@ Cloudflare Tunnel  (or port-forwarded 443)
    ▼
 Caddy
  ├── peak.<domain>       → static files from `npm run build` (dist/)
- └── api.peak.<domain>   → Kong :8000
+ └── api.peak.<domain>   → api-gw :8000 (Envoy upstream; also answers as `kong`)
                             ├── /auth/v1/*       → GoTrue (auth)
                             ├── /rest/v1/*       → PostgREST
                             └── /functions/v1/*  → edge-runtime (Deno)
@@ -50,7 +52,7 @@ Resend — stays as the email provider (outbound only)
 | Vault (`vault.decrypted_secrets`) | `002`, `010` | Included in the image — secrets must be re-seeded (Task 5) |
 | **Hardcoded project URL** | `002_account_request_notify.sql:49`, `010_rest_push.sql:119` | **Must change** — Task 1 |
 | Function secrets via `supabase secrets set` | `docs/rest-push.md` step 4 | CLI command doesn't apply — secrets go in Compose env (Task 4) |
-| Functions authenticated by a custom shared secret, not a JWT | `notify-account-request`, `send-rest-push` | Self-hosted edge-runtime's `VERIFY_JWT` must be `false` (Task 4) |
+| Functions authenticated by a custom shared secret, not a JWT | `notify-account-request`, `send-rest-push` | `FUNCTIONS_VERIFY_JWT` must stay `false` (the upstream default) |
 | Admin API `generate_link` | `request-signin-code` | Works against GoTrue — no change |
 | Hardcoded `ADMIN_EMAIL`, sender `noreply@peak.foursight.one` | `notify-account-request/index.ts:19`, `:105`; `FROM_EMAIL` in `request-signin-code` | No change needed; sender domain must stay verified in Resend |
 | Realtime, Storage, imgproxy | — | **Unused** — drop those containers |
@@ -62,9 +64,10 @@ Resend — stays as the email provider (outbound only)
 | File | Responsibility |
 |---|---|
 | `supabase/migrations/011_configurable_functions_url.sql` | Create — redefines `handle_account_request_notify()` and `sweep_rest_pushes()` to read the functions base URL from Vault (`functions_base_url`) instead of a hardcoded project URL |
-| `deploy/homelab/docker-compose.override.yml` | Create — trims unused services, sets `VERIFY_JWT=false`, passes function secrets |
+| `deploy/homelab/docker-compose.peak.yml` | Create — overlay enabled with `run.sh config add peak`: drops unused services, binds Postgres/Studio to loopback, passes function secrets, adds Caddy and an optional Cloudflare Tunnel |
 | `deploy/homelab/Caddyfile` | Create — static app + API reverse proxy, SPA fallback, service-worker cache headers |
-| `deploy/homelab/.env.example` | Create — every variable the self-hosted stack needs, no values |
+| `deploy/homelab/.env.peak.example` | Create — Peak's additions to the stack's `.env`, no values |
+| `deploy/homelab/deploy.sh` | Create — installs/updates overlay, Caddyfile, functions and the app build on the stack |
 | `deploy/homelab/backup.sh` | Create — nightly `pg_dump` → restic |
 | `docs/self-hosting.md` | Create — the operator runbook (Tasks 3–9 condensed) |
 | `docs/rest-push.md` | Modify — note the self-hosted equivalent of steps 3–4 |
@@ -72,50 +75,33 @@ Resend — stays as the email provider (outbound only)
 
 ---
 
-## Task 1: Make the functions URL configurable (repo)
+## Task 1: Make the functions URL configurable (repo) — done
 
-The only thing that ties the database to the hosted project is the two `net.http_post` URLs. Replace them with a Vault lookup so the same migration works in either place.
+The only thing that tied the database to the hosted project was the two `net.http_post` URLs.
 
-- [ ] Create `supabase/migrations/011_configurable_functions_url.sql` that `create or replace`s both functions with identical bodies to 002/010, except the URL:
+- [x] `supabase/migrations/011_configurable_functions_url.sql` adds `private.invoke_edge_function(function, secret_name, body, timeout)`, which reads `functions_base_url` and the bearer secret from Vault and POSTs. `handle_account_request_notify()` and `sweep_rest_pushes()` are redefined on top of it — one copy of the Vault/warn/POST logic instead of two.
+- [x] Missing Vault entries warn and skip, never block the insert — unchanged behaviour.
+- [x] Header documents the value to seed (hosted `https://<project-ref>.supabase.co/functions/v1`, self-hosted `http://kong:8000/functions/v1`).
+- [x] Also revokes EXECUTE on `sweep_rest_pushes()` / `purge_old_scheduled_pushes()` from `public`, `anon`, `authenticated`. PostgREST exposes `public` functions as `/rest/v1/rpc/…`, so the anon key could run these security definer functions on demand.
+- [x] Safe to re-run; 002 and 010 untouched; cron schedules untouched.
+- [ ] Seed `functions_base_url` in the **hosted** project when applying 011 there, so production keeps sending notifications until cutover.
 
-  ```sql
-  select decrypted_secret into v_base_url
-  from vault.decrypted_secrets
-  where name = 'functions_base_url';
+**Verified** against Postgres 16 with stub `auth`/`vault`/`net`/`cron` schemas: migrations apply (re-run too); missing URL or secret → warning, insert succeeds, no call; seeded → correct URL, bearer and payload for both callers (a trailing slash on the base URL is tolerated); `anon`/`authenticated` get permission denied on the sweep, the purge and the `private` schema; an anon insert into `account_requests` still fires the trigger.
 
-  if v_base_url is null then
-    raise warning 'functions_base_url vault secret not found; skipping …';
-    return;            -- `return new;` in the trigger function
-  end if;
+Found on the way (fresh installs only): `002` needs the table `004` creates, and `008` raises when no account exists yet. The runbook gives a working order rather than rewriting history.
 
-  -- …
-  url := v_base_url || '/send-rest-push',
-  ```
+## Task 2: Deployment files and runbook (repo) — done
 
-  Missing-secret behaviour mirrors the existing one: warn and skip, never block the insert.
-- [ ] Header comment documents the value to seed:
-  - hosted: `https://<project-ref>.supabase.co/functions/v1`
-  - self-hosted: `http://kong:8000/functions/v1` (internal Docker network — the call never leaves the host)
-- [ ] Safe to re-run (`create or replace` only; does not touch the cron schedules, which call the functions by name).
-- [ ] Leave 002 and 010 untouched — they are history; 011 supersedes the function bodies.
-- [ ] Seed `functions_base_url` in the **hosted** project before or right after applying 011 there, so current production keeps sending notifications until cutover.
+Built against the current upstream `supabase/supabase` `docker/` directory, which differs from what this plan first assumed: the gateway service is `api-gw` (Envoy by default, network aliases `kong`/`envoy`), overlays are layered through `COMPOSE_FILE` with `sh run.sh config add <name>`, `setup.sh` generates every secret, and `FUNCTIONS_VERIFY_JWT` already defaults to `false`.
 
-**Verify:** apply 011 on a local Supabase (`supabase start`), seed the secret, insert an `account_requests` row and a due `scheduled_pushes` row, and confirm `net._http_response` shows the calls hitting the configured URL.
+- [x] `deploy/homelab/docker-compose.peak.yml`: Realtime/Storage/imgproxy behind an unused profile; `api-gw` (and so Studio) on `${STUDIO_BIND_ADDRESS:-127.0.0.1}:8000`; the pooler on loopback; the six function secrets; `caddy` (mounts `volumes/peak/`, not `dist/` itself, so the deploy's rename-swap is picked up); `cloudflared` behind the `tunnel` profile.
+- [x] `deploy/homelab/Caddyfile`: app with SPA fallback, `immutable` on `/assets/*`, `no-cache` on everything else (including `index.html` served for deep links); API site proxies only `/auth/v1`, `/rest/v1`, `/functions/v1`, 404 otherwise.
+- [x] `deploy/homelab/.env.peak.example`.
+- [x] `deploy/homelab/deploy.sh`: copies overlay/Caddyfile/functions (minus `*.test.ts`), builds the app from the stack's own `SUPABASE_PUBLIC_URL`/`ANON_KEY`, swaps `dist/` atomically, registers the overlay once, restarts.
+- [x] `deploy/homelab/backup.sh`: `pg_dump -Fc` as `supabase_admin` plus Vault's root key into restic, `pipefail` so a failed dump fails the run, 7/4/6 retention.
+- [x] `docs/self-hosting.md`; linked from `README.md` and `docs/rest-push.md`.
 
-## Task 2: Deployment files and runbook (repo)
-
-- [ ] `deploy/homelab/docker-compose.override.yml`:
-  - disable `realtime`, `storage`, `imgproxy` (e.g. `profiles: ["disabled"]`); optionally `analytics` + `vector` (the heaviest containers — Studio's log views stop working without them, which is acceptable)
-  - `functions` service: `VERIFY_JWT: "false"`, plus `RESEND_API_KEY`, `NOTIFY_TRIGGER_SECRET`, `REST_PUSH_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` from `.env`
-  - bind Studio and Postgres ports to the LAN interface / `127.0.0.1` only
-- [ ] `deploy/homelab/Caddyfile`:
-  - `peak.<domain>`: `root * /srv/peak`, `try_files {path} /index.html`, `file_server`; `Cache-Control: no-cache` on `/sw.js`, `/push-sw.js`, `/index.html`, `/manifest.webmanifest` (so `src/lib/swUpdate.ts` sees new deploys); long-lived immutable caching on `/assets/*`
-  - `api.peak.<domain>`: `reverse_proxy kong:8000`, and respond 404 to anything outside `/auth/v1/*`, `/rest/v1/*`, `/functions/v1/*`
-- [ ] `deploy/homelab/.env.example`: every variable below, empty.
-- [ ] `deploy/homelab/backup.sh`: `pg_dump -Fc` of the whole database (including `auth` and `vault`) into a restic repository, with retention (`--keep-daily 7 --keep-weekly 4 --keep-monthly 6`).
-- [ ] `docs/self-hosting.md`: Tasks 3–9 as a runbook; link it from `README.md` and from `docs/rest-push.md` steps 3–4.
-
-**Verify:** `docker compose -f docker-compose.yml -f docker-compose.override.yml config` validates; `caddy validate --config Caddyfile` passes.
+**Verified:** `docker compose config` on upstream + overlay resolves (9 services, ports bound as intended, secrets and `VERIFY_JWT=false` reach `functions`, `cloudflared` only with the profile); `caddy validate` passes for both HTTPS and `http://` (tunnel) addresses, `caddy fmt` clean; Caddy serving a stand-in build returns the intended headers, SPA fallback and 404s; `deploy.sh` dry-run with stubbed `docker`/`npm` copies the right files, builds with the right env, and is idempotent. Not verified: the stack actually running — no Docker daemon in the environment this was built in.
 
 ## Task 3: Host, domain and exposure (ops)
 
@@ -128,7 +114,7 @@ The only thing that ties the database to the hosted project is the two `net.http
 
 ## Task 4: Bring up the stack (ops)
 
-- [ ] `git clone --depth 1 https://github.com/supabase/supabase` and copy `supabase/docker/*` to `/opt/peak-supabase`; copy in `deploy/homelab/docker-compose.override.yml`.
+- [ ] Run upstream `setup.sh --project-dir /opt/supabase` (installs Docker if needed, checks out the latest self-hosted release, generates secrets and keys).
 - [ ] Fill `.env`:
   - `POSTGRES_PASSWORD`, `JWT_SECRET` (≥ 32 chars), then **generate** `ANON_KEY` and `SERVICE_ROLE_KEY` signed with that `JWT_SECRET` (per Supabase's self-hosting guide) — never reuse the example keys
   - `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` (Studio)
@@ -136,15 +122,14 @@ The only thing that ties the database to the hosted project is the two `net.http
   - `DISABLE_SIGNUP=true` — matches Peak's model: accounts are created by the admin, never self-serve (`AuthScreen` requests access; `request-signin-code` only sends to existing users)
   - SMTP can point at Resend's SMTP relay, or stay unset: sign-in codes are delivered by `request-signin-code`, not GoTrue's mailer
   - Function secrets: `RESEND_API_KEY`, `NOTIFY_TRIGGER_SECRET`, `REST_PUSH_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — reuse the **existing** VAPID pair so current push subscriptions stay valid
-- [ ] Copy `supabase/functions/{request-signin-code,notify-account-request,send-rest-push}` into `volumes/functions/` (alongside the stack's own `main/` router).
-- [ ] `docker compose up -d`; confirm every container is healthy.
+- [ ] `sh deploy/homelab/deploy.sh /opt/supabase` — installs the overlay, Caddyfile and functions, builds the app, starts everything.
 - [ ] Caddy + tunnel up; `curl https://api.peak.<domain>/auth/v1/health` returns OK from outside the LAN.
 
 ## Task 5: Schema, extensions and secrets (ops)
 
 Skip the migrations here if Task 6 restores a full dump — the dump already contains the schema. Run them only for a fresh start.
 
-- [ ] Fresh start only: apply `supabase/migrations/001`–`011` in order with `psql`. For `008`, set `target_email` or leave it null.
+- [ ] Fresh start only: apply migrations in the order `001 003 004 002 005 006 007 009 010 011`, then `008` once an account exists.
 - [ ] Check pg_cron supports interval schedules: `select extversion from pg_extension where extname = 'pg_cron';` → must be ≥ 1.5.
 - [ ] Seed Vault (values must match the Compose env from Task 4):
 
@@ -167,8 +152,7 @@ Keeping `auth.users.id` unchanged is what keeps every `user_id` FK and RLS polic
 
 ## Task 7: Rebuild and deploy the client (ops)
 
-- [ ] Build with `VITE_SUPABASE_URL=https://api.peak.<domain>`, `VITE_SUPABASE_ANON_KEY=<new anon key>`, `VITE_VAPID_PUBLIC_KEY=<unchanged>`: `npm ci && npm run build`.
-- [ ] Copy `dist/` to the directory Caddy serves (`/srv/peak`).
+- [ ] `deploy.sh` (Task 4) already builds against the stack's URL and anon key and installs `dist/`; re-run it for each release.
 - [ ] Optional: keep the frontend on Vercel instead and only change its env vars — the frontend is stateless, so either works.
 
 ## Task 8: End-to-end verification (ops)
@@ -186,7 +170,7 @@ On a phone, with Peak installed to the Home Screen:
 
 - [ ] Install `backup.sh` as a nightly systemd timer or cron job; **do one test restore** into a scratch container before relying on it.
 - [ ] Uptime check (e.g. Uptime Kuma) on `/auth/v1/health` and the app URL.
-- [ ] Update policy: pin Supabase image tags; review release notes and `docker compose pull` monthly.
+- [ ] Update policy: monthly `sh update.sh --dry-run` → `sh update.sh` → `sh run.sh pull`, per upstream release notes, then `deploy.sh`.
 - [ ] Cutover: once Task 8 passes, stop using the hosted project. Keep it (paused is fine) for ~30 days as a fallback, then delete it.
 
 ---
@@ -198,6 +182,6 @@ On a phone, with Peak installed to the Home Screen:
 | Homelab outage | Peak is offline-first: logging keeps working; only sign-in, sync and locked-screen rest push stop until it's back |
 | Data loss | Nightly off-site restic backups with a tested restore (Task 9) |
 | Public exposure of admin surfaces | Caddy only proxies the three API prefixes; Studio/Postgres bound to LAN |
-| `VERIFY_JWT=false` is global | All three functions do their own authorization (shared secret, or they only act on already-approved emails); anything added later must too |
+| `FUNCTIONS_VERIFY_JWT=false` is global | All three functions do their own authorization (shared secret, or they only act on already-approved emails); anything added later must too |
 | Vault secrets lost on restore | Explicit re-seed step in Task 6 |
-| Upstream Compose changes break the override | Pin the `supabase/supabase` checkout to a release tag and re-validate the override when upgrading |
+| Upstream Compose changes break the overlay | `setup.sh` pins a release tag; `update.sh --dry-run` before upgrading, then re-validate with `run.sh compose-config` |

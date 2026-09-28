@@ -1,0 +1,44 @@
+# Peak's public entry point. Site addresses come from .env:
+#   port-forwarded 443:  PEAK_APP_SITE=peak.example.com        (automatic HTTPS)
+#   Cloudflare Tunnel:   PEAK_APP_SITE=http://peak.example.com (the tunnel terminates TLS)
+
+(common) {
+	encode zstd gzip
+	header -Server
+}
+
+# The app: the static `npm run build` output.
+{$PEAK_APP_SITE} {
+	import common
+	root * /srv/peak/dist
+
+	# Vite content-hashes these filenames, so they never change in place.
+	@hashed path /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+	# Everything else revalidates on every load (cheap, via ETag). That covers
+	# index.html, sw.js and push-sw.js — including index.html served for a
+	# deep link by the fallback below — without which src/lib/swUpdate.ts
+	# never sees a new deploy.
+	@unhashed not path /assets/*
+	header @unhashed Cache-Control "no-cache"
+
+	try_files {path} /index.html
+	file_server
+}
+
+# The API: only what the client and pg_net actually call. Studio and every
+# other gateway route stay reachable from the LAN/SSH only (see the api-gw
+# port binding in docker-compose.peak.yml).
+{$PEAK_API_SITE} {
+	import common
+
+	@peak_api path /auth/v1/* /rest/v1/* /functions/v1/*
+	handle @peak_api {
+		reverse_proxy api-gw:8000
+	}
+
+	handle {
+		respond 404
+	}
+}
