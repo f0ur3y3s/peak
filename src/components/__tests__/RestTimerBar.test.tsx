@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { RestTimerBar } from "@/components/RestTimerBar";
 import { adjustRest, startRest, type TimerState } from "@/lib/data";
 
@@ -65,6 +65,49 @@ describe("RestTimerBar", () => {
     expect(screen.queryByRole("button", { name: "30 seconds more rest" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Dismiss rest timer" }));
     expect(onDismiss).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("the focus view", () => {
+  it("opens from the countdown and minimises back, sharing one deadline", async () => {
+    vi.useFakeTimers();
+    render(<Harness initial={startRest(90, "Squat", "Set 2 of 5")} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Open large timer/ }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    // Adjusting in the focus view moves the bar's countdown too.
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "30 seconds more rest" }));
+    await advance(250);
+    expect(within(dialog).getByRole("button", { name: /^2:00 rest left/ })).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /^2:00 rest left. Minimise/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: /^2:00 rest left. Open/ })).toBeTruthy();
+  });
+
+  it("closes on Escape and with the chevron", () => {
+    vi.useFakeTimers();
+    render(<Harness initial={startRest(90, "Squat", "Set 2 of 5")} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Open large timer/ }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Open large timer/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Minimise timer" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("does not fire the alert twice while open", async () => {
+    vi.useFakeTimers();
+    render(<Harness initial={startRest(1, "Row", "Set 2 of 4")} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open large timer/ }));
+
+    await advance(1_200);
+    expect(fireRestAlert).toHaveBeenCalledOnce();
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Back to workout" })).toBeTruthy();
   });
 });
 

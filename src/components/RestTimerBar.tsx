@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDown, Minus, Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/Modal";
 import { Progress } from "@/components/ui/progress";
 import { fmtTime, restRemaining, type TimerState } from "@/lib/data";
 import { fireRestAlert } from "@/lib/restAlert";
@@ -20,6 +22,10 @@ interface RestTimerBarProps {
  * chalky hands, that mostly didn't work. Nothing here is a gesture: every
  * control is a plain button, and the bar never covers the exercise being
  * logged (the workout list already pads its bottom past it).
+ *
+ * Tapping the countdown opens a focus view — the same timer, big enough to read
+ * from across the gym — and tapping it again (or the chevron, or Escape) puts
+ * it back. Both views read the one deadline, so nothing is lost switching.
  */
 export function RestTimerBar({ timer, onAdjust, onDismiss }: RestTimerBarProps) {
   const { totalSeconds, exerciseName, nextSet } = timer;
@@ -67,6 +73,9 @@ export function RestTimerBar({ timer, onAdjust, onDismiss }: RestTimerBarProps) 
   // Clamped: "+30" can push the remaining time past the starting duration,
   // and a zero-second rest would divide by zero.
   const pct = totalSeconds > 0 ? Math.min(100, Math.max(0, (remaining / totalSeconds) * 100)) : 0;
+  const countdownColor = done ? "text-primary" : danger ? "text-destructive" : "text-foreground";
+
+  const [focused, setFocused] = useState(false);
 
   return (
     <section className={cn("rest-bar", done && "rest-bar-done")} aria-label="Rest timer">
@@ -82,19 +91,20 @@ export function RestTimerBar({ timer, onAdjust, onDismiss }: RestTimerBarProps) 
       />
 
       <div className="flex items-center gap-1 pl-5 pr-2 py-1.5">
-        <div className="flex-1 min-w-0">
-          <p
-            className={cn(
-              "font-mono text-stat font-medium tracking-tight",
-              done ? "text-primary" : danger ? "text-destructive" : "text-foreground"
-            )}
-          >
+        <button
+          type="button"
+          onClick={() => setFocused(true)}
+          className="flex-1 min-w-0 text-left bg-transparent border-none p-0 cursor-pointer"
+          aria-haspopup="dialog"
+          aria-label={`${fmtTime(remaining)} rest left. Open large timer`}
+        >
+          <p className={cn("font-mono text-stat font-medium tracking-tight", countdownColor)}>
             {fmtTime(remaining)}
           </p>
           <p className="text-caption text-muted-foreground truncate">
             {done ? "Time to lift" : nextSet} · {exerciseName}
           </p>
-        </div>
+        </button>
 
         {!done &&
           ([-30, 30] as const).map((d) => (
@@ -118,6 +128,111 @@ export function RestTimerBar({ timer, onAdjust, onDismiss }: RestTimerBarProps) 
           <X size={20} strokeWidth={2} />
         </button>
       </div>
+
+      {focused && (
+        <RestFocusView
+          remaining={remaining}
+          pct={pct}
+          countdownColor={countdownColor}
+          done={done}
+          exerciseName={exerciseName}
+          nextSet={nextSet}
+          onAdjust={onAdjust}
+          onDismiss={onDismiss}
+          onMinimise={() => setFocused(false)}
+        />
+      )}
     </section>
+  );
+}
+
+interface RestFocusViewProps {
+  remaining: number;
+  pct: number;
+  countdownColor: string;
+  done: boolean;
+  exerciseName: string;
+  nextSet: string;
+  onAdjust: (deltaSeconds: number) => void;
+  onDismiss: () => void;
+  onMinimise: () => void;
+}
+
+/** The full-screen view of the same rest. Presentation only — RestTimerBar owns
+ *  the tick, the alert and the announcements, so they never run twice. */
+function RestFocusView({
+  remaining,
+  pct,
+  countdownColor,
+  done,
+  exerciseName,
+  nextSet,
+  onAdjust,
+  onDismiss,
+  onMinimise,
+}: RestFocusViewProps) {
+  const titleId = useId();
+  return (
+    <Modal onClose={onMinimise} labelledBy={titleId} className="rest-focus">
+      <button
+        type="button"
+        onClick={onMinimise}
+        className="rest-bar-button self-end"
+        aria-label="Minimise timer"
+      >
+        <ChevronDown size={24} strokeWidth={2} />
+      </button>
+
+      <div className="flex-1 flex flex-col items-center justify-center w-full">
+        <h2 id={titleId} className="font-mono text-caption text-muted-foreground tracking-widest uppercase mb-1">
+          {exerciseName}
+        </h2>
+        <p className="text-subtext text-muted-foreground mb-9">{done ? "Time to lift" : nextSet}</p>
+
+        {/* Tapping the number again is the quickest way back — it is where
+            the thumb already is. */}
+        <button
+          type="button"
+          onClick={onMinimise}
+          className={cn(
+            "font-mono font-medium tracking-tighter leading-none mb-8 text-countdown bg-transparent border-none p-0 cursor-pointer",
+            countdownColor
+          )}
+          style={{ transition: "color 0.3s" }}
+          aria-label={`${fmtTime(remaining)} rest left. Minimise timer`}
+        >
+          {fmtTime(remaining)}
+        </button>
+
+        <div className="w-full mb-9">
+          <Progress value={pct} className="h-[3px]" aria-label="Rest remaining" aria-valuetext={fmtTime(remaining)} />
+        </div>
+
+        {!done && (
+          <div className="flex gap-2.5 mb-5">
+            {([-30, 30] as const).map((d) => (
+              <Button
+                key={d}
+                variant="outline"
+                onClick={() => onAdjust(d)}
+                className="font-mono text-subtext min-w-[76px] gap-1"
+                aria-label={d < 0 ? "30 seconds less rest" : "30 seconds more rest"}
+              >
+                {d < 0 ? <Minus size={16} strokeWidth={2} /> : <Plus size={16} strokeWidth={2} />}
+                30s
+              </Button>
+            ))}
+          </div>
+        )}
+
+        <Button
+          variant="outline"
+          onClick={onDismiss}
+          className={cn("font-mono text-subtext tracking-widest min-w-[160px]", done && "text-primary border-primary/50")}
+        >
+          {done ? "Back to workout" : "Skip rest"}
+        </Button>
+      </div>
+    </Modal>
   );
 }

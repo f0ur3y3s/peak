@@ -157,6 +157,22 @@
   outline-offset: -2px;
 }
 
+/* The timer's focus view: a <Modal> panel stretched to the whole screen, so it
+   keeps Modal's focus trap, Escape and focus return. */
+.config-editor-panel.rest-focus {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  max-height: none;
+  border: none;
+  border-radius: 0;
+  background: hsl(var(--surface-sunken));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
 @keyframes rest-bar-in {
   from { transform: translateY(100%); opacity: 0; }
   to { transform: none; opacity: 1; }
