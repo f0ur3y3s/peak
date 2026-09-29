@@ -61,7 +61,8 @@ export function restRemaining(timer: TimerState, now = Date.now()): number {
 }
 
 /**
- * Moves the deadline by `deltaSeconds`, clamped to 0…MAX_REST_SECONDS.
+ * Moves the deadline by `deltaSeconds`, clamped to 0…MAX_REST_SECONDS, and
+ * stretches `totalSeconds` when the new deadline is past it.
  *
  * Returns the same object when the clamp leaves the time unchanged. Re-anchoring
  * to `now` anyway pushed the deadline a fraction of a tick into the future, so
@@ -71,7 +72,12 @@ export function restRemaining(timer: TimerState, now = Date.now()): number {
 export function adjustRest(timer: TimerState, deltaSeconds: number, now = Date.now()): TimerState {
   const left = restRemaining(timer, now);
   const next = Math.min(MAX_REST_SECONDS, Math.max(0, left + deltaSeconds));
-  return next === left ? timer : { ...timer, endsAt: now + next * 1000 };
+  if (next === left) return timer;
+  // The progress bar is remaining / totalSeconds. When "+30" takes the
+  // remaining time past the rest's starting length, the bar's 100% grows
+  // with it — otherwise it sat pinned full, not moving, until the extra time
+  // had run down, and a "-30" after it seemed to do nothing.
+  return { ...timer, endsAt: now + next * 1000, totalSeconds: Math.max(timer.totalSeconds, next) };
 }
 
 // Seed data now lives in src/lib/seedProgram.ts (the 5-day Push/Pull/Legs
