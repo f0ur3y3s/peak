@@ -15,7 +15,7 @@ export function UpdateBanner() {
         top: "calc(env(safe-area-inset-top, 0px) + 10px)",
         left: "50%",
         transform: "translateX(-50%)",
-        // Above everything, including .timer-sheet (80).
+        // Above everything, including .rest-bar (80).
         zIndex: 90,
         display: "flex",
         alignItems: "center",

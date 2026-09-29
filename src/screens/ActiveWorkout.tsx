@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { TopBar } from "@/components/TopBar";
 import { ExerciseCard } from "@/components/ExerciseCard";
-import { TimerSheet } from "@/components/TimerSheet";
+import { RestTimerBar } from "@/components/RestTimerBar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ExercisePicker } from "@/components/ExercisePicker";
 import { ExerciseConfigEditor, type ExerciseConfigValues } from "@/components/ExerciseConfigEditor";
 import { WorkoutSummary } from "@/screens/WorkoutSummary";
-import { fmtTime, type Exercise, type TimerState } from "@/lib/data";
+import { adjustRest, fmtTime, startRest, type Exercise, type TimerState } from "@/lib/data";
 import { primeRestAlert } from "@/lib/restAlert";
 import { useWeightUnit, fmtWeight } from "@/lib/weightUnit";
 import { useWakeLock } from "@/lib/useWakeLock";
@@ -82,11 +82,11 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
   // back, so a push only ever exists while nobody is watching the countdown —
   // which is also what stops it arriving on top of the in-app alert.
   //
-  // Keyed on the timer object, so re-backgrounding during a later rest
-  // reschedules for that rest's deadline rather than the first one's.
+  // Keyed on the timer object, so a later rest — or a ±30s on this one —
+  // reschedules for the deadline now on screen rather than the first one.
   useEffect(() => {
     if (!timer) return;
-    const endsAt = Date.now() + timer.seconds * 1000;
+    const { endsAt } = timer;
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
@@ -201,7 +201,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     });
 
     applyExercises(updatedExercises);
-    setTimer({ seconds: restSeconds, exerciseName, nextSet });
+    setTimer(startRest(restSeconds, exerciseName, nextSet));
     setDraftError(null);
     const logged = updatedExercises.find((ex) => ex.id === exId)?.logged.length ?? 0;
     setAnnouncement(
@@ -459,6 +459,10 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
       // the user still proceeds to the summary — the real save above already
       // succeeded, and surfacing an error here would be misleading.
       await clearActiveWorkoutDraft().catch(() => clearActiveWorkoutDraft().catch(() => {}));
+      // The component stays mounted to render the Summary, so a rest still
+      // running would keep its visibility listener — and a "Rest complete"
+      // push would arrive for a workout that is over.
+      setTimer(null);
       setSession(built);
     } catch {
       setFinishError("Couldn't save workout — try again.");
@@ -485,7 +489,13 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
 
   return (
     <>
-      {timer && <TimerSheet timer={timer} onClose={() => setTimer(null)} />}
+      {timer && (
+        <RestTimerBar
+          timer={timer}
+          onAdjust={(d) => setTimer((t) => (t ? adjustRest(t, d) : t))}
+          onDismiss={() => setTimer(null)}
+        />
+      )}
 
       {/* Visually hidden. Polite rather than assertive: a logged set is a
           confirmation, not an interruption, and the rest timer's own
