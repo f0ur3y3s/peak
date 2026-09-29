@@ -7,3 +7,7 @@ dist/
 
 supabase/.temp/
 .impeccable/live/
+
+# Playwright
+test-results/
+playwright-report/

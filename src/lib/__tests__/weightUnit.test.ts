@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   fmtWeight,
+  parseWeightInput,
+  stepNumberText,
   kgToLb,
   lbToKg,
   toDisplayWeight,
@@ -193,5 +195,40 @@ describe("fmtWeight", () => {
         expect(Number(fmtWeight(kg, unit))).toBe(toDisplayWeight(kg, unit));
       }
     }
+  });
+});
+
+describe("parseWeightInput", () => {
+  it("reads plain and decimal weights", () => {
+    expect(parseWeightInput("80")).toBe(80);
+    expect(parseWeightInput(" 62.5 ")).toBe(62.5);
+    expect(parseWeightInput("0")).toBe(0);
+  });
+
+  it("reads a comma decimal, which is all iOS offers in comma locales", () => {
+    expect(parseWeightInput("62,5")).toBe(62.5);
+  });
+
+  it("treats a blank field as no weight, not 0 kg", () => {
+    expect(parseWeightInput("")).toBeNull();
+    expect(parseWeightInput("   ")).toBeNull();
+  });
+
+  it("rejects what Number() would quietly accept", () => {
+    for (const bad of ["0x14", "1e3", "-5", "abc", "6.5.5", "Infinity"]) expect(parseWeightInput(bad)).toBeNull();
+  });
+});
+
+describe("stepNumberText", () => {
+  it("steps without binary-float noise", () => {
+    expect(stepNumberText("32.2", -0.5, 0)).toBe("31.7");
+    expect(stepNumberText("20.1", -5, 0)).toBe("15.1");
+    expect(stepNumberText("0.1", 0.2, 0)).toBe("0.3");
+  });
+
+  it("clamps at the minimum and recovers from an empty or junk field", () => {
+    expect(stepNumberText("1", -5, 0)).toBe("0");
+    expect(stepNumberText("", 2.5, 0)).toBe("2.5");
+    expect(stepNumberText("abc", 1, 1)).toBe("1");
   });
 });

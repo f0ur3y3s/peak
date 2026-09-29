@@ -173,17 +173,25 @@ export function HistoryScreen() {
           return (
             <Card
               key={session.id}
-              onClick={() => setExpanded((e) => (e === session.id ? null : session.id))}
-              className="cursor-pointer transition-colors"
+              className="transition-colors"
               style={{
                 borderColor: expanded === session.id ? "hsl(var(--primary) / 0.4)" : undefined,
               }}
             >
               <CardContent style={{ padding: "14px 16px" }}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="flex gap-2 items-center mb-1">
-                      <p className="font-semibold text-title">{session.templateName}</p>
+                {/* A real button, not an onClick on the card: the card was a
+                    plain div, so a keyboard or switch user could never open a
+                    workout — and editing or deleting one lives inside. */}
+                <button
+                  type="button"
+                  onClick={() => setExpanded((e) => (e === session.id ? null : session.id))}
+                  aria-expanded={expanded === session.id}
+                  aria-controls={`session-${session.id}`}
+                  className="w-full flex justify-between items-center text-left bg-transparent border-none p-0 cursor-pointer text-inherit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="block">
+                    <span className="flex gap-2 items-center mb-1">
+                      <span className="block font-semibold text-title">{session.templateName}</span>
                       {hasPR && (
                         <Badge
                           className="text-label"
@@ -197,36 +205,31 @@ export function HistoryScreen() {
                           PR
                         </Badge>
                       )}
-                    </div>
-                    <p className="font-mono text-caption text-muted-foreground">
+                    </span>
+                    <span className="block font-mono text-caption text-muted-foreground">
                       {fmtRelativeDate(session.startedAt)} · {durationMin}m
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="font-mono text-sm">
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="block text-right">
+                      <span className="block font-mono text-sm">
                         {Number(fmtWeight(volume, unit)).toLocaleString()} {unit}
-                      </p>
-                      <p className="font-mono text-caption text-muted-foreground">
+                      </span>
+                      <span className="block font-mono text-caption text-muted-foreground">
                         {setCount} sets
-                      </p>
-                    </div>
+                      </span>
+                    </span>
                     <ChevronDown
                       size={16}
                       strokeWidth={2}
+                      aria-hidden="true"
                       className={`history-chevron${expanded === session.id ? " open" : ""}`}
                     />
-                  </div>
-                </div>
+                  </span>
+                </button>
 
                 {expanded === session.id && (
-                  <div
-                    className="mt-3.5 pt-3.5 border-t border-border"
-                    // The card itself toggles expansion; without this, every
-                    // tap on a set or on Delete would also collapse the card
-                    // out from under the dialog it just opened.
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div id={`session-${session.id}`} className="mt-3.5 pt-3.5 border-t border-border">
                     {session.exercises.map((ex) => (
                       <div key={ex.name} className="mb-3">
                         <p className="font-medium text-subtext mb-1.5">{ex.name}</p>

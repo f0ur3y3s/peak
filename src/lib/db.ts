@@ -660,6 +660,20 @@ export async function getActiveWorkoutDraft(): Promise<ActiveWorkoutDraft | unde
   return db.get("active_workout_draft", "current");
 }
 
+/**
+ * Why starting `templateId` must wait, or null when it can go ahead.
+ *
+ * There is only ever one draft ("current"), so starting a different template
+ * while one is in progress would have the first logged set overwrite it. Every
+ * Start button asks here first, so none of them can forget to.
+ */
+export async function blockedStartReason(templateId: string): Promise<string | null> {
+  const draft = await getActiveWorkoutDraft();
+  return draft && draft.templateId !== templateId
+    ? `Finish or discard your ${draft.templateName} workout first.`
+    : null;
+}
+
 export async function saveActiveWorkoutDraft(draft: Omit<ActiveWorkoutDraft, "updatedAt">): Promise<void> {
   const db = await getDB();
   await db.put("active_workout_draft", { ...draft, updatedAt: Date.now() });

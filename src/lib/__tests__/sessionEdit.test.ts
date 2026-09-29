@@ -2,11 +2,13 @@ import "fake-indexeddb/auto";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  blockedStartReason,
   clearLocalData,
   deleteWorkoutSession,
   getSyncTombstones,
   getWorkoutSession,
   recomputeSessionPRs,
+  saveActiveWorkoutDraft,
   saveWorkoutSession,
   type WorkoutSession,
 } from "@/lib/db";
@@ -105,5 +107,26 @@ describe("recomputeSessionPRs", () => {
   it("ties do not count — a PR has to beat the old number", () => {
     const edited = session("new", 3_000, [{ name: "Bench", sets: [{ reps: 8, weight: 110 }] }]);
     expect(recomputeSessionPRs(edited, [...history, edited])).toEqual([]);
+  });
+});
+
+describe("blockedStartReason", () => {
+  const draft = (templateId: string, templateName: string) =>
+    saveActiveWorkoutDraft({ id: "current", templateId, templateName, startedAt: 1_000, exercises: [] });
+
+  it("lets any template start when nothing is in progress", async () => {
+    expect(await blockedStartReason("pull-a")).toBeNull();
+  });
+
+  it("lets the in-progress template carry on", async () => {
+    await draft("push-a", "Push A");
+    expect(await blockedStartReason("push-a")).toBeNull();
+  });
+
+  it("stops a different template, naming the workout in progress", async () => {
+    // There is one draft slot: starting Pull A over Push A overwrote Push A's
+    // sets on the first logged set, from the Plan list's Start button.
+    await draft("push-a", "Push A");
+    expect(await blockedStartReason("pull-a")).toBe("Finish or discard your Push A workout first.");
   });
 });

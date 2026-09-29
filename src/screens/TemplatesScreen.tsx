@@ -18,6 +18,7 @@ import { fmtRelativeDate } from "@/lib/utils";
 import { groupForMuscle } from "@/lib/muscles";
 import { PAGE_INPUT_STYLE } from "@/lib/inputStyles";
 import {
+  blockedStartReason,
   getTemplates,
   getNextUpTemplateId,
   getWorkoutSessions,
@@ -54,6 +55,20 @@ export function TemplatesScreen({
   const [newName, setNewName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  // The row's Start went straight into the workout, skipping the check
+  // TemplateDetail's Start makes — so starting Pull A with Push A in progress
+  // silently replaced Push A on the first logged set.
+  const handleStart = async (templateId: string) => {
+    setStartError(null);
+    const blocked = await blockedStartReason(templateId).catch(() => null);
+    if (blocked) {
+      setStartError(blocked);
+      return;
+    }
+    onStartTemplate?.(templateId);
+  };
 
   useEffect(() => {
     getTemplates()
@@ -137,9 +152,9 @@ export function TemplatesScreen({
       {!embedded && <TopBar title="Templates" />}
 
       <div className="px-5 pt-4 pb-24 flex flex-col gap-2.5">
-        {loadError && (
+        {(loadError || startError) && (
           <p role="alert" className="font-mono text-caption" style={{ color: "hsl(var(--destructive))", margin: 0 }}>
-            {loadError}
+            {loadError ?? startError}
           </p>
         )}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -276,7 +291,7 @@ export function TemplatesScreen({
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onStartTemplate(t.id);
+                              void handleStart(t.id);
                             }}
                             variant={isNextUp ? "default" : "outline"}
                             className="font-semibold"
