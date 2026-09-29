@@ -79,6 +79,21 @@ export function adjustRest(timer: TimerState, deltaSeconds: number, now = Date.n
 // The old three-exercise "Push Day A" demo seed that lived here was replaced
 // by it.
 
+/**
+ * What the log form offers for the set you are about to log.
+ *
+ * Sets after the first repeat the one you just did — mid-exercise, the set you
+ * just finished is a better guess than anything from last week (same plates on
+ * the bar, same fatigue). The first set has nothing to repeat, so it falls back
+ * to last session's first set, then the template target. Weight is in kg.
+ */
+export function nextSetDefaults(ex: Exercise): { reps: number; weight: number } {
+  const previous = ex.logged[ex.logged.length - 1];
+  if (previous) return { reps: previous.reps, weight: previous.weight };
+  const lastTime = ex.last?.[0];
+  return { reps: lastTime?.r ?? ex.repsMin, weight: lastTime?.w ?? ex.targetWeight };
+}
+
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
 export const fmtTime = (s: number): string =>

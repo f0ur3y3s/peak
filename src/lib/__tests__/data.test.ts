@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtTime } from "@/lib/data";
+import { fmtTime, nextSetDefaults, type Exercise } from "@/lib/data";
 
 describe("fmtTime", () => {
   it("formats zero as 0:00", () => {
@@ -62,5 +62,39 @@ describe("fmtTime", () => {
       const [minutes, seconds] = fmtTime(s).split(":");
       expect(Number(minutes) * 60 + Number(seconds)).toBe(s);
     }
+  });
+});
+
+describe("nextSetDefaults", () => {
+  const ex = (over: Partial<Exercise> = {}): Exercise => ({
+    id: "bench",
+    name: "Bench Press",
+    muscle: "Chest",
+    targetSets: 4,
+    repsMin: 5,
+    repsMax: 6,
+    targetWeight: 60,
+    restSeconds: 180,
+    last: null,
+    logged: [],
+    ...over,
+  });
+
+  it("repeats the set just logged", () => {
+    const logged = [
+      { id: "a", reps: 6, weight: 80 },
+      { id: "b", reps: 5, weight: 82.5 },
+    ];
+    // Even when last session has a different number for this set index.
+    const last = [{ r: 6, w: 75 }, { r: 6, w: 75 }, { r: 4, w: 70 }];
+    expect(nextSetDefaults(ex({ logged, last }))).toEqual({ reps: 5, weight: 82.5 });
+  });
+
+  it("starts the first set from last session's first set", () => {
+    expect(nextSetDefaults(ex({ last: [{ r: 6, w: 75 }] }))).toEqual({ reps: 6, weight: 75 });
+  });
+
+  it("falls back to the template target with no history", () => {
+    expect(nextSetDefaults(ex())).toEqual({ reps: 5, weight: 60 });
   });
 });

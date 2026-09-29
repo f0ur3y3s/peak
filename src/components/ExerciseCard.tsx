@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { fmtTime, type Exercise } from "@/lib/data";
+import { fmtTime, nextSetDefaults, type Exercise } from "@/lib/data";
 import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
 import { NotesBlock } from "@/components/NotesBlock";
 
@@ -36,17 +36,15 @@ export function ExerciseCard({
   const repsFieldId = `${logFormIdBase}-reps`;
   const weightFieldId = `${logFormIdBase}-weight`;
   const lastIdx = ex.logged.length;
-  const defaultReps = String(ex.last?.[lastIdx]?.r ?? ex.repsMin);
-  const defaultWeight = String(toDisplayWeight(ex.last?.[lastIdx]?.w ?? ex.targetWeight, unit));
+  const defaults = nextSetDefaults(ex);
+  const defaultReps = String(defaults.reps);
+  const defaultWeight = String(toDisplayWeight(defaults.weight, unit));
   const [reps, setReps] = useState(defaultReps);
   const [weight, setWeight] = useState(defaultWeight);
 
-  // defaultReps/defaultWeight index last session by the set you are ABOUT to
-  // log, but as useState initializers they only ever ran once: ActiveWorkout
-  // keys this card by ex.id so it never remounts, and after set 1 the fields
-  // kept the previously typed value while ex.last[1], ex.last[2]… went
-  // unused. Re-seed whenever the set index moves, so each set is offered what
-  // you did for that same set last time.
+  // useState initializers only run once, and ActiveWorkout keys this card by
+  // ex.id so it never remounts — re-seed whenever the set count moves (a set
+  // logged or deleted), so the form always offers the set you just did.
   const seededForIdx = useRef(lastIdx);
   useEffect(() => {
     if (seededForIdx.current === lastIdx) return;
