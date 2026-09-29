@@ -68,6 +68,29 @@ describe("RestTimerBar", () => {
   });
 });
 
+describe("the progress bar", () => {
+  const barValue = () => Number(screen.getAllByRole("progressbar")[0].getAttribute("aria-valuenow"));
+
+  it("follows +30 and -30 instead of pinning at full", async () => {
+    vi.useFakeTimers();
+    render(<Harness initial={startRest(90, "Squat", "Set 2 of 5")} />);
+    await advance(30_000);
+    expect(Math.round(barValue())).toBe(67); // 60 of 90
+
+    fireEvent.click(screen.getByRole("button", { name: "30 seconds more rest" }));
+    fireEvent.click(screen.getByRole("button", { name: "30 seconds more rest" }));
+    await advance(250);
+    expect(barValue()).toBe(100); // 120 left: the bar's full length is now 120
+
+    await advance(30_000);
+    expect(Math.round(barValue())).toBe(75); // and it moves again: 90 of 120
+
+    fireEvent.click(screen.getByRole("button", { name: "30 seconds less rest" }));
+    await advance(250);
+    expect(Math.round(barValue())).toBe(50); // 60 of 120
+  });
+});
+
 describe("the focus view", () => {
   it("opens from the countdown and minimises back, sharing one deadline", async () => {
     vi.useFakeTimers();
@@ -178,6 +201,19 @@ describe("adjustRest", () => {
     // It would also reschedule the locked-screen push for nothing.
     const timer = startRest(1, "Squat", "Set 2 of 5", t0);
     expect(adjustRest(timer, -30, t0 + 5_000)).toBe(timer);
+  });
+
+  it("stretches the bar's full length when +30 goes past it, so the bar keeps moving", () => {
+    const timer = startRest(90, "Squat", "Set 2 of 5", t0);
+    // At the start: 90s left of 90. +30 makes it 120 of 120, not 120 of 90
+    // (which clamped to a full bar that then stood still for 30 seconds).
+    const up = adjustRest(timer, 30, t0);
+    expect(up.totalSeconds).toBe(120);
+    // Halfway through: 45s left, +30 → 75 of 90. Still within the original
+    // length, so the bar just grows back to 83%.
+    expect(adjustRest(timer, 30, t0 + 45_000).totalSeconds).toBe(90);
+    // "-30" never shrinks the full length, so the bar visibly drops.
+    expect(adjustRest(up, -30, t0).totalSeconds).toBe(120);
   });
 
   it("can extend a rest that is already longer than ten minutes", () => {

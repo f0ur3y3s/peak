@@ -31,6 +31,12 @@ const twMerge = extendTailwindMerge({
           ],
         },
       ],
+      // Same trap for the elevation tokens: an unknown `shadow-<name>` reads
+      // as a shadow COLOR and an unknown `bg-<name>` as a background COLOR, so
+      // `bg-sheen` evicted `bg-card` and every card lost its fill. Must list
+      // every boxShadow / backgroundImage key in tailwind.config.js.
+      shadow: [{ shadow: ["elev-1", "elev-2", "elev-3", "control", "cta"] }],
+      "bg-image": [{ bg: ["sheen"] }],
     },
   },
 });

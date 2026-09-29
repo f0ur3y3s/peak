@@ -45,6 +45,30 @@ export function toKgWeight(displayValue: number, unit: WeightUnit): number {
   return Math.round(kg * 1000) / 1000;
 }
 
+/**
+ * A typed weight, or null when the text isn't one. Every weight field goes
+ * through this, so they agree on what counts:
+ * - blank is not a weight. `Number("")` is 0, so a cleared field logged a
+ *   real set at 0 kg.
+ * - a comma decimal is. iOS shows only "," on the decimal keypad in comma
+ *   locales, and `Number("62,5")` is NaN, so 62.5 could not be entered.
+ * - nothing else is: `Number()` also accepts "0x14" (20) and "1e3".
+ */
+export function parseWeightInput(text: string): number | null {
+  const normalised = text.trim().replace(",", ".");
+  return /^(\d+(\.\d*)?|\.\d+)$/.test(normalised) ? Number(normalised) : null;
+}
+
+/**
+ * The text a −/+ stepper shows after one step. Rounded, because binary floats
+ * made 32.2 − 0.5 display as 31.700000000000003.
+ */
+export function stepNumberText(value: string, delta: number, min: number): string {
+  const n = parseFloat(value.replace(",", "."));
+  const next = Math.max(min, (Number.isFinite(n) ? n : 0) + delta);
+  return String(Math.round(next * 1000) / 1000);
+}
+
 export function fmtWeight(kg: number, unit: WeightUnit): string {
   const value = toDisplayWeight(kg, unit);
   return value % 1 === 0 ? value.toFixed(0) : value.toFixed(1);

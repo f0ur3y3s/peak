@@ -20,7 +20,7 @@ interface TopBarProps {
 export function TopBar({ title, sub, onBack, right, breadcrumb }: TopBarProps) {
   return (
     <div
-      className="flex items-center justify-between px-5 pb-3 border-b border-border sticky top-0 z-30 bg-background"
+      className="flex items-center justify-between px-5 pb-3 border-b border-border sticky top-0 z-30 bg-background/85 backdrop-blur-md"
       style={{ paddingTop: "calc(1rem + env(safe-area-inset-top, 0px))" }}
     >
       <div className="flex items-center gap-3">

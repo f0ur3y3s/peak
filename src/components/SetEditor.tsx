@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
 import { TEXT_INPUT_STYLE } from "@/lib/inputStyles";
-import { useWeightUnit, fmtWeight, toKgWeight } from "@/lib/weightUnit";
+import { useWeightUnit, fmtWeight, toKgWeight, parseWeightInput } from "@/lib/weightUnit";
 
 interface SetEditorProps {
   exerciseName: string;
@@ -39,7 +39,7 @@ export function SetEditor({
   const [weightText, setWeightText] = useState(fmtWeight(weight, unit));
 
   const repsValue = Number(repsText);
-  const weightValue = Number(weightText);
+  const weightValue = parseWeightInput(weightText) ?? NaN;
   // Reps are whole by definition; weight is not (2.5kg plates, 0.5kg
   // micro-loading). Both must be present — a blank field saved as 0 would
   // quietly turn a real set into a zero-volume one.

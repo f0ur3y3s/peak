@@ -142,10 +142,16 @@ Page-level titles use a branded stencil display font (`font-title` → "Allerta 
 
 ## Testing
 
-No automated test suite. Before considering a change done:
-
 ```bash
-npx tsc -b --noEmit
+npx tsc -b          # typecheck
+npm test            # unit tests (Vitest)
+npm run test:e2e    # end-to-end: the real app in a phone-sized Chromium (Playwright)
 ```
 
-then manually exercise the affected flow in the browser (`npm run dev`).
+The end-to-end suite starts its own dev server in local-preview mode (no
+Supabase needed), gives every test a fresh browser profile with the seeded
+program, and fails a test on any page error. It covers logging a workout,
+resuming one, templates, history, units, and an axe accessibility scan. CI
+(`.github/workflows/ci.yml`) runs all three on every pull request.
+
+First run: `npx playwright install chromium`.

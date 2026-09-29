@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { Clock, Dumbbell, Layers, Minus, Plus, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/Modal";
-import { useWeightUnit, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
+import { useWeightUnit, toDisplayWeight, toKgWeight, parseWeightInput, stepNumberText } from "@/lib/weightUnit";
 
 export interface ExerciseConfigValues {
   targetSets: number;
@@ -17,14 +17,6 @@ interface ExerciseConfigEditorProps {
   initial: ExerciseConfigValues;
   onSave: (values: ExerciseConfigValues) => void;
   onCancel: () => void;
-}
-
-// An empty/invalid field parses to NaN, which would otherwise get stuck
-// (NaN - step is still NaN) with no way to recover except retyping the
-// whole value — matches the pattern in ExerciseCard's steppers.
-function step(value: string, delta: number, min: number): string {
-  const n = parseFloat(value);
-  return String(Math.max(min, (Number.isFinite(n) ? n : 0) + delta));
 }
 
 interface StepperProps {
@@ -86,7 +78,7 @@ export function ExerciseConfigEditor({
     isCount(repsMin) && isCount(repsMax) && repsMinNum > 0 && repsMinNum <= repsMaxNum;
 
   const setsNum = Number(targetSets);
-  const weightNum = Number(targetWeight);
+  const weightNum = parseWeightInput(targetWeight) ?? NaN;
   const restNum = Number(restSeconds);
   const canSave =
     repsValid &&
@@ -111,7 +103,7 @@ export function ExerciseConfigEditor({
               label="Sets"
               value={targetSets}
               onChange={setTargetSets}
-              onStep={(d) => setTargetSets((v) => step(v, d, 1))}
+              onStep={(d) => setTargetSets((v) => stepNumberText(v, d, 1))}
             />
           </div>
 
@@ -128,7 +120,7 @@ export function ExerciseConfigEditor({
                   label="min reps"
                   value={repsMin}
                   onChange={setRepsMin}
-                  onStep={(d) => setRepsMin((v) => step(v, d, 1))}
+                  onStep={(d) => setRepsMin((v) => stepNumberText(v, d, 1))}
                 />
               </div>
               <div>
@@ -138,7 +130,7 @@ export function ExerciseConfigEditor({
                   label="max reps"
                   value={repsMax}
                   onChange={setRepsMax}
-                  onStep={(d) => setRepsMax((v) => step(v, d, 1))}
+                  onStep={(d) => setRepsMax((v) => stepNumberText(v, d, 1))}
                 />
               </div>
             </div>
@@ -159,7 +151,7 @@ export function ExerciseConfigEditor({
               label={`weight in ${unit}`}
               value={targetWeight}
               onChange={setTargetWeight}
-              onStep={(d) => setTargetWeight((v) => step(v, d * weightStep, 0))}
+              onStep={(d) => setTargetWeight((v) => stepNumberText(v, d * weightStep, 0))}
             />
           </div>
 
@@ -173,7 +165,7 @@ export function ExerciseConfigEditor({
               label="rest seconds"
               value={restSeconds}
               onChange={setRestSeconds}
-              onStep={(d) => setRestSeconds((v) => step(v, d * 15, 0))}
+              onStep={(d) => setRestSeconds((v) => stepNumberText(v, d * 15, 0))}
             />
           </div>
         </div>

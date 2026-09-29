@@ -31,6 +31,7 @@ import {
   getWorkoutSessions,
   saveTemplate,
   deleteTemplate,
+  blockedStartReason,
   getActiveWorkoutDraft,
   type Template,
   type LibraryExercise,
@@ -193,6 +194,10 @@ export function TemplateDetail({
       ].map((cfg, i) => ({ ...cfg, order: i })),
     };
     setExercises(reordered);
+    // `template` too, not only `exercises`: rename, notes and config edits
+    // all build from `template`, and saved its old `order` straight back —
+    // the reorder undid itself on the next edit.
+    setTemplate(updated);
     try {
       await saveTemplate(updated);
     } catch {
@@ -271,9 +276,9 @@ export function TemplateDetail({
 
   const handleStartClick = async () => {
     setActionError(null);
-    const draft = await getActiveWorkoutDraft();
-    if (draft && draft.templateId !== templateId) {
-      setActionError(`Finish or discard your ${draft.templateName} workout first.`);
+    const blocked = await blockedStartReason(templateId).catch(() => null);
+    if (blocked) {
+      setActionError(blocked);
       return;
     }
     onStart();

@@ -162,8 +162,7 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
           // Resuming used to open on exercise 1 even with the first four
           // complete, so you had to scroll and tap back to where you were.
           const firstUnfinished = hydrated.find((e) => e.logged.length < e.targetSets);
-          if (firstUnfinished) setActiveId(firstUnfinished.id);
-          if (hydrated.length > 0) setActiveId(hydrated[0].id);
+          setActiveId((firstUnfinished ?? hydrated[0])?.id);
         })
         .catch(() => setLoadError("Couldn't load exercises — try reloading."));
     });
@@ -312,9 +311,22 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     });
   };
 
+  const addInFlight = useRef(false);
   const handleAddExercise = async (values: ExerciseConfigValues) => {
     if (!addingExercise) return;
-    const last = await lastSetsFor(addingExercise.name).catch(() => null);
+    // A double tap on Save added the exercise twice: lastSetsFor below scans
+    // every session, and the second tap ran during that scan with the editor
+    // still open (duplicate ids — every logged set then landed on both cards).
+    // The ref catches a tap that arrives before the editor has re-rendered
+    // closed; the id check catches one after the exercise is already in.
+    if (addInFlight.current || exercisesRef.current.some((ex) => ex.id === addingExercise.id)) return;
+    addInFlight.current = true;
+    setAddingExercise(null);
+    const last = await lastSetsFor(addingExercise.name)
+      .catch(() => null)
+      .finally(() => {
+        addInFlight.current = false;
+      });
     const newExercise: Exercise = {
       id: addingExercise.id,
       name: addingExercise.name,
@@ -326,7 +338,6 @@ export function ActiveWorkout({ templateId, onBack, onFinish, onDiscard, onBackT
     const updatedExercises = [...exercisesRef.current, newExercise];
     applyExercises(updatedExercises);
     setActiveId(newExercise.id);
-    setAddingExercise(null);
     setDraftError(null);
 
     // Note: a newly-added exercise isn't part of the template yet (that only

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fmtTime, nextSetDefaults, type Exercise } from "@/lib/data";
-import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight } from "@/lib/weightUnit";
+import { useWeightUnit, fmtWeight, toDisplayWeight, toKgWeight, parseWeightInput, stepNumberText } from "@/lib/weightUnit";
 import { NotesBlock } from "@/components/NotesBlock";
 
 interface ExerciseCardProps {
@@ -61,11 +61,11 @@ export function ExerciseCard({
   const weightStep = unit === "lb" ? 1 : 0.5;
 
   const repsNum = Number(reps);
-  const weightNum = Number(weight);
+  const weightNum = parseWeightInput(weight);
   // Reps are whole: "1e3" would log a thousand-rep set and "6.5" a fractional
-  // one. Weight stays fractional — 2.5kg plates are real.
-  const canLog =
-    /^\d+$/.test(reps.trim()) && repsNum > 0 && Number.isFinite(weightNum) && weightNum >= 0;
+  // one. Weight stays fractional — 2.5kg plates are real — but must be there:
+  // see parseWeightInput.
+  const canLog = /^\d+$/.test(reps.trim()) && repsNum > 0 && weightNum !== null;
 
   const done = ex.logged.length >= ex.targetSets;
   const showLogForm = isActive && (!done || addingExtra);
@@ -379,10 +379,7 @@ export function ExerciseCard({
                       // An empty/invalid field parses to NaN, which would
                       // otherwise get stuck (NaN - step is still NaN) with
                       // no way to recover except retyping the whole value.
-                      setter((v) => {
-                        const n = parseFloat(v);
-                        return String(Math.max(0, (Number.isFinite(n) ? n : 0) - step));
-                      });
+                      setter((v) => stepNumberText(v, -step, 0));
                     }}
                   >
                     <Minus size={16} strokeWidth={2} />
@@ -390,6 +387,7 @@ export function ExerciseCard({
                   <input
                     id={fieldId}
                     className="stepper-input"
+                    inputMode={fieldId === repsFieldId ? "numeric" : "decimal"}
                     value={val}
                     onChange={(e) => setter(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
@@ -399,10 +397,7 @@ export function ExerciseCard({
                     aria-label={`Increase ${label}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setter((v) => {
-                        const n = parseFloat(v);
-                        return String((Number.isFinite(n) ? n : 0) + step);
-                      });
+                      setter((v) => stepNumberText(v, step, 0));
                     }}
                   >
                     <Plus size={16} strokeWidth={2} />
