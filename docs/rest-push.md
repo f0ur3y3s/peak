@@ -67,6 +67,15 @@ check the version first:
 select extversion from pg_extension where extname = 'pg_cron';
 ```
 
+Migration `011_configurable_functions_url.sql` makes the sweep read the
+Edge Functions address from Vault rather than a hardcoded project URL. After
+applying it, seed that too — `https://<project-ref>.supabase.co/functions/v1`
+on hosted Supabase, `http://kong:8000/functions/v1` when self-hosting:
+
+```sql
+select vault.create_secret('<functions base URL>', 'functions_base_url', 'base URL pg_net uses to call Edge Functions');
+```
+
 ## 4. Edge Function
 
 ```
@@ -78,6 +87,10 @@ supabase secrets set \
 
 supabase functions deploy send-rest-push
 ```
+
+Self-hosted (`docs/self-hosting.md`): there is no `supabase secrets set`. The
+same four values go in the stack's `.env`, and `deploy/homelab/deploy.sh`
+installs the function.
 
 `VAPID_SUBJECT` must be a `mailto:` or `https:` URL — RFC 8292 requires it,
 and push services reject tokens without one.
