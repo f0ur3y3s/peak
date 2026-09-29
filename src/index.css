@@ -12,20 +12,20 @@
 
 @layer base {
   :root {
-    --background: 0 0% 6%;
+    --background: 75 5% 6%;
     --foreground: 0 0% 94%;
-    --card: 0 0% 10%;
+    --card: 75 5% 10%;
     --card-foreground: 0 0% 94%;
     --primary: 72 100% 64%;
     --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 14%;
+    --secondary: 75 5% 14%;
     --secondary-foreground: 0 0% 94%;
-    --muted: 0 0% 14%;
+    --muted: 75 5% 14%;
     /* 58% L clears ~6.3:1 on --background and ~5.8:1 on --card — the
        previous 40% computed to ~3.3:1 against --background, below the
        4.5:1 AA minimum for normal text, on a token used everywhere
        (timestamps, subtitles, badge fine print, empty states). */
-    --muted-foreground: 0 0% 58%;
+    --muted-foreground: 75 4% 58%;
     --accent: 72 100% 64%;
     --accent-foreground: 0 0% 0%;
     /* Two reds, because one cannot do both jobs. 58% L is the red as TEXT on
@@ -36,8 +36,8 @@
     --destructive: 4 90% 58%;
     --destructive-surface: 4 90% 46%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 16%;
-    --input: 0 0% 14%;
+    --border: 75 5% 16%;
+    --input: 75 5% 14%;
     --ring: 72 100% 64%;
     --radius: 0.75rem;
     /* Achievement/completion accent — kept distinct from --primary so a PR
@@ -53,13 +53,39 @@
     /* One step lighter than --background, one step darker than --card — the
        timer sheet's own surface, distinct from both the page behind it and
        the cards floating on it. */
-    --surface-sunken: 0 0% 8%;
+    --surface-sunken: 75 5% 8%;
     /* Total on-screen height of .nav-bar: the 60px tab row plus whatever
        safe-area inset it pads out by on devices with a home indicator.
        Anything that needs to sit above the nav bar (scroll padding, the
        rest timer bar) must use this instead of a bare 60px, or
-       it sits under the inset portion and gets covered by the nav bar. */
-    --nav-total-h: calc(60px + env(safe-area-inset-bottom, 0px));
+       it sits under the inset portion and gets covered by the nav bar.
+       The nav floats: 60px tall, 8px off the bottom edge, and 8px of air
+       above it before anything stacked on top. */
+    --nav-total-h: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
+
+    /* Elevation. Light comes from above: every raised surface carries a faint
+       highlight on its top edge and casts its shadow down. Depth is assigned
+       by role, not handed to everything, so the eye can still tell what is
+       where:
+         page         flat
+         elev-1       resting cards
+         elev-2       the card being worked on right now
+         elev-3       chrome floating over the page (nav, rest bar, dialogs)
+         recess       fields sunk into a card (steppers)
+         control      secondary buttons; cta the primary action */
+    --edge-light: 75 30% 92%;
+    --elev-1: inset 0 1px 0 hsl(var(--edge-light) / 0.05), 0 1px 2px hsl(0 0% 0% / 0.5),
+      0 8px 20px -8px hsl(0 0% 0% / 0.7);
+    --elev-2: inset 0 1px 0 hsl(var(--primary) / 0.16), 0 2px 4px hsl(0 0% 0% / 0.5),
+      0 18px 36px -12px hsl(0 0% 0% / 0.85), 0 20px 48px -28px hsl(var(--primary) / 0.3);
+    --elev-3: inset 0 1px 0 hsl(var(--edge-light) / 0.07), 0 4px 12px hsl(0 0% 0% / 0.5),
+      0 20px 44px -12px hsl(0 0% 0% / 0.9);
+    --recess: inset 0 2px 5px hsl(0 0% 0% / 0.55), inset 0 -1px 0 hsl(var(--edge-light) / 0.04);
+    --control: inset 0 1px 0 hsl(var(--edge-light) / 0.07), 0 2px 6px -1px hsl(0 0% 0% / 0.6);
+    --cta: inset 0 1px 0 hsl(72 100% 88% / 0.7), inset 0 -2px 0 hsl(72 80% 36% / 0.45),
+      0 6px 18px -6px hsl(var(--primary) / 0.45), 0 2px 4px hsl(0 0% 0% / 0.45);
+    /* The sheen a raised surface catches on its upper half. */
+    --sheen: linear-gradient(180deg, hsl(var(--edge-light) / 0.035), transparent 45%);
   }
 }
 
@@ -93,14 +119,20 @@
 /* Nav bar */
 .nav-bar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: hsl(var(--card));
-  border-top: 1px solid hsl(var(--border));
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  left: 10px;
+  right: 10px;
+  max-width: 410px;
+  margin: 0 auto;
+  height: 60px;
+  background: var(--sheen), hsl(var(--card) / 0.88);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid hsl(var(--border));
+  border-radius: 20px;
+  box-shadow: var(--elev-3);
   display: flex;
   z-index: 50;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .nav-tab {
@@ -121,17 +153,22 @@
   left: 0;
   right: 0;
   bottom: var(--nav-total-h);
+  left: 10px;
+  right: 10px;
   z-index: 80;
-  max-width: 430px;
+  max-width: 410px;
   margin: 0 auto;
-  background: hsl(var(--surface-sunken));
-  border-top: 1px solid hsl(var(--border));
+  background: var(--sheen), hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--elev-3);
   transition: border-color 0.2s;
   animation: rest-bar-in 0.2s cubic-bezier(.32,.72,0,1);
 }
 
 .rest-bar-done {
-  border-top-color: hsl(var(--primary) / 0.5);
+  border-color: hsl(var(--primary) / 0.5);
 }
 
 .rest-bar-button {
@@ -166,7 +203,11 @@
   max-height: none;
   border: none;
   border-radius: 0;
-  background: hsl(var(--surface-sunken));
+  /* A faint pool of the accent behind the countdown — the one place the
+     page itself glows. */
+  background: radial-gradient(70% 40% at 50% 45%, hsl(var(--primary) / 0.07), transparent 70%),
+    hsl(var(--surface-sunken));
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -198,8 +239,11 @@
    visual signal for "this is the one you're logging" vs "this one's done"
    beyond a subtle text-color change on the set counter. */
 .card-active {
+  /* Marked by a lime rim and a lift, not a lime tint: the tint dropped muted
+     text on this card to 2.65:1 (see .impeccable/critique, 2026-08-21). */
   border-color: hsl(var(--primary) / 0.5);
-  background: hsl(var(--primary) / 0.04);
+  box-shadow: var(--elev-2);
+  transform: translateY(-1px);
 }
 
 .card-complete {
@@ -220,6 +264,7 @@
   align-items: center;
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
+  box-shadow: var(--recess);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -378,7 +423,8 @@ select {
 }
 
 .config-editor-panel {
-  background: hsl(var(--card));
+  background: var(--sheen), hsl(var(--card));
+  box-shadow: var(--elev-3);
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   padding: 20px;
@@ -412,4 +458,11 @@ select {
 
 .exercise-picker-row:hover {
   color: hsl(var(--primary));
+}
+
+/* Depth moves only for people who want motion: the lift on the active card
+   and a pressed primary button are transforms. */
+@media (prefers-reduced-motion: reduce) {
+  .card-active { transform: none; }
+  button:active { transform: none !important; }
 }

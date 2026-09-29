@@ -41,6 +41,19 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      // Elevation tokens from index.css, assigned by role (see the comment
+      // there): shadow-elev-1 for resting cards, shadow-control / shadow-cta
+      // for buttons.
+      boxShadow: {
+        "elev-1": "var(--elev-1)",
+        "elev-2": "var(--elev-2)",
+        "elev-3": "var(--elev-3)",
+        control: "var(--control)",
+        cta: "var(--cta)",
+      },
+      backgroundImage: {
+        sheen: "var(--sheen)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

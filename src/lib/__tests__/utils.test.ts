@@ -234,5 +234,32 @@ describe("cn", () => {
         ).toContain("text-primary-foreground");
       }
     });
+
+    it("declares every boxShadow and backgroundImage key in tailwind.config.js", () => {
+      const config = readFileSync(
+        fileURLToPath(new URL("../../../tailwind.config.js", import.meta.url)),
+        "utf8"
+      );
+      const keysOf = (name: string) => {
+        const block = config.slice(config.indexOf(`${name}: {`));
+        return [...block.slice(0, block.indexOf("\n      }")).matchAll(/^\s{8}"?([A-Za-z][\w-]*)"?:/gm)].map(
+          (m) => m[1]
+        );
+      };
+      const shadows = keysOf("boxShadow");
+      const images = keysOf("backgroundImage");
+      expect(shadows.length).toBeGreaterThanOrEqual(5);
+      expect(images).toContain("sheen");
+
+      for (const key of shadows) {
+        // A shadow token must survive next to a shadow colour, and replace
+        // another shadow size rather than stack with it.
+        expect(cn("shadow-black", `shadow-${key}`), `shadow-${key} read as a colour`).toContain("shadow-black");
+        expect(cn("shadow-none", `shadow-${key}`)).toBe(`shadow-${key}`);
+      }
+      for (const key of images) {
+        expect(cn("bg-card", `bg-${key}`), `bg-${key} evicted the background colour`).toContain("bg-card");
+      }
+    });
   });
 });
